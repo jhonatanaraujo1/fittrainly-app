@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, CreditCard, Receipt,
-  Calendar, UserCheck, CalendarPlus, History, LogOut,
+  LayoutDashboard, Users, Receipt,
+  Calendar, UserCheck, CalendarPlus, History, LogOut, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -15,7 +15,7 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/admin', label: 'Início', icon: LayoutDashboard },
     { href: '/admin/schedule', label: 'Agenda', icon: Calendar },
     { href: '/admin/personal-trainers', label: 'PTs', icon: Users },
-    { href: '/admin/billing', label: 'Faturação', icon: Receipt },
+    { href: '/admin/modalidades', label: 'Modal.', icon: Layers },
   ],
   PERSONAL_TRAINER: [
     { href: '/pt', label: 'Início', icon: LayoutDashboard },

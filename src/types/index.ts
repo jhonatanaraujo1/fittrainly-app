@@ -14,6 +14,16 @@ export interface AuthResponse {
   user: AuthUser
 }
 
+export interface Modalidade {
+  id: string
+  name: string
+  categoria?: string
+  descricao?: string
+  cor: string
+  active: boolean
+  createdAt: string
+}
+
 export interface RentalPlan {
   id: string
   name: string
@@ -39,9 +49,10 @@ export interface PersonalTrainer {
   specialty?: string
   bio?: string
   active: boolean
+  inadimplente: boolean
   plan?: PlanSummary
   alunoCount: number
-  sessionsThisMonth: number
+  hoursThisMonth: number
 }
 
 export interface Aluno {

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, CalendarPlus, History,
-  Dumbbell, LogOut,
+  Dumbbell, LogOut, Layers,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -17,6 +17,7 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/schedule', label: 'Agenda do Estúdio', icon: Calendar },
     { href: '/admin/personal-trainers', label: 'Personal Trainers', icon: Users },
+    { href: '/admin/modalidades', label: 'Modalidades', icon: Layers },
     { href: '/admin/plans', label: 'Planos de Aluguel', icon: CreditCard },
     { href: '/admin/billing', label: 'Faturação', icon: Receipt },
   ],

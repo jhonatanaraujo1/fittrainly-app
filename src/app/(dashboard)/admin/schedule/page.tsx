@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CustomSelect } from '@/components/ui/custom-select'
 import { adminScheduleApi, ptApi } from '@/lib/api'
 import { cn, getInitials, avatarColor } from '@/lib/utils'
 import type { Availability, PersonalTrainer } from '@/types'
@@ -188,24 +189,30 @@ export default function AdminSchedulePage() {
           className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-5 items-end">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-500">Início do dia</label>
-            <select value={settings.startHour} onChange={e => setSettings(s => ({ ...s, startHour: Number(e.target.value) }))}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A84C]">
-              {START_HOURS.filter(h => h < settings.endHour).map(h => <option key={h} value={h}>{pad(h)}:00</option>)}
-            </select>
+            <CustomSelect<number>
+              value={settings.startHour}
+              onChange={v => setSettings(s => ({ ...s, startHour: v }))}
+              options={START_HOURS.filter(h => h < settings.endHour).map(h => ({ value: h, label: `${pad(h)}:00` }))}
+              className="w-28"
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-500">Fim do dia</label>
-            <select value={settings.endHour} onChange={e => setSettings(s => ({ ...s, endHour: Number(e.target.value) }))}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A84C]">
-              {END_HOURS.filter(h => h > settings.startHour).map(h => <option key={h} value={h}>{pad(h)}:00</option>)}
-            </select>
+            <CustomSelect<number>
+              value={settings.endHour}
+              onChange={v => setSettings(s => ({ ...s, endHour: v }))}
+              options={END_HOURS.filter(h => h > settings.startHour).map(h => ({ value: h, label: `${pad(h)}:00` }))}
+              className="w-28"
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-500">Duração da aula</label>
-            <select value={settings.durationMinutes} onChange={e => setSettings(s => ({ ...s, durationMinutes: Number(e.target.value) }))}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#C9A84C]">
-              {DURATION_OPTIONS.map(d => <option key={d} value={d}>{d} minutos</option>)}
-            </select>
+            <CustomSelect<number>
+              value={settings.durationMinutes}
+              onChange={v => setSettings(s => ({ ...s, durationMinutes: v }))}
+              options={DURATION_OPTIONS.map(d => ({ value: d, label: `${d} minutos` }))}
+              className="w-36"
+            />
           </div>
           <p className="text-xs text-gray-400 self-center">{timeSlots.length} slots/dia · {settings.durationMinutes} min</p>
         </motion.div>

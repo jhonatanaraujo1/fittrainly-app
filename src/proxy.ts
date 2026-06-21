@@ -13,7 +13,7 @@ export function proxy(request: NextRequest) {
   const refresh = request.cookies.get('fittrainly-refresh')?.value
 
   // Public routes
-  if (pathname.startsWith('/login') || pathname.startsWith('/api')) {
+  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/api')) {
     if (refresh && role && pathname === '/login') {
       return NextResponse.redirect(new URL(ROLE_HOME[role] ?? '/login', request.url))
     }

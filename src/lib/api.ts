@@ -82,6 +82,15 @@ export const alunoApi = {
   create: (data: object) => api.post('/alunos', data).then(r => r.data),
 }
 
+// Modalidades
+export const modalidadeApi = {
+  list: () => api.get('/modalidades').then(r => r.data),
+  create: (data: { name: string; categoria?: string; descricao?: string; cor?: string }) =>
+    api.post('/modalidades', data).then(r => r.data),
+  update: (id: string, data: object) => api.patch(`/modalidades/${id}`, data).then(r => r.data),
+  delete: (id: string) => api.delete(`/modalidades/${id}`),
+}
+
 // Plans
 export const planApi = {
   list: () => api.get('/plans').then(r => r.data),
