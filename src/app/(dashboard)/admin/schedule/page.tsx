@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Loader2, Settings2, Users } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronLeft, ChevronRight, Loader2, Settings2, Search, ChevronDown, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -41,6 +41,20 @@ export default function AdminSchedulePage() {
   const [loadingCell, setLoadingCell] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<Settings>(loadSettings)
+  const [ptSearch, setPtSearch] = useState('')
+  const [ptDropdownOpen, setPtDropdownOpen] = useState(false)
+  const comboRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
+        setPtDropdownOpen(false)
+        setPtSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('fittrainly-schedule-settings', JSON.stringify(settings))
@@ -218,34 +232,107 @@ export default function AdminSchedulePage() {
         </motion.div>
       )}
 
-      {/* PT selector */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-gray-400 font-medium flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Alocar para:</span>
-        {activePts.map((pt, i) => (
+      {/* PT selector — combobox com pesquisa */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Alocar para:</span>
+        <div ref={comboRef} className="relative w-72">
+          {/* Trigger */}
           <button
-            key={pt.id}
-            onClick={() => setSelectedPtId(pt.id)}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-              selectedPtId === pt.id
-                ? `${PT_COLORS[i % PT_COLORS.length]} border-transparent text-white shadow-sm`
-                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-            )}
+            type="button"
+            onClick={() => { setPtDropdownOpen(o => !o); setPtSearch('') }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-left shadow-sm"
           >
-            <span className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0',
-              selectedPtId === pt.id ? 'bg-white/20' : PT_COLORS[i % PT_COLORS.length])}>
-              {getInitials(pt.name)}
-            </span>
-            {pt.name.split(' ')[0]}
+            {selectedPt ? (
+              <>
+                <span className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0', ptColor(selectedPt.id))}>
+                  {getInitials(selectedPt.name)}
+                </span>
+                <span className="flex-1 text-sm font-medium text-gray-900 truncate">{selectedPt.name}</span>
+                {selectedPt.specialty && (
+                  <span className="text-xs text-gray-400 truncate hidden sm:block max-w-[100px]">{selectedPt.specialty.split(' ')[0]}</span>
+                )}
+              </>
+            ) : (
+              <span className="flex-1 text-sm text-gray-400">Selecionar Personal Trainer</span>
+            )}
+            <ChevronDown className={cn('w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-150', ptDropdownOpen && 'rotate-180')} />
           </button>
-        ))}
-      </div>
 
-      {selectedPt && (
-        <p className="text-xs text-gray-400">
-          A clicar nas células vai alocar/remover slots para <strong className="text-gray-600">{selectedPt.name}</strong>
-        </p>
-      )}
+          {/* Dropdown */}
+          <AnimatePresence>
+            {ptDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.12 }}
+                className="absolute z-30 top-full mt-1 left-0 right-0 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden"
+              >
+                {/* Search input */}
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
+                  <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Pesquisar personal trainer..."
+                    value={ptSearch}
+                    onChange={e => setPtSearch(e.target.value)}
+                    className="flex-1 text-sm text-gray-900 placeholder-gray-400 bg-transparent outline-none"
+                  />
+                  {ptSearch && (
+                    <button onClick={() => setPtSearch('')} className="text-gray-400 hover:text-gray-600 transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* PT list */}
+                <div className="max-h-60 overflow-y-auto">
+                  {activePts
+                    .filter(pt => pt.name.toLowerCase().includes(ptSearch.toLowerCase()) || (pt.specialty ?? '').toLowerCase().includes(ptSearch.toLowerCase()))
+                    .map(pt => (
+                      <button
+                        key={pt.id}
+                        type="button"
+                        onClick={() => { setSelectedPtId(pt.id); setPtDropdownOpen(false); setPtSearch('') }}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left border-b border-gray-50 last:border-0',
+                          selectedPtId === pt.id && 'bg-blue-50'
+                        )}
+                      >
+                        <span className={cn('w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0', ptColor(pt.id))}>
+                          {getInitials(pt.name)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{pt.name}</p>
+                          {pt.specialty && <p className="text-xs text-gray-400 truncate">{pt.specialty}</p>}
+                        </div>
+                        {selectedPtId === pt.id && (
+                          <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full flex-shrink-0">Selecionado</span>
+                        )}
+                      </button>
+                    ))}
+
+                  {activePts.filter(pt =>
+                    pt.name.toLowerCase().includes(ptSearch.toLowerCase()) ||
+                    (pt.specialty ?? '').toLowerCase().includes(ptSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div className="px-4 py-6 text-center text-sm text-gray-400">
+                      Nenhum PT encontrado para "{ptSearch}"
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {selectedPt && (
+          <p className="text-xs text-gray-400">
+            A clicar nas células vai alocar/remover slots para <strong className="text-gray-600">{selectedPt.name}</strong>
+          </p>
+        )}
+      </div>
 
       {/* Grid */}
       {isLoading ? (
