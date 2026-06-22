@@ -1,22 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, Loader2, X, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Loader2, X, AlertCircle, ChevronDown, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
-import { alunoApi, availabilityApi, bookingApi } from '@/lib/api'
+import { alunoApi, availabilityApi, bookingApi, ptApi } from '@/lib/api'
 import { formatTime, cn, getInitials, avatarColor } from '@/lib/utils'
-import type { Availability, Booking, Aluno } from '@/types'
+import type { Availability, Booking, Aluno, PersonalTrainer } from '@/types'
 
 export default function MinhasSessionsPage() {
   const qc = useQueryClient()
   const [weekOffset, setWeekOffset] = useState(0)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [selectedPtId, setSelectedPtId] = useState<string | null>(null)
+  const [ptDropdownOpen, setPtDropdownOpen] = useState(false)
 
   const monday = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
   const startDate = format(monday, "yyyy-MM-dd'T'00:00:00'Z'")
@@ -27,10 +29,26 @@ export default function MinhasSessionsPage() {
     queryFn: alunoApi.me,
   })
 
-  const { data: slots = [], isLoading } = useQuery<Availability[]>({
-    queryKey: ['aluno-slots', weekOffset, me?.personalTrainerId],
-    queryFn: () => availabilityApi.ptSlots(me!.personalTrainerId, startDate, endDate),
-    enabled: !!me?.personalTrainerId,
+  const { data: pts = [], isLoading: ptsLoading } = useQuery<PersonalTrainer[]>({
+    queryKey: ['pts-active'],
+    queryFn: ptApi.list,
+  })
+
+  const activePts = pts.filter(p => p.active)
+
+  // Inicializa com o PT do aluno, ou o primeiro da lista
+  useEffect(() => {
+    if (selectedPtId) return
+    const defaultId = me?.personalTrainerId ?? activePts[0]?.id
+    if (defaultId) setSelectedPtId(defaultId)
+  }, [me, activePts, selectedPtId])
+
+  const selectedPt = activePts.find(p => p.id === selectedPtId)
+
+  const { data: slots = [], isLoading: slotsLoading } = useQuery<Availability[]>({
+    queryKey: ['aluno-slots', weekOffset, selectedPtId],
+    queryFn: () => availabilityApi.ptSlots(selectedPtId!, startDate, endDate),
+    enabled: !!selectedPtId,
   })
 
   const { data: myBookings = [] } = useQuery<Booking[]>({
@@ -94,44 +112,125 @@ export default function MinhasSessionsPage() {
   }, {})
   const sortedDays = Object.keys(grouped).sort()
 
-  // Count confirmations this week
   const confirmedThisWeek = [...bookedMap.keys()].filter(id =>
     slots.some(s => s.id === id)
   ).length
 
+  const isLoading = ptsLoading || slotsLoading || !me
+
   return (
     <div className="p-5 lg:p-7 space-y-5 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Minhas Sessões</h1>
-          {me?.personalTrainerName && (
-            <div className="flex items-center gap-2 mt-1">
-              <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold', avatarColor(me.personalTrainerName))}>
-                {getInitials(me.personalTrainerName)}
-              </div>
-              <p className="text-sm text-gray-500">com <span className="font-medium text-gray-700">{me.personalTrainerName}</span></p>
-            </div>
-          )}
-        </div>
-        <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-          {['Esta semana', 'Próxima semana'].map((label, idx) => (
-            <button key={label} onClick={() => setWeekOffset(idx)}
-              className={cn('px-3 py-1.5 text-xs font-medium rounded-md transition-all',
-                weekOffset === idx ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-              {label}
-            </button>
-          ))}
-        </div>
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Minhas Sessões</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Escolhe um personal trainer e confirma a tua presença</p>
       </div>
 
-      {/* Confirmation summary */}
-      {confirmedThisWeek > 0 && (
-        <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <p className="text-xs text-emerald-700">
-            Tens <strong>{confirmedThisWeek}</strong> sessão{confirmedThisWeek !== 1 ? 'ões' : ''} confirmada{confirmedThisWeek !== 1 ? 's' : ''} esta semana
-          </p>
+      {/* PT Selector */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Personal Trainer</p>
+        {ptsLoading ? (
+          <Skeleton className="h-12 rounded-lg" />
+        ) : (
+          <div className="relative">
+            <button
+              onClick={() => setPtDropdownOpen(o => !o)}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+            >
+              {selectedPt ? (
+                <>
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                    style={{ background: avatarColor(selectedPt.name) }}
+                  >
+                    {getInitials(selectedPt.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{selectedPt.name}</p>
+                    {selectedPt.specialty && (
+                      <p className="text-xs text-gray-400 truncate">{selectedPt.specialty}</p>
+                    )}
+                  </div>
+                  {me?.personalTrainerId === selectedPt.id && (
+                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                      O meu PT
+                    </span>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <User className="w-4 h-4" />
+                  Selecionar Personal Trainer
+                </div>
+              )}
+              <ChevronDown className={cn('w-4 h-4 text-gray-400 flex-shrink-0 transition-transform', ptDropdownOpen && 'rotate-180')} />
+            </button>
+
+            <AnimatePresence>
+              {ptDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute z-20 top-full mt-1 left-0 right-0 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden"
+                >
+                  {activePts.map(pt => (
+                    <button
+                      key={pt.id}
+                      onClick={() => { setSelectedPtId(pt.id); setPtDropdownOpen(false); setWeekOffset(0) }}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-50 last:border-0',
+                        selectedPtId === pt.id && 'bg-blue-50'
+                      )}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                        style={{ background: avatarColor(pt.name) }}
+                      >
+                        {getInitials(pt.name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{pt.name}</p>
+                        {pt.specialty && <p className="text-xs text-gray-400 truncate">{pt.specialty}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {me?.personalTrainerId === pt.id && (
+                          <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
+                            O meu PT
+                          </span>
+                        )}
+                        {selectedPtId === pt.id && (
+                          <CheckCircle2 className="w-4 h-4 text-blue-500" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* Week selector */}
+      {selectedPtId && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+            {['Esta semana', 'Próxima semana'].map((label, idx) => (
+              <button key={label} onClick={() => setWeekOffset(idx)}
+                className={cn('px-3 py-1.5 text-xs font-medium rounded-md transition-all',
+                  weekOffset === idx ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {confirmedThisWeek > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+              <span><strong>{confirmedThisWeek}</strong> confirmada{confirmedThisWeek !== 1 ? 's' : ''} esta semana</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -144,14 +243,21 @@ export default function MinhasSessionsPage() {
       </div>
 
       {/* Session list */}
-      {isLoading || !me ? (
+      {isLoading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+      ) : !selectedPtId ? (
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+          <User className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Seleciona um personal trainer para ver os horários</p>
         </div>
       ) : sortedDays.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <p className="text-gray-400 text-sm">Sem sessões disponíveis nesta semana</p>
-          <p className="text-gray-300 text-xs mt-1">O estúdio ainda não definiu o horário</p>
+          <p className="text-gray-300 text-xs mt-1">
+            {selectedPt?.name} ainda não definiu o horário
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
