@@ -403,6 +403,68 @@ export const bookingApi = {
   },
 }
 
+// ── Workout Plans ─────────────────────────────────────────────────────────────
+export const workoutApi = {
+  // PT: lista alunos com status de treino
+  ptAlunos: async (ptId: string) => {
+    await delay(250)
+    const alunos = db.alunos.filter(a => a.personalTrainerId === ptId)
+    return alunos.map(a => ({
+      ...a,
+      planCount: db.workoutPlans.filter(p => p.alunoId === a.id).length,
+    }))
+  },
+
+  // PT + Aluno: lista planos de um aluno
+  plans: async (alunoId: string) => {
+    await delay(250)
+    return db.workoutPlans.filter(p => p.alunoId === alunoId)
+  },
+
+  // PT: salva (cria ou actualiza) um plano
+  savePlan: async (data: {
+    alunoId: string; alunoName: string; ptId: string
+    label: string; focus: string; exercises: import('@/types').Exercise[]
+  }) => {
+    await delay(350)
+    const existing = db.workoutPlans.find(p => p.alunoId === data.alunoId && p.label === data.label)
+    if (existing) {
+      Object.assign(existing, { ...data, updatedAt: new Date().toISOString() })
+      return existing
+    }
+    const novo = { ...data, id: 'wp-' + uid(), updatedAt: new Date().toISOString() }
+    db.workoutPlans.push(novo)
+    return novo
+  },
+
+  // PT: adiciona exercício a um plano existente
+  addExercise: async (planId: string, exercise: Omit<import('@/types').Exercise, 'id'>) => {
+    await delay(300)
+    const plan = db.workoutPlans.find(p => p.id === planId)
+    if (!plan) throw new Error('Plano não encontrado')
+    const novo = { ...exercise, id: 'ex-' + uid() }
+    plan.exercises.push(novo)
+    plan.updatedAt = new Date().toISOString()
+    return novo
+  },
+
+  // PT: remove exercício de um plano
+  removeExercise: async (planId: string, exerciseId: string) => {
+    await delay(200)
+    const plan = db.workoutPlans.find(p => p.id === planId)
+    if (!plan) throw new Error('Plano não encontrado')
+    plan.exercises = plan.exercises.filter(e => e.id !== exerciseId)
+    plan.updatedAt = new Date().toISOString()
+  },
+
+  // PT: apaga um plano completo
+  deletePlan: async (planId: string) => {
+    await delay(300)
+    const idx = db.workoutPlans.findIndex(p => p.id === planId)
+    if (idx !== -1) db.workoutPlans.splice(idx, 1)
+  },
+}
+
 // ── Billing ───────────────────────────────────────────────────────────────────
 export const billingApi = {
   byMonth: async (month?: string) => {

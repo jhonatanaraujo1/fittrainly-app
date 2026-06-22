@@ -48,6 +48,15 @@ export interface MockModalidade {
   id: string; name: string; categoria?: string; descricao?: string
   cor: string; active: boolean; createdAt: string
 }
+export interface MockExercise {
+  id: string; name: string; muscleGroup: string
+  sets: number; reps: string; rest: string; notes?: string
+}
+export interface MockWorkoutPlan {
+  id: string; alunoId: string; alunoName: string; ptId: string
+  label: string; focus: string
+  exercises: MockExercise[]; updatedAt: string
+}
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 // Use LOCAL date string to match date-fns format() output (yyyy-MM-dd)
@@ -272,7 +281,105 @@ function createDB() {
     { id: 'mod-10', name: 'Zumba',        categoria: 'Dança',          descricao: 'Aeróbico ao ritmo de música latina',              cor: '#B45309', active: false, createdAt: '2026-01-10T00:00:00Z' },
   ]
 
-  return { users, plans, pts, alunos, availabilities, bookings, modalidades }
+  const workoutPlans: MockWorkoutPlan[] = [
+    // ── Carlos — Treino A (Superior) ──────────────────────────────────────────
+    {
+      id: 'wp-carlos-a', alunoId: AL.carlos, alunoName: 'Carlos Mendes', ptId: PT.joao,
+      label: 'Treino A', focus: 'Superior — Peito, Ombros, Braços',
+      updatedAt: '2026-06-15T10:00:00Z',
+      exercises: [
+        { id: 'ex-ca-1', name: 'Supino Reto com Barra',     muscleGroup: 'Peito',           sets: 4, reps: '8-10', rest: '90s' },
+        { id: 'ex-ca-2', name: 'Voador Pec Deck',            muscleGroup: 'Peito',           sets: 3, reps: '12-15', rest: '60s' },
+        { id: 'ex-ca-3', name: 'Desenvolvimento com Halteres', muscleGroup: 'Ombros',        sets: 3, reps: '10-12', rest: '90s' },
+        { id: 'ex-ca-4', name: 'Elevação Lateral',           muscleGroup: 'Ombros',          sets: 4, reps: '15',    rest: '45s' },
+        { id: 'ex-ca-5', name: 'Tríceps Polia Alta',         muscleGroup: 'Tríceps',         sets: 4, reps: '12',    rest: '60s' },
+        { id: 'ex-ca-6', name: 'Rosca Scott com Barra',      muscleGroup: 'Bíceps',          sets: 3, reps: '12',    rest: '60s', notes: 'Controlar a descida — 3 segundos' },
+      ],
+    },
+    // ── Carlos — Treino B (Inferior) ──────────────────────────────────────────
+    {
+      id: 'wp-carlos-b', alunoId: AL.carlos, alunoName: 'Carlos Mendes', ptId: PT.joao,
+      label: 'Treino B', focus: 'Inferior — Quadríceps, Glúteos, Isquiotibiais',
+      updatedAt: '2026-06-15T10:00:00Z',
+      exercises: [
+        { id: 'ex-cb-1', name: 'Agachamento Livre',          muscleGroup: 'Quadríceps',      sets: 4, reps: '6-8',   rest: '2min', notes: 'Descer até 90° — manter joelhos alinhados' },
+        { id: 'ex-cb-2', name: 'Leg Press 45°',              muscleGroup: 'Quadríceps',      sets: 3, reps: '12',    rest: '90s' },
+        { id: 'ex-cb-3', name: 'Cadeira Extensora',          muscleGroup: 'Quadríceps',      sets: 3, reps: '15',    rest: '60s' },
+        { id: 'ex-cb-4', name: 'Mesa Flexora',               muscleGroup: 'Isquiotibiais',   sets: 3, reps: '12-15', rest: '60s' },
+        { id: 'ex-cb-5', name: 'Stiff com Halteres',         muscleGroup: 'Isquiotibiais',   sets: 3, reps: '10-12', rest: '90s' },
+        { id: 'ex-cb-6', name: 'Panturrilha em Pé no Smith', muscleGroup: 'Panturrilha',     sets: 5, reps: '20',    rest: '30s' },
+      ],
+    },
+    // ── Carlos — Treino C (Core) ───────────────────────────────────────────────
+    {
+      id: 'wp-carlos-c', alunoId: AL.carlos, alunoName: 'Carlos Mendes', ptId: PT.joao,
+      label: 'Treino C', focus: 'Core & Funcional',
+      updatedAt: '2026-06-18T09:00:00Z',
+      exercises: [
+        { id: 'ex-cc-1', name: 'Prancha Frontal',            muscleGroup: 'Core',            sets: 4, reps: '45s',   rest: '30s' },
+        { id: 'ex-cc-2', name: 'Crunch no Cabo',             muscleGroup: 'Abdômen',         sets: 3, reps: '15',    rest: '45s' },
+        { id: 'ex-cc-3', name: 'Prancha Lateral',            muscleGroup: 'Oblíquos',        sets: 3, reps: '30s cada', rest: '30s' },
+        { id: 'ex-cc-4', name: 'Remada Curvada com Barra',   muscleGroup: 'Costas',          sets: 3, reps: '10',    rest: '90s' },
+        { id: 'ex-cc-5', name: 'Afundo com Halteres',        muscleGroup: 'Glúteos',         sets: 3, reps: '12 cada', rest: '60s' },
+        { id: 'ex-cc-6', name: 'Burpee',                     muscleGroup: 'Full Body',       sets: 3, reps: '10',    rest: '90s', notes: 'Manter ritmo constante' },
+      ],
+    },
+    // ── Maria — Treino A ─────────────────────────────────────────────────────
+    {
+      id: 'wp-maria-a', alunoId: AL.maria, alunoName: 'Maria Fernandes', ptId: PT.joao,
+      label: 'Treino A', focus: 'Superior — Foco Postural',
+      updatedAt: '2026-06-14T11:00:00Z',
+      exercises: [
+        { id: 'ex-ma-1', name: 'Supino Inclinado com Halteres', muscleGroup: 'Peito',        sets: 3, reps: '12',    rest: '90s' },
+        { id: 'ex-ma-2', name: 'Remada Unilateral',           muscleGroup: 'Costas',          sets: 3, reps: '12 cada', rest: '60s' },
+        { id: 'ex-ma-3', name: 'Desenvolvimento Arnold',       muscleGroup: 'Ombros',         sets: 3, reps: '12',    rest: '90s' },
+        { id: 'ex-ma-4', name: 'Tríceps Francês',             muscleGroup: 'Tríceps',         sets: 3, reps: '15',    rest: '60s' },
+        { id: 'ex-ma-5', name: 'Rosca Alternada com Halteres', muscleGroup: 'Bíceps',        sets: 3, reps: '12 cada', rest: '60s' },
+      ],
+    },
+    // ── Maria — Treino B ─────────────────────────────────────────────────────
+    {
+      id: 'wp-maria-b', alunoId: AL.maria, alunoName: 'Maria Fernandes', ptId: PT.joao,
+      label: 'Treino B', focus: 'Inferior — Glúteos e Pernas',
+      updatedAt: '2026-06-14T11:00:00Z',
+      exercises: [
+        { id: 'ex-mb-1', name: 'Agachamento Sumô com Haltere', muscleGroup: 'Glúteos',       sets: 4, reps: '12',    rest: '90s' },
+        { id: 'ex-mb-2', name: 'Stiff com Halteres',          muscleGroup: 'Isquiotibiais',   sets: 3, reps: '12',    rest: '90s' },
+        { id: 'ex-mb-3', name: 'Extensão de Quadril no Cross', muscleGroup: 'Glúteos',        sets: 3, reps: '15 cada', rest: '45s' },
+        { id: 'ex-mb-4', name: 'Abdução de Quadril',          muscleGroup: 'Glúteos',         sets: 3, reps: '20',    rest: '45s' },
+        { id: 'ex-mb-5', name: 'Panturrilha Sentado',         muscleGroup: 'Panturrilha',     sets: 4, reps: '15',    rest: '30s' },
+      ],
+    },
+    // ── Sofia — Treino A ─────────────────────────────────────────────────────
+    {
+      id: 'wp-sofia-a', alunoId: AL.sofia, alunoName: 'Sofia Rodrigues', ptId: PT.joao,
+      label: 'Treino A', focus: 'Full Body — Funcional',
+      updatedAt: '2026-06-12T09:30:00Z',
+      exercises: [
+        { id: 'ex-sa-1', name: 'Swing com Kettlebell',        muscleGroup: 'Full Body',       sets: 4, reps: '15',    rest: '60s' },
+        { id: 'ex-sa-2', name: 'Flexão de Braços',            muscleGroup: 'Peito/Tríceps',   sets: 3, reps: '10-12', rest: '60s' },
+        { id: 'ex-sa-3', name: 'Agachamento com Salto',       muscleGroup: 'Quadríceps',      sets: 3, reps: '10',    rest: '90s' },
+        { id: 'ex-sa-4', name: 'Remada Invertida no TRX',     muscleGroup: 'Costas',          sets: 3, reps: '12',    rest: '60s' },
+        { id: 'ex-sa-5', name: 'Prancha com Toque no Ombro',  muscleGroup: 'Core',            sets: 3, reps: '40s',   rest: '30s' },
+      ],
+    },
+    // ── Helena (Ana's aluna) — Treino A ──────────────────────────────────────
+    {
+      id: 'wp-helena-a', alunoId: AL.helena, alunoName: 'Helena Martins', ptId: PT.ana,
+      label: 'Treino A', focus: 'Mobilidade & Estabilidade',
+      updatedAt: '2026-06-16T08:00:00Z',
+      exercises: [
+        { id: 'ex-ha-1', name: 'Cat-Cow',                     muscleGroup: 'Coluna',          sets: 2, reps: '10',    rest: '30s', notes: 'Respiração lenta e controlada' },
+        { id: 'ex-ha-2', name: 'Bird Dog',                    muscleGroup: 'Core/Estabilidade', sets: 3, reps: '10 cada', rest: '30s' },
+        { id: 'ex-ha-3', name: 'Dead Bug',                    muscleGroup: 'Core',            sets: 3, reps: '10',    rest: '45s' },
+        { id: 'ex-ha-4', name: 'Hip Hinge com Bastão',        muscleGroup: 'Mobilidade',      sets: 3, reps: '12',    rest: '45s' },
+        { id: 'ex-ha-5', name: 'Prancha com Elevação de Braço', muscleGroup: 'Core',          sets: 3, reps: '8 cada', rest: '60s' },
+        { id: 'ex-ha-6', name: 'Agachamento Assistido',       muscleGroup: 'Quadríceps',      sets: 3, reps: '12',    rest: '60s', notes: 'Segurar apoio se necessário' },
+      ],
+    },
+  ]
+
+  return { users, plans, pts, alunos, availabilities, bookings, modalidades, workoutPlans }
 }
 
 // ── Module-level mutable state ──────────────────────────────────────────────

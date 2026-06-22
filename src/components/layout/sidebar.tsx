@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, CalendarPlus, History,
-  Dumbbell, LogOut, Layers,
+  Dumbbell, LogOut, Layers, ClipboardList,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -25,10 +25,12 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/pt', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/pt/availability', label: 'Minha Agenda', icon: Calendar },
     { href: '/pt/students', label: 'Meus Alunos', icon: UserCheck },
+    { href: '/pt/treinos', label: 'Treinos', icon: ClipboardList },
   ],
   ALUNO: [
     { href: '/aluno', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/aluno/book', label: 'Minhas Sessões', icon: CalendarPlus },
+    { href: '/aluno/treino', label: 'Meu Treino', icon: Dumbbell },
     { href: '/aluno/history', label: 'Histórico', icon: History },
   ],
 }

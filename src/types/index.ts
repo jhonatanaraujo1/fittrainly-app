@@ -159,3 +159,24 @@ export interface AlunoDashboard {
   ptName: string
   recentSessions: RecentSession[]
 }
+
+export interface Exercise {
+  id: string
+  name: string
+  muscleGroup: string
+  sets: number
+  reps: string
+  rest: string
+  notes?: string
+}
+
+export interface WorkoutPlan {
+  id: string
+  alunoId: string
+  alunoName: string
+  ptId: string
+  label: string
+  focus: string
+  exercises: Exercise[]
+  updatedAt: string
+}

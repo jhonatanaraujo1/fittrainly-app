@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Receipt,
-  Calendar, UserCheck, CalendarPlus, History, LogOut, Layers,
+  Calendar, UserCheck, CalendarPlus, History, LogOut, Layers, Dumbbell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -21,10 +21,12 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/pt', label: 'Início', icon: LayoutDashboard },
     { href: '/pt/availability', label: 'Horários', icon: Calendar },
     { href: '/pt/students', label: 'Alunos', icon: UserCheck },
+    { href: '/pt/treinos', label: 'Treinos', icon: Dumbbell },
   ],
   ALUNO: [
     { href: '/aluno', label: 'Início', icon: LayoutDashboard },
     { href: '/aluno/book', label: 'Sessões', icon: CalendarPlus },
+    { href: '/aluno/treino', label: 'Treino', icon: Dumbbell },
     { href: '/aluno/history', label: 'Histórico', icon: History },
   ],
 }
