@@ -15,19 +15,19 @@ const DEMO = [
   {
     label: '🏢 Admin — Maicon',
     email: 'admin@fittrainly.com',
-    password: 'Admin1234!',
+    password: 'demo123',
     style: { background: '#111111', color: '#ffffff', border: '1px solid #333' },
   },
   {
     label: '💪 PT — João',
     email: 'joao@fittrainly.com',
-    password: 'Trainer1234!',
+    password: 'demo123',
     style: { background: '#C9A84C', color: '#111111', border: '1px solid #C9A84C', fontWeight: 700 },
   },
   {
     label: '🎯 Aluno — Carlos',
     email: 'carlos@fittrainly.com',
-    password: 'Aluno1234!',
+    password: 'demo123',
     style: { background: '#ffffff', color: '#111111', border: '1px solid #E5E5E5' },
   },
 ]
@@ -238,6 +238,10 @@ export default function LoginPage() {
               ))}
             </div>
             <p className="text-center text-[10px] text-gray-300 mt-3">Um clique entra automaticamente</p>
+            <div className="mt-4 rounded-lg px-3 py-2.5 text-[11px] text-gray-400 text-center"
+              style={{ background: '#F9FAFB', border: '1px solid #F3F4F6' }}>
+              Password de todos os perfis: <span className="font-mono font-bold text-gray-700">demo123</span>
+            </div>
           </div>
         </div>
       </motion.div>
