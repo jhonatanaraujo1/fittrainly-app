@@ -188,7 +188,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="off"
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -220,22 +220,24 @@ export default function LoginPage() {
           <div className="mt-8">
             <div className="relative flex items-center gap-3 mb-4">
               <div className="flex-1 h-px bg-gray-100" />
-              <span className="text-[11px] text-gray-400 whitespace-nowrap font-medium tracking-wide uppercase">Demo</span>
+              <span className="text-[11px] text-gray-400 whitespace-nowrap font-medium tracking-wide uppercase">Acesso Rápido</span>
               <div className="flex-1 h-px bg-gray-100" />
             </div>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {DEMO.map(d => (
                 <button
                   key={d.email}
                   onClick={() => quickLogin(d.email, d.password)}
                   disabled={loading}
-                  className="w-full h-11 rounded-md text-sm transition-all disabled:opacity-50"
+                  className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 hover:opacity-90 active:scale-95"
                   style={d.style}
                 >
-                  {d.label}
+                  <span className="text-base leading-none">{d.label.split(' ')[0]}</span>
+                  <span className="text-[10px] opacity-70 font-medium leading-tight text-center px-1">{d.label.split('— ')[1] ?? d.label}</span>
                 </button>
               ))}
             </div>
+            <p className="text-center text-[10px] text-gray-300 mt-3">Um clique entra automaticamente</p>
           </div>
         </div>
       </motion.div>
