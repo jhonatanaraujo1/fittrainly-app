@@ -403,6 +403,14 @@ export const bookingApi = {
   },
 }
 
+// ── Admin: Alunos por PT ──────────────────────────────────────────────────────
+export const adminApi = {
+  alunosByPt: async (ptId: string) => {
+    await delay(250)
+    return db.alunos.filter(a => a.personalTrainerId === ptId)
+  },
+}
+
 // ── Workout Plans ─────────────────────────────────────────────────────────────
 export const workoutApi = {
   // PT: lista alunos com status de treino

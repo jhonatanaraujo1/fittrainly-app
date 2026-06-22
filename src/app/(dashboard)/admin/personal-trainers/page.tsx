@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Plus, Users, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
@@ -275,10 +276,18 @@ export default function PersonalTrainersPage() {
 
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-2 py-2 border-t border-b border-gray-50">
-                <div className="text-center">
-                  <p className="text-base font-black text-gray-900">{pt.alunoCount}</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Alunos</p>
-                </div>
+                <Link
+                  href={`/admin/personal-trainers/${pt.id}/alunos`}
+                  className="text-center group hover:bg-gray-50 rounded-lg transition-colors py-1 -mx-1 px-1"
+                  title="Ver alunos"
+                >
+                  <p className="text-base font-black text-gray-900 group-hover:text-blue-600 transition-colors">
+                    {pt.alunoCount}
+                  </p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5 group-hover:text-blue-400 transition-colors">
+                    Alunos ↗
+                  </p>
+                </Link>
                 <div className="text-center border-x border-gray-100">
                   <p className="text-base font-black text-gray-900">{pt.hoursThisMonth}h</p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">Horas/mês</p>
