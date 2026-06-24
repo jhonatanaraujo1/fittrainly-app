@@ -14,6 +14,7 @@ import { cn, getInitials, avatarColor } from '@/lib/utils'
 import type { Availability, PersonalTrainer } from '@/types'
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5]
+const STUDIO_CAPACITY = 4
 
 const DURATION_OPTIONS = [30, 40, 45, 50, 60, 75, 90]
 const START_HOURS = Array.from({ length: 13 }, (_, i) => i + 5)
@@ -376,7 +377,7 @@ export default function AdminSchedulePage() {
                           onClick={() => toggleCell(d, hour, minute)}
                           disabled={isLoading || !selectedPtId}
                           className={cn(
-                            'w-full min-h-[44px] rounded-md border text-[10px] font-medium transition-all flex flex-col items-center justify-center gap-0.5 p-1',
+                            'w-full min-h-[48px] rounded-md border text-[10px] font-medium transition-all flex flex-col items-center justify-center gap-0.5 p-1 relative',
                             selectedSlot
                               ? selectedSlot.confirmedCount > 0
                                 ? 'bg-[#2E75B6] border-[#2E75B6] text-white'
@@ -390,12 +391,7 @@ export default function AdminSchedulePage() {
                           {isLoading ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           ) : selectedSlot ? (
-                            <>
-                              <span className="text-[10px] font-bold">✓</span>
-                              {selectedSlot.confirmedCount > 0 && (
-                                <span className="text-[9px] opacity-80">{selectedSlot.confirmedCount} conf.</span>
-                              )}
-                            </>
+                            <span className="text-[10px] font-bold">✓</span>
                           ) : otherSlots.length > 0 ? (
                             <div className="flex flex-col gap-0.5 w-full px-0.5">
                               {otherSlots.slice(0, 2).map(s => (
@@ -406,6 +402,17 @@ export default function AdminSchedulePage() {
                             </div>
                           ) : (
                             <span className="text-gray-300">+</span>
+                          )}
+                          {/* Occupancy badge */}
+                          {cellSlots.length > 0 && (
+                            <span className={cn(
+                              'text-[9px] font-bold leading-none mt-0.5',
+                              cellSlots.length >= STUDIO_CAPACITY
+                                ? selectedSlot ? 'text-white/70' : 'text-red-500'
+                                : selectedSlot ? 'text-white/70' : 'text-gray-400'
+                            )}>
+                              {cellSlots.length}/{STUDIO_CAPACITY}
+                            </span>
                           )}
                         </button>
                       </td>
@@ -423,6 +430,7 @@ export default function AdminSchedulePage() {
         <span>✓ Slot alocado para o PT selecionado</span>
         <span>· Slot de outro PT (read-only)</span>
         <span>Azul = tem presenças confirmadas</span>
+        <span>· <strong>X/{STUDIO_CAPACITY}</strong> = ocupação do estúdio naquele horário</span>
       </div>
     </div>
   )
