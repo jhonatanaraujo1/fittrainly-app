@@ -29,9 +29,13 @@ export interface MockPT {
   planId?: string; alunoCount: number; hoursThisMonth: number
 }
 export interface MockAluno {
-  id: string; userId: string; name: string; email: string
+  id: string; userId: string; name: string; email: string; phone?: string
   personalTrainerId: string; personalTrainerName: string
   nextSession?: string; completedSessions?: number
+  status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'
+  dataNascimento?: string
+  inscricaoDate: string
+  objetivo?: string
 }
 export interface MockAvailability {
   id: string; personalTrainerId: string; personalTrainerName: string
@@ -55,7 +59,49 @@ export interface MockExercise {
 export interface MockWorkoutPlan {
   id: string; alunoId: string; alunoName: string; ptId: string
   label: string; focus: string
-  exercises: MockExercise[]; updatedAt: string
+  exercises: MockExercise[]
+  validUntil?: string
+  updatedAt: string
+}
+
+export interface MockAvaliacao {
+  id: string; alunoId: string; alunoName: string; ptId: string
+  tipo: 'PRIMEIRA' | 'REAVALIACAO'
+  data: string
+  frequenciaSemanal?: number
+  peso?: number; altura?: number; imc?: number
+  percentualGordura?: number
+  massaMuscular?: number
+  objetivo?: string
+  observacoes?: string
+  proximaAvaliacao?: string
+  createdAt: string
+}
+
+export interface MockPack {
+  id: string; alunoId: string; alunoName: string
+  total: number; used: number
+  expiresAt?: string
+  status: 'ACTIVE' | 'EXPIRED' | 'DEPLETED'
+  createdAt: string
+}
+
+export interface MockLead {
+  id: string; name: string; email?: string; phone?: string
+  status: 'NOVO' | 'CONTACTADO' | 'VISITA_AGENDADA' | 'VISITOU' | 'INSCRITO' | 'PERDIDO'
+  interesse?: string
+  source?: string
+  responsavel?: string
+  visitaDate?: string
+  observacoes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MockNotificationConfig {
+  id: string; type: string; label: string; description: string
+  enabled: boolean; daysOffset?: number
+  triggerLabel: string
 }
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -146,14 +192,14 @@ function createDB() {
   ]
 
   const alunos: MockAluno[] = [
-    { id: AL.carlos, userId: U.carlos, name: 'Carlos Mendes',   email: 'carlos@fittrainly.com', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',    completedSessions: 12 },
-    { id: AL.maria,  userId: U.maria,  name: 'Maria Fernandes', email: 'maria@fittrainly.com',  personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',    completedSessions: 8 },
-    { id: AL.sofia,  userId: U.sofia,  name: 'Sofia Rodrigues', email: 'sofia@fittrainly.com',  personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',    completedSessions: 5 },
-    { id: AL.rui,    userId: U.rui,    name: 'Rui Oliveira',    email: 'rui@fittrainly.com',    personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',    completedSessions: 3 },
-    { id: AL.helena, userId: U.helena, name: 'Helena Martins',  email: 'helena@fittrainly.com', personalTrainerId: PT.ana,   personalTrainerName: 'Ana Costa',     completedSessions: 7 },
-    { id: AL.tiago,  userId: U.tiago,  name: 'Tiago Ferreira',  email: 'tiago@fittrainly.com',  personalTrainerId: PT.ana,   personalTrainerName: 'Ana Costa',     completedSessions: 4 },
-    { id: AL.paula,  userId: U.paula,  name: 'Paula Lima',      email: 'paula@fittrainly.com',  personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos',  completedSessions: 2 },
-    { id: AL.miguel, userId: U.miguel, name: 'Miguel Sousa',    email: 'miguel@fittrainly.com', personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos',  completedSessions: 1 },
+    { id: AL.carlos, userId: U.carlos, name: 'Carlos Mendes',   email: 'carlos@fittrainly.com', phone: '+351 913 001 001', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 12, status: 'ATIVO',    dataNascimento: '1991-03-14', inscricaoDate: '2026-01-10', objetivo: 'Hipertrofia e definição muscular' },
+    { id: AL.maria,  userId: U.maria,  name: 'Maria Fernandes', email: 'maria@fittrainly.com',  phone: '+351 913 001 002', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 8,  status: 'ATIVO',    dataNascimento: '1988-07-22', inscricaoDate: '2026-02-03', objetivo: 'Emagrecimento e tonificação' },
+    { id: AL.sofia,  userId: U.sofia,  name: 'Sofia Rodrigues', email: 'sofia@fittrainly.com',  phone: '+351 913 001 003', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 5,  status: 'ATIVO',    dataNascimento: '1995-11-05', inscricaoDate: '2026-03-15', objetivo: 'Condicionamento físico geral' },
+    { id: AL.rui,    userId: U.rui,    name: 'Rui Oliveira',    email: 'rui@fittrainly.com',    phone: '+351 913 001 004', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 3,  status: 'INATIVO',  dataNascimento: '1983-05-30', inscricaoDate: '2026-04-01', objetivo: 'Reabilitação pós-lesão e força' },
+    { id: AL.helena, userId: U.helena, name: 'Helena Martins',  email: 'helena@fittrainly.com', phone: '+351 913 001 005', personalTrainerId: PT.ana,   personalTrainerName: 'Ana Costa',    completedSessions: 7,  status: 'ATIVO',    dataNascimento: '1979-09-18', inscricaoDate: '2026-01-20', objetivo: 'Mobilidade e longevidade' },
+    { id: AL.tiago,  userId: U.tiago,  name: 'Tiago Ferreira',  email: 'tiago@fittrainly.com',  phone: '+351 913 001 006', personalTrainerId: PT.ana,   personalTrainerName: 'Ana Costa',    completedSessions: 4,  status: 'ATIVO',    dataNascimento: '1999-02-14', inscricaoDate: '2026-02-28', objetivo: 'Performance desportiva' },
+    { id: AL.paula,  userId: U.paula,  name: 'Paula Lima',      email: 'paula@fittrainly.com',  phone: '+351 913 001 007', personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos', completedSessions: 2,  status: 'ATIVO',    dataNascimento: '1985-12-01', inscricaoDate: '2026-05-10', objetivo: 'Perda de peso e saúde metabólica' },
+    { id: AL.miguel, userId: U.miguel, name: 'Miguel Sousa',    email: 'miguel@fittrainly.com', phone: '+351 913 001 008', personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos', completedSessions: 1,  status: 'SUSPENSO', dataNascimento: '1992-08-09', inscricaoDate: '2026-05-20', objetivo: 'Ganho de massa muscular' },
   ]
 
   // Generate slots for this week + 2 more weeks
@@ -379,7 +425,65 @@ function createDB() {
     },
   ]
 
-  return { users, plans, pts, alunos, availabilities, bookings, modalidades, workoutPlans }
+  // ── Workout Plans — add validUntil ──────────────────────────────────────────
+  // patch existing plans with validity
+  workoutPlans[0].validUntil = '2026-07-15'
+  workoutPlans[1].validUntil = '2026-07-15'
+  workoutPlans[2].validUntil = '2026-07-15'
+  workoutPlans[3].validUntil = '2026-08-01'
+  workoutPlans[4].validUntil = '2026-08-01'
+  workoutPlans[5].validUntil = '2026-07-20'
+  workoutPlans[6].validUntil = '2026-09-01'
+
+  // ── Avaliações Físicas ───────────────────────────────────────────────────────
+  const avaliacoes: MockAvaliacao[] = [
+    { id: 'av-eval-01', alunoId: AL.carlos, alunoName: 'Carlos Mendes', ptId: PT.joao, tipo: 'PRIMEIRA',    data: '2026-01-12', frequenciaSemanal: 3, peso: 84.5, altura: 178, imc: 26.7, percentualGordura: 22.1, massaMuscular: 38.4, objetivo: 'Hipertrofia e definição', observacoes: 'Boa mobilidade. Histórico de dor lombar leve.', proximaAvaliacao: '2026-04-12', createdAt: '2026-01-12T10:00:00Z' },
+    { id: 'av-eval-02', alunoId: AL.carlos, alunoName: 'Carlos Mendes', ptId: PT.joao, tipo: 'REAVALIACAO', data: '2026-04-14', frequenciaSemanal: 3, peso: 81.2, altura: 178, imc: 25.6, percentualGordura: 18.3, massaMuscular: 40.1, objetivo: 'Hipertrofia e definição', observacoes: 'Ótima evolução. Redução de 3.8% gordura em 3 meses.', proximaAvaliacao: '2026-07-14', createdAt: '2026-04-14T10:00:00Z' },
+    { id: 'av-eval-03', alunoId: AL.maria,  alunoName: 'Maria Fernandes', ptId: PT.joao, tipo: 'PRIMEIRA',    data: '2026-02-05', frequenciaSemanal: 2, peso: 68.0, altura: 163, imc: 25.6, percentualGordura: 31.2, massaMuscular: 27.8, objetivo: 'Emagrecimento e tonificação', observacoes: 'Sem lesões. Foco em glúteos e abdômen.', proximaAvaliacao: '2026-05-05', createdAt: '2026-02-05T11:00:00Z' },
+    { id: 'av-eval-04', alunoId: AL.maria,  alunoName: 'Maria Fernandes', ptId: PT.joao, tipo: 'REAVALIACAO', data: '2026-05-07', frequenciaSemanal: 3, peso: 65.4, altura: 163, imc: 24.6, percentualGordura: 28.7, massaMuscular: 28.9, objetivo: 'Emagrecimento e tonificação', observacoes: 'Perdeu 2.6kg e ganhou 1.1kg de massa. Excelente.', proximaAvaliacao: '2026-08-07', createdAt: '2026-05-07T11:00:00Z' },
+    { id: 'av-eval-05', alunoId: AL.helena, alunoName: 'Helena Martins',  ptId: PT.ana,  tipo: 'PRIMEIRA',    data: '2026-01-22', frequenciaSemanal: 2, peso: 61.0, altura: 165, imc: 22.4, percentualGordura: 28.5, massaMuscular: 24.2, objetivo: 'Mobilidade e longevidade', observacoes: 'Hipermobilidade nos ombros. Cuidado com exercícios de impacto.', proximaAvaliacao: '2026-04-22', createdAt: '2026-01-22T09:00:00Z' },
+    { id: 'av-eval-06', alunoId: AL.sofia,  alunoName: 'Sofia Rodrigues', ptId: PT.joao, tipo: 'PRIMEIRA',    data: '2026-03-17', frequenciaSemanal: 3, peso: 56.2, altura: 161, imc: 21.7, percentualGordura: 24.8, massaMuscular: 23.5, objetivo: 'Condicionamento físico', observacoes: 'Atleta amadora. Boa capacidade cardiorrespiratória.', proximaAvaliacao: '2026-06-17', createdAt: '2026-03-17T14:00:00Z' },
+  ]
+
+  // ── Packs de Sessões ─────────────────────────────────────────────────────────
+  const packs: MockPack[] = [
+    { id: 'pack-01', alunoId: AL.carlos, alunoName: 'Carlos Mendes', total: 20, used: 12, expiresAt: '2026-08-10', status: 'ACTIVE',   createdAt: '2026-01-10T00:00:00Z' },
+    { id: 'pack-02', alunoId: AL.maria,  alunoName: 'Maria Fernandes', total: 10, used: 8,  expiresAt: '2026-07-03', status: 'ACTIVE',   createdAt: '2026-02-03T00:00:00Z' },
+    { id: 'pack-03', alunoId: AL.sofia,  alunoName: 'Sofia Rodrigues', total: 10, used: 5,  expiresAt: '2026-07-15', status: 'ACTIVE',   createdAt: '2026-03-15T00:00:00Z' },
+    { id: 'pack-04', alunoId: AL.helena, alunoName: 'Helena Martins',  total: 10, used: 7,  expiresAt: '2026-07-20', status: 'ACTIVE',   createdAt: '2026-01-20T00:00:00Z' },
+    { id: 'pack-05', alunoId: AL.tiago,  alunoName: 'Tiago Ferreira',  total: 10, used: 4,  expiresAt: '2026-08-28', status: 'ACTIVE',   createdAt: '2026-02-28T00:00:00Z' },
+    { id: 'pack-06', alunoId: AL.rui,    alunoName: 'Rui Oliveira',    total: 10, used: 10, expiresAt: '2026-05-01', status: 'DEPLETED', createdAt: '2025-12-01T00:00:00Z' },
+  ]
+
+  // ── Leads CRM ────────────────────────────────────────────────────────────────
+  const leads: MockLead[] = [
+    { id: 'lead-01', name: 'André Pereira',    phone: '+351 916 111 001', email: 'andre.p@email.com',   status: 'NOVO',             interesse: 'Musculação',       source: 'Instagram',  responsavel: 'Úrsula', createdAt: '2026-06-22T10:00:00Z', updatedAt: '2026-06-22T10:00:00Z' },
+    { id: 'lead-02', name: 'Beatriz Costa',    phone: '+351 916 111 002', email: 'bea.costa@email.com', status: 'CONTACTADO',        interesse: 'Yoga e Pilates',   source: 'Referência', responsavel: 'Úrsula', observacoes: 'Ligou 23/06 — interesse confirmado', createdAt: '2026-06-20T14:00:00Z', updatedAt: '2026-06-23T09:00:00Z' },
+    { id: 'lead-03', name: 'Diogo Lopes',      phone: '+351 916 111 003',                               status: 'VISITA_AGENDADA',   interesse: 'Funcional',        source: 'Google',     responsavel: 'Úrsula', visitaDate: '2026-06-26T10:00:00Z', createdAt: '2026-06-18T11:00:00Z', updatedAt: '2026-06-24T08:00:00Z' },
+    { id: 'lead-04', name: 'Filipa Nunes',     phone: '+351 916 111 004', email: 'filipa@email.com',    status: 'VISITA_AGENDADA',   interesse: 'Emagrecimento',    source: 'Instagram',  responsavel: 'Úrsula', visitaDate: '2026-06-25T11:00:00Z', createdAt: '2026-06-19T15:00:00Z', updatedAt: '2026-06-23T17:00:00Z' },
+    { id: 'lead-05', name: 'Gonçalo Ribeiro',  phone: '+351 916 111 005',                               status: 'VISITOU',           interesse: 'Musculação',       source: 'Amigo',      responsavel: 'Úrsula', visitaDate: '2026-06-21T10:00:00Z', observacoes: 'Gostou muito. Quer pensar no preço.', createdAt: '2026-06-15T09:00:00Z', updatedAt: '2026-06-21T12:00:00Z' },
+    { id: 'lead-06', name: 'Isabel Martins',   phone: '+351 916 111 006', email: 'isabel.m@email.com',  status: 'INSCRITO',          interesse: 'Funcional',        source: 'Instagram',  responsavel: 'Úrsula', createdAt: '2026-06-10T10:00:00Z', updatedAt: '2026-06-17T10:00:00Z' },
+    { id: 'lead-07', name: 'Jorge Almeida',    phone: '+351 916 111 007',                               status: 'PERDIDO',           interesse: 'Musculação',       source: 'Google',     responsavel: 'Úrsula', observacoes: 'Escolheu outro ginásio — preço.', createdAt: '2026-06-05T10:00:00Z', updatedAt: '2026-06-12T10:00:00Z' },
+    { id: 'lead-08', name: 'Luísa Ferreira',   phone: '+351 916 111 008', email: 'luisa.f@email.com',   status: 'NOVO',             interesse: 'Yoga',             source: 'Referência', responsavel: 'Úrsula', createdAt: '2026-06-24T08:00:00Z', updatedAt: '2026-06-24T08:00:00Z' },
+  ]
+
+  // ── Configurações de Notificações ────────────────────────────────────────────
+  const notificationConfigs: MockNotificationConfig[] = [
+    { id: 'nc-01', type: 'BOOKING_CONFIRMATION',  label: 'Confirmação de marcação',      description: 'Enviada quando o aluno faz uma nova marcação',                  enabled: true,  triggerLabel: 'No momento da marcação' },
+    { id: 'nc-02', type: 'BOOKING_REMINDER',      label: 'Lembrete de treino (D-1)',     description: 'Lembrete no dia anterior ao treino marcado',                   enabled: true,  daysOffset: 1, triggerLabel: '1 dia antes do treino' },
+    { id: 'nc-03', type: 'FIRST_EVAL_CONFIRM',    label: 'Confirmação 1ª Avaliação',     description: 'Enviada quando a 1ª avaliação física é agendada',              enabled: true,  triggerLabel: 'No momento do agendamento' },
+    { id: 'nc-04', type: 'FIRST_EVAL_REMINDER',   label: 'Lembrete 1ª Avaliação (D-1)', description: 'Lembrete no dia anterior à avaliação física',                  enabled: true,  daysOffset: 1, triggerLabel: '1 dia antes da avaliação' },
+    { id: 'nc-05', type: 'ABSENCE_7_DAYS',        label: 'Aluno inativo 7 dias',         description: 'Alerta quando o aluno não tem marcações há 7 dias',            enabled: true,  daysOffset: 7, triggerLabel: '7 dias sem marcações' },
+    { id: 'nc-06', type: 'ABSENCE_15_DAYS',       label: 'Aluno inativo 15 dias',        description: 'Alerta ao PT responsável quando aluno está 15 dias inativo',   enabled: true,  daysOffset: 15, triggerLabel: '15 dias sem marcações' },
+    { id: 'nc-07', type: 'BIRTHDAY',              label: 'Feliz aniversário',            description: 'Mensagem personalizada no dia de aniversário do aluno',        enabled: true,  triggerLabel: 'No dia do aniversário' },
+    { id: 'nc-08', type: 'MOTIVATIONAL_30',       label: 'Motivação 30 dias',            description: 'Mensagem motivacional enviada 30 dias após a inscrição',       enabled: true,  daysOffset: 30, triggerLabel: '30 dias após inscrição' },
+    { id: 'nc-09', type: 'NPS_SURVEY',            label: 'Inquérito NPS',                description: 'Questionário de satisfação enviado a cada 3 meses',            enabled: false, daysOffset: 90, triggerLabel: 'A cada 3 meses' },
+    { id: 'nc-10', type: 'PACK_LOW',              label: 'Pack quase a acabar',          description: 'Alerta quando resta 1 sessão no pack do aluno',                enabled: true,  triggerLabel: 'Quando restar 1 sessão' },
+    { id: 'nc-11', type: 'PLAN_EXPIRING',         label: 'Plano de treino a expirar',    description: 'Aviso 5 dias antes do plano de treino expirar',                enabled: true,  daysOffset: 5, triggerLabel: '5 dias antes da validade' },
+    { id: 'nc-12', type: 'EVAL_AFTER',            label: 'Questionário pós-avaliação',   description: 'Enquête de satisfação enviada no dia seguinte à avaliação',    enabled: false, triggerLabel: '1 dia após a avaliação' },
+  ]
+
+  return { users, plans, pts, alunos, availabilities, bookings, modalidades, workoutPlans, avaliacoes, packs, leads, notificationConfigs }
 }
 
 // ── Module-level mutable state ──────────────────────────────────────────────
