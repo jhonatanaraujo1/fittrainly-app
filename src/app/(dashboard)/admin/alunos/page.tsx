@@ -230,15 +230,15 @@ export default function AlunosPage() {
       </div>
 
       {/* ── Stats rápidas ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
         {[
           { label: 'Total de Alunos', value: stats.total,   color: 'text-gray-900' },
           { label: 'Ativos',          value: stats.ativos,  color: 'text-emerald-600' },
           { label: 'Inativos / Susp', value: stats.inativos, color: 'text-amber-600' },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4 text-center">
+            <p className={`text-xl sm:text-2xl font-black ${s.color}`}>{s.value}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 leading-tight">{s.label}</p>
           </div>
         ))}
       </div>
@@ -268,7 +268,7 @@ export default function AlunosPage() {
       </div>
 
       {/* ── Filter chips ───────────────────────────────────────────────── */}
-      <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-fit">
+      <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 overflow-x-auto max-w-full">
         {FILTER_TABS.map(tab => {
           const count = tab.key === 'todos'
             ? alunos.length
@@ -277,7 +277,7 @@ export default function AlunosPage() {
             <button
               key={tab.key}
               onClick={() => setStatusFilter(tab.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+              className={`flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
                 statusFilter === tab.key
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'

@@ -452,6 +452,7 @@ export default function LeadsPage() {
   const qc = useQueryClient()
   const [advancingId, setAdvancingId] = useState<string | null>(null)
   const [showLost, setShowLost] = useState(false)
+  const [mobileTab, setMobileTab] = useState<LeadStatus>('NOVO')
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
     queryKey: ['leads'],
@@ -526,47 +527,101 @@ export default function LeadsPage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex flex-col gap-0.5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total activos</p>
-          <p className="text-2xl font-black text-gray-900">{activeLeads.length}</p>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 flex flex-col gap-0.5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide line-clamp-1">Total activos</p>
+          <p className="text-xl sm:text-2xl font-black text-gray-900">{activeLeads.length}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex flex-col gap-0.5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Visitas esta semana</p>
-          <p className="text-2xl font-black text-gray-900">{visitasEstaSemana}</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 flex flex-col gap-0.5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide line-clamp-1">Visitas semana</p>
+          <p className="text-xl sm:text-2xl font-black text-gray-900">{visitasEstaSemana}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex flex-col gap-0.5">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Taxa de conversão</p>
-          <p className="text-2xl font-black text-gray-900">{conversionRate}%</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 flex flex-col gap-0.5">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide line-clamp-1">Conversão</p>
+          <p className="text-xl sm:text-2xl font-black text-gray-900">{conversionRate}%</p>
         </div>
       </div>
 
       {/* Kanban board */}
       {isLoading ? (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {PIPELINE.map((s) => (
-            <div key={s} className="min-w-[260px] flex-1 flex flex-col gap-3">
-              <Skeleton className="h-10 rounded-xl" />
-              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+        <>
+          <div className="lg:hidden flex flex-col gap-3">
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-5 px-5">
+              {PIPELINE.map((s) => <Skeleton key={s} className="flex-shrink-0 h-10 w-24 rounded-lg" />)}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="overflow-x-auto pb-4 -mx-5 px-5 lg:-mx-7 lg:px-7">
-          <div className="flex gap-4 min-w-max lg:min-w-0">
-            {PIPELINE.map((status) => (
-              <KanbanColumn
-                key={status}
-                status={status}
-                leads={byStatus[status]}
-                onAdvance={handleAdvance}
-                onMarkLost={handleMarkLost}
-                onConvert={handleConvert}
-                advancingId={advancingId}
-              />
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+          </div>
+          <div className="hidden lg:flex gap-4 overflow-x-auto pb-4">
+            {PIPELINE.map((s) => (
+              <div key={s} className="min-w-[260px] flex-1 flex flex-col gap-3">
+                <Skeleton className="h-10 rounded-xl" />
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+              </div>
             ))}
           </div>
-        </div>
+        </>
+      ) : (
+        <>
+          {/* Mobile: tab por coluna */}
+          <div className="lg:hidden">
+            <div className="flex overflow-x-auto gap-2 pb-2 -mx-5 px-5 scrollbar-hide">
+              {PIPELINE.map((status) => {
+                const meta = COLUMN_META[status]
+                const count = byStatus[status]?.length ?? 0
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setMobileTab(status)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
+                      mobileTab === status
+                        ? `${meta.bg} ${meta.color} ring-1 ${meta.ring}`
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {meta.label}
+                    <span className="text-xs font-semibold">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex flex-col gap-3 mt-3">
+              <AnimatePresence initial={false}>
+                {(byStatus[mobileTab] ?? []).map((lead) => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    onAdvance={handleAdvance}
+                    onMarkLost={handleMarkLost}
+                    onConvert={handleConvert}
+                    isAdvancing={advancingId === lead.id}
+                  />
+                ))}
+              </AnimatePresence>
+              {(byStatus[mobileTab] ?? []).length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-sm text-gray-400">Nenhum lead em &ldquo;{COLUMN_META[mobileTab].label}&rdquo;</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop: kanban horizontal */}
+          <div className="hidden lg:block overflow-x-auto pb-4 -mx-7 px-7">
+            <div className="flex gap-4 min-w-max">
+              {PIPELINE.map((status) => (
+                <KanbanColumn
+                  key={status}
+                  status={status}
+                  leads={byStatus[status]}
+                  onAdvance={handleAdvance}
+                  onMarkLost={handleMarkLost}
+                  onConvert={handleConvert}
+                  advancingId={advancingId}
+                />
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Leads perdidos — colapsável */}

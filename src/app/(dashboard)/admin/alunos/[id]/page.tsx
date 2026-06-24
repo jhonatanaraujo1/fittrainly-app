@@ -278,7 +278,7 @@ export default function AlunoPerfilPage() {
           </div>
 
           {/* Quick actions */}
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex flex-wrap gap-2">
             {/* Editar status */}
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -352,17 +352,17 @@ export default function AlunoPerfilPage() {
 
       {/* ── Tabs ──────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="overview">
-        <TabsList className="bg-gray-100 p-0.5">
-          <TabsTrigger value="overview" className="gap-1.5 text-xs font-medium">
+        <TabsList className="bg-gray-100 p-0.5 overflow-x-auto w-full flex">
+          <TabsTrigger value="overview" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Activity className="w-3.5 h-3.5" /> Visão Geral
           </TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="gap-1.5 text-xs font-medium">
+          <TabsTrigger value="avaliacoes" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Scale className="w-3.5 h-3.5" /> Avaliações
           </TabsTrigger>
-          <TabsTrigger value="packs" className="gap-1.5 text-xs font-medium">
+          <TabsTrigger value="packs" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Package className="w-3.5 h-3.5" /> Packs
           </TabsTrigger>
-          <TabsTrigger value="historico" className="gap-1.5 text-xs font-medium">
+          <TabsTrigger value="historico" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <History className="w-3.5 h-3.5" /> Histórico
           </TabsTrigger>
         </TabsList>
@@ -478,8 +478,8 @@ export default function AlunoPerfilPage() {
                   <SheetTitle>Nova Avaliação</SheetTitle>
                 </SheetHeader>
                 <form onSubmit={handleEvalSubmit} className="space-y-4 pt-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2 space-y-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Tipo</Label>
                       <Select value={evalForm.tipo} onValueChange={v => setEvalForm(f => ({ ...f, tipo: (v ?? 'PRIMEIRA') as 'PRIMEIRA' | 'REAVALIACAO' }))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -489,7 +489,7 @@ export default function AlunoPerfilPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Data *</Label>
                       <Input type="date" value={evalForm.data} onChange={e => setEvalForm(f => ({ ...f, data: e.target.value }))} />
                     </div>
@@ -524,15 +524,15 @@ export default function AlunoPerfilPage() {
                       <Label className="text-xs">Massa Muscular (kg)</Label>
                       <Input type="number" step="0.1" placeholder="35.0" value={evalForm.massaMuscular} onChange={e => setEvalForm(f => ({ ...f, massaMuscular: e.target.value }))} />
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Objetivo</Label>
                       <Input placeholder="Hipertrofia, emagrecimento..." value={evalForm.objetivo} onChange={e => setEvalForm(f => ({ ...f, objetivo: e.target.value }))} />
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Observações</Label>
                       <Textarea rows={3} className="resize-none" placeholder="Histórico de lesões, observações gerais..." value={evalForm.observacoes} onChange={e => setEvalForm(f => ({ ...f, observacoes: e.target.value }))} />
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Próxima avaliação</Label>
                       <Input type="date" value={evalForm.proximaAvaliacao} onChange={e => setEvalForm(f => ({ ...f, proximaAvaliacao: e.target.value }))} />
                     </div>
@@ -760,8 +760,8 @@ export default function AlunoPerfilPage() {
               <p className="text-gray-600 font-medium">Nenhuma sessão registada</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[400px] text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Data</th>

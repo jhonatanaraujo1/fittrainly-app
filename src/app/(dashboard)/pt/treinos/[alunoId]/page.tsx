@@ -50,30 +50,30 @@ function ExerciseForm({ onSave, onCancel }: {
           onChange={e => field('name', e.target.value)}
           className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="flex flex-col gap-2.5">
           <select
             value={form.muscleGroup}
             onChange={e => field('muscleGroup', e.target.value)}
-            className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
           >
             {MUSCLE_GROUPS.map(g => <option key={g}>{g}</option>)}
           </select>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <input
               type="number" min={1} max={10} value={form.sets}
               onChange={e => field('sets', e.target.value)}
-              className="w-16 text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 text-center"
+              className="text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 text-center min-h-[44px]"
               placeholder="Séries"
             />
             <input
-              type="text" value={form.reps} placeholder="Reps (ex: 12)"
+              type="text" value={form.reps} placeholder="Reps"
               onChange={e => field('reps', e.target.value)}
-              className="flex-1 text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
             />
             <input
               type="text" value={form.rest} placeholder="Descanso"
               onChange={e => field('rest', e.target.value)}
-              className="flex-1 text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
             />
           </div>
         </div>
@@ -298,26 +298,28 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
                   })()}
                   {/* Validity editor */}
                   {editingValidity && (
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <input
                         type="date"
                         value={validityDate}
                         onChange={e => setValidityDate(e.target.value)}
-                        className="text-xs px-2 py-1 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+                        className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[36px]"
                       />
-                      <button
-                        onClick={handleSaveValidity}
-                        className="text-xs font-semibold px-3 py-1 rounded-lg text-white transition-colors"
-                        style={{ background: '#111111' }}
-                      >
-                        Guardar
-                      </button>
-                      <button
-                        onClick={() => setEditingValidity(false)}
-                        className="text-xs text-gray-400 hover:text-gray-600"
-                      >
-                        Cancelar
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSaveValidity}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors min-h-[36px]"
+                          style={{ background: '#111111' }}
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => setEditingValidity(false)}
+                          className="text-xs text-gray-400 hover:text-gray-600 min-h-[36px] px-1"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
