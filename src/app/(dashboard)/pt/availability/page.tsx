@@ -58,7 +58,7 @@ function SlotCard({ slot }: { slot: Availability }) {
             <p className="text-xs text-gray-400 mt-0.5">
               {slot.confirmedCount === 0
                 ? 'Sem confirmações ainda'
-                : `${slot.confirmedCount} de ${slot.maxAlunos} confirmados`}
+                : 'Aluno confirmado'}
             </p>
           </div>
         </div>

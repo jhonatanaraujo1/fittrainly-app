@@ -72,11 +72,11 @@ export default function PTDashboardPage() {
                       {formatDate(s.startTime)} — {formatTime(s.startTime)}–{formatTime(s.endTime)}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {s.confirmedAlunos} de {s.maxAlunos} alunos confirmados
+                      {s.confirmedAlunos > 0 ? 'Aluno confirmado' : 'Sem confirmação ainda'}
                     </p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full border ${occupancy(s)}`}>
-                    {full ? 'Lotado' : `${s.maxAlunos - s.confirmedAlunos} vaga${s.maxAlunos - s.confirmedAlunos !== 1 ? 's' : ''}`}
+                    {full ? 'Ocupado' : 'Livre'}
                   </span>
                 </div>
               )

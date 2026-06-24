@@ -138,7 +138,7 @@ export default function AdminSchedulePage() {
           ptId: selectedPtId,
           startTime: `${dateStr}T${pad(hour)}:${pad(minute)}:00Z`,
           endTime:   `${dateStr}T${pad(end.hour)}:${pad(end.minute)}:00Z`,
-          maxAlunos: 4,
+          maxAlunos: 1,
         })
         toast.success('Slot alocado ✓')
       }

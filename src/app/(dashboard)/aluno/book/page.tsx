@@ -290,9 +290,7 @@ export default function MinhasSessionsPage() {
                             {formatTime(slot.endTime)}
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {full ? 'Turma cheia'
-                              : spotsLeft === 1 ? '⚡ Última vaga!'
-                              : `${slot.maxAlunos - spotsLeft} de ${slot.maxAlunos} alunos confirmados`}
+                            {full ? 'Slot ocupado' : 'Disponível'}
                           </p>
                         </div>
 
@@ -311,7 +309,7 @@ export default function MinhasSessionsPage() {
                               </button>
                             </motion.div>
                           ) : full ? (
-                            <span className="text-xs text-gray-300 font-medium px-3 py-1.5 flex-shrink-0">Turma cheia</span>
+                            <span className="text-xs text-gray-300 font-medium px-3 py-1.5 flex-shrink-0">Ocupado</span>
                           ) : (
                             <motion.button key="confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                               onClick={() => handleConfirm(slot.id)} disabled={isLoadingThis}

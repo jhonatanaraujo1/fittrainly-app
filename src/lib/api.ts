@@ -107,7 +107,7 @@ export const dashboardApi = {
         startTime: nextBooking.startTime,
         endTime: nextBooking.endTime,
         confirmedAlunos: nextSlot?.confirmedCount ?? 1,
-        maxAlunos: nextSlot?.maxAlunos ?? 4,
+        maxAlunos: nextSlot?.maxAlunos ?? 1,
       } : undefined,
       upcomingCount: upcoming.length,
       completedCount: myBookings.filter(b => b.status === 'COMPLETED').length,
@@ -306,7 +306,7 @@ export const availabilityApi = {
     const novo = {
       id: 'av-' + uid(), personalTrainerId: pt.id, personalTrainerName: pt.name,
       startTime: data.startTime, endTime: data.endTime,
-      maxAlunos: data.maxAlunos ?? 4, confirmedCount: 0, availableSlots: data.maxAlunos ?? 4,
+      maxAlunos: data.maxAlunos ?? 1, confirmedCount: 0, availableSlots: data.maxAlunos ?? 1,
     }
     db.availabilities.push(novo)
     return novo
@@ -346,7 +346,7 @@ export const adminScheduleApi = {
       id: 'av-' + uid(), personalTrainerId: data.ptId,
       personalTrainerName: pt?.name ?? '',
       startTime: data.startTime, endTime: data.endTime,
-      maxAlunos: data.maxAlunos ?? 4, confirmedCount: 0, availableSlots: data.maxAlunos ?? 4,
+      maxAlunos: data.maxAlunos ?? 1, confirmedCount: 0, availableSlots: data.maxAlunos ?? 1,
     }
     db.availabilities.push(novo)
     return novo

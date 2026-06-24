@@ -93,7 +93,7 @@ function genSlots(ptId: string, ptName: string): MockAvailability[] {
         slots.push({
           id, personalTrainerId: ptId, personalTrainerName: ptName,
           startTime: start, endTime: end,
-          maxAlunos: 4, confirmedCount: 0, availableSlots: 4,
+          maxAlunos: 1, confirmedCount: 0, availableSlots: 1,
         })
       }
     }
