@@ -26,6 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -349,7 +350,12 @@ export default function AlunoPerfilPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Data de validade</Label>
-                    <Input type="date" value={packExpires} onChange={e => setPackExpires(e.target.value)} />
+                    <DatePicker
+                      value={packExpires}
+                      onChange={v => setPackExpires(v)}
+                      placeholder="Sem validade"
+                      minDate={new Date().toISOString().slice(0, 10)}
+                    />
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
                     <Button type="button" variant="outline" className="h-9 text-sm" onClick={() => setPackModalOpen(false)}>
@@ -507,7 +513,12 @@ export default function AlunoPerfilPage() {
                     </div>
                     <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Data *</Label>
-                      <Input type="date" value={evalForm.data} onChange={e => setEvalForm(f => ({ ...f, data: e.target.value }))} />
+                      <DatePicker
+                        value={evalForm.data}
+                        onChange={v => setEvalForm(f => ({ ...f, data: v }))}
+                        placeholder="Selecionar data"
+                        maxDate={new Date().toISOString().slice(0, 10)}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Peso (kg)</Label>
@@ -600,12 +611,12 @@ export default function AlunoPerfilPage() {
                     {evalForm.marcarProximaAF === 'sim' && (
                       <div className="space-y-1.5">
                         <Label className="text-xs">P3. Data da próxima Avaliação Física <span className="text-gray-400 font-normal">(máx. 90 dias)</span></Label>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={evalForm.proximaAFDate}
-                          min={new Date().toISOString().split('T')[0]}
-                          max={new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]}
-                          onChange={e => setEvalForm(f => ({ ...f, proximaAFDate: e.target.value }))}
+                          onChange={v => setEvalForm(f => ({ ...f, proximaAFDate: v }))}
+                          placeholder="Selecionar data"
+                          minDate={new Date().toISOString().slice(0, 10)}
+                          maxDate={new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10)}
                         />
                       </div>
                     )}
@@ -614,12 +625,12 @@ export default function AlunoPerfilPage() {
                     {evalForm.marcarProximaAF === 'nao' && (
                       <div className="space-y-1.5">
                         <Label className="text-xs">P4. Data de lembrete para marcar a próxima AF <span className="text-gray-400 font-normal">(máx. 90 dias)</span></Label>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={evalForm.lembreteDate}
-                          min={new Date().toISOString().split('T')[0]}
-                          max={new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]}
-                          onChange={e => setEvalForm(f => ({ ...f, lembreteDate: e.target.value }))}
+                          onChange={v => setEvalForm(f => ({ ...f, lembreteDate: v }))}
+                          placeholder="Selecionar data"
+                          minDate={new Date().toISOString().slice(0, 10)}
+                          maxDate={new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10)}
                         />
                       </div>
                     )}
@@ -627,12 +638,12 @@ export default function AlunoPerfilPage() {
                     {/* P5: Prescrição do plano */}
                     <div className="space-y-1.5">
                       <Label className="text-xs">P5. Data para Prescrição do Plano de Treino <span className="text-gray-400 font-normal">(máx. 7 dias)</span></Label>
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={evalForm.prescricaoPlanoDate}
-                        min={new Date().toISOString().split('T')[0]}
-                        max={new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]}
-                        onChange={e => setEvalForm(f => ({ ...f, prescricaoPlanoDate: e.target.value }))}
+                        onChange={v => setEvalForm(f => ({ ...f, prescricaoPlanoDate: v }))}
+                        placeholder="Selecionar data"
+                        minDate={new Date().toISOString().slice(0, 10)}
+                        maxDate={new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)}
                       />
                     </div>
                   </div>
@@ -783,7 +794,12 @@ export default function AlunoPerfilPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Data de validade</Label>
-                    <Input type="date" value={packExpires} onChange={e => setPackExpires(e.target.value)} />
+                    <DatePicker
+                      value={packExpires}
+                      onChange={v => setPackExpires(v)}
+                      placeholder="Sem validade"
+                      minDate={new Date().toISOString().slice(0, 10)}
+                    />
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
                     <Button type="button" variant="outline" className="h-9 text-sm" onClick={() => setPackModalOpen(false)}>Cancelar</Button>

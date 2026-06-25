@@ -13,6 +13,7 @@ import { formatDistanceToNow, format, parseISO, isThisWeek, isSameMonth, isSameY
 import { pt } from 'date-fns/locale'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DateTimePicker } from '@/components/ui/date-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -148,7 +149,7 @@ function AdvanceDialog({ lead, mode, onClose, onConfirm }: {
       if (mode === 'agendar-visita') {
         if (conseguiuMarcar === null) return
         if (conseguiuMarcar) {
-          const isoDate = visitaDate ? new Date(visitaDate).toISOString() : new Date().toISOString()
+          const isoDate = visitaDate || new Date().toISOString()
           onConfirm(lead.id, 'VISITA_AGENDADA', { visitaDate: isoDate })
         } else {
           toast.info('Ok — lead mantém-se em "Contactado".')
@@ -214,7 +215,11 @@ function AdvanceDialog({ lead, mode, onClose, onConfirm }: {
               {conseguiuMarcar === true && (
                 <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
                   <p className="text-sm font-semibold text-gray-700">Data e hora da visita</p>
-                  <Input type="datetime-local" value={visitaDate} onChange={e => setVisitaDate(e.target.value)} className="text-base min-h-[44px]" />
+                  <DateTimePicker
+                    value={visitaDate}
+                    onChange={v => setVisitaDate(v)}
+                    placeholder="Selecionar data e hora"
+                  />
                 </motion.div>
               )}
               {conseguiuMarcar === false && (

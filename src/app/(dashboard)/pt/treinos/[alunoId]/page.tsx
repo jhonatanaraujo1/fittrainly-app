@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DatePicker } from '@/components/ui/date-picker'
 import { workoutApi } from '@/lib/api'
 import { getInitials, avatarColor } from '@/lib/utils'
 import { db, uid } from '@/lib/mock-db'
@@ -299,11 +300,12 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
                   {/* Validity editor */}
                   {editingValidity && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <input
-                        type="date"
+                      <DatePicker
                         value={validityDate}
-                        onChange={e => setValidityDate(e.target.value)}
-                        className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[36px]"
+                        onChange={v => setValidityDate(v)}
+                        placeholder="Selecionar validade"
+                        minDate={new Date().toISOString().slice(0, 10)}
+                        className="w-52"
                       />
                       <div className="flex items-center gap-2">
                         <button

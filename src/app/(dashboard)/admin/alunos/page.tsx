@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -188,10 +189,11 @@ export default function AlunosPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Data de Nascimento</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={form.dataNascimento}
-                  onChange={e => setForm(f => ({ ...f, dataNascimento: e.target.value }))}
+                  onChange={v => setForm(f => ({ ...f, dataNascimento: v }))}
+                  placeholder="Selecionar data de nascimento"
+                  maxDate={new Date().toISOString().slice(0, 10)}
                 />
               </div>
               <div className="space-y-1.5">
