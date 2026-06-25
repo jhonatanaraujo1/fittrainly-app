@@ -147,34 +147,34 @@ export default function PTAgendaPage() {
   return (
     <div className="p-5 lg:p-7 space-y-5 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Minha Agenda</h1>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">Minha Agenda</h1>
           <p className="text-sm text-gray-400 mt-0.5">Horários alocados pelo estúdio</p>
         </div>
-        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-          <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 rounded-md hover:bg-gray-100 transition-colors">
+        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1 flex-shrink-0">
+          <button onClick={() => setWeekOffset(w => w - 1)} className="p-2 rounded-md hover:bg-gray-100 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
             <ChevronLeft className="w-4 h-4 text-gray-600" />
           </button>
-          <span className="text-sm font-medium text-gray-700 px-2 min-w-36 text-center">
-            {weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próxima semana' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem.`}
+          <span className="text-xs sm:text-sm font-semibold text-gray-700 px-2 min-w-[100px] sm:min-w-[130px] text-center">
+            {weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próx. semana' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem.`}
           </span>
-          <button onClick={() => setWeekOffset(w => w + 1)} className="p-1.5 rounded-md hover:bg-gray-100 transition-colors">
+          <button onClick={() => setWeekOffset(w => w + 1)} className="p-2 rounded-md hover:bg-gray-100 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
             <ChevronRight className="w-4 h-4 text-gray-600" />
           </button>
         </div>
       </div>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
-          { label: 'Slots esta semana', value: totalSlots },
-          { label: 'Presenças confirmadas', value: totalConfirmed },
-          { label: 'Vagas em aberto', value: slots.reduce((s, a) => s + a.availableSlots, 0) },
+          { label: 'Slots', value: totalSlots },
+          { label: 'Confirmadas', value: totalConfirmed },
+          { label: 'Vagas livres', value: slots.reduce((s, a) => s + a.availableSlots, 0) },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{label}</p>
+          <div key={label} className="bg-white rounded-xl border border-gray-100 px-2 sm:px-4 py-3 text-center">
+            <p className="text-xl sm:text-2xl font-black text-gray-900">{value}</p>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 leading-tight">{label}</p>
           </div>
         ))}
       </div>
