@@ -212,6 +212,8 @@ export const alunoApi = {
       personalTrainerId: data.personalTrainerId,
       personalTrainerName: pt?.name ?? '',
       completedSessions: 0,
+      status: 'ATIVO' as const,
+      inscricaoDate: new Date().toISOString().split('T')[0],
     }
     db.users.push(newUser)
     db.alunos.push(newAluno)
@@ -403,11 +405,197 @@ export const bookingApi = {
   },
 }
 
-// ── Admin: Alunos por PT ──────────────────────────────────────────────────────
+// ── Admin ─────────────────────────────────────────────────────────────────────
 export const adminApi = {
   alunosByPt: async (ptId: string) => {
     await delay(250)
     return db.alunos.filter(a => a.personalTrainerId === ptId)
+  },
+
+  allAlunos: async () => {
+    await delay(280)
+    return db.alunos
+  },
+
+  alunoById: async (id: string) => {
+    await delay(200)
+    const aluno = db.alunos.find(a => a.id === id)
+    if (!aluno) throw new Error('Aluno não encontrado')
+    const bookings = db.bookings.filter(b => b.alunoId === id)
+    const packs = db.packs.filter(p => p.alunoId === id)
+    const avaliacoes = db.avaliacoes.filter(a => a.alunoId === id)
+    const workoutPlan = db.workoutPlans.find(p => p.alunoId === id)
+    return { aluno, bookings, packs, avaliacoes, workoutPlan }
+  },
+
+  createAluno: async (data: {
+    name: string; email: string; phone?: string
+    personalTrainerId: string; dataNascimento?: string; objetivo?: string
+  }) => {
+    await delay(400)
+    const pt = db.pts.find(p => p.id === data.personalTrainerId)
+    if (!pt) throw new Error('PT não encontrado')
+    const newUser = {
+      id: 'u-' + uid(), email: data.email, name: data.name,
+      password: 'aluno123', role: 'ALUNO' as const,
+    }
+    db.users.push(newUser)
+    const newAluno = {
+      id: 'al-' + uid(), userId: newUser.id, name: data.name,
+      email: data.email, phone: data.phone,
+      personalTrainerId: data.personalTrainerId, personalTrainerName: pt.name,
+      completedSessions: 0, status: 'ATIVO' as const,
+      dataNascimento: data.dataNascimento, inscricaoDate: new Date().toISOString().split('T')[0],
+      objetivo: data.objetivo,
+    }
+    db.alunos.push(newAluno)
+    return newAluno
+  },
+
+  updateAluno: async (id: string, data: Partial<{
+    status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'
+    personalTrainerId: string; phone: string; objetivo: string
+  }>) => {
+    await delay(300)
+    const aluno = db.alunos.find(a => a.id === id)
+    if (!aluno) throw new Error('Aluno não encontrado')
+    if (data.personalTrainerId) {
+      const pt = db.pts.find(p => p.id === data.personalTrainerId)
+      if (pt) aluno.personalTrainerName = pt.name
+    }
+    Object.assign(aluno, data)
+    return aluno
+  },
+}
+
+// ── Avaliações Físicas ────────────────────────────────────────────────────────
+export const avaliacaoApi = {
+  byAluno: async (alunoId: string) => {
+    await delay(250)
+    return db.avaliacoes
+      .filter(a => a.alunoId === alunoId)
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+  },
+
+  create: async (data: Omit<import('@/lib/mock-db').MockAvaliacao, 'id' | 'createdAt'>) => {
+    await delay(400)
+    const nova = {
+      ...data,
+      id: 'av-eval-' + uid(),
+      createdAt: new Date().toISOString(),
+    }
+    db.avaliacoes.push(nova)
+    return nova
+  },
+
+  update: async (id: string, data: Partial<import('@/lib/mock-db').MockAvaliacao>) => {
+    await delay(300)
+    const av = db.avaliacoes.find(a => a.id === id)
+    if (!av) throw new Error('Avaliação não encontrada')
+    Object.assign(av, data)
+    return av
+  },
+}
+
+// ── Packs de Sessões ──────────────────────────────────────────────────────────
+export const packApi = {
+  byAluno: async (alunoId: string) => {
+    await delay(200)
+    return db.packs.filter(p => p.alunoId === alunoId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  },
+
+  allActive: async () => {
+    await delay(250)
+    return db.packs.filter(p => p.status === 'ACTIVE')
+  },
+
+  create: async (data: { alunoId: string; total: number; expiresAt?: string }) => {
+    await delay(350)
+    const aluno = db.alunos.find(a => a.id === data.alunoId)
+    if (!aluno) throw new Error('Aluno não encontrado')
+    const novo = {
+      id: 'pack-' + uid(), alunoId: data.alunoId, alunoName: aluno.name,
+      total: data.total, used: 0,
+      expiresAt: data.expiresAt, status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+    }
+    db.packs.push(novo)
+    return novo
+  },
+
+  debitSession: async (packId: string) => {
+    await delay(250)
+    const pack = db.packs.find(p => p.id === packId)
+    if (!pack) throw new Error('Pack não encontrado')
+    const remaining = pack.total - pack.used
+    if (remaining <= 0) throw new Error('Pack sem sessões disponíveis')
+    pack.used++
+    if (pack.total - pack.used === 0) pack.status = 'DEPLETED'
+    return pack
+  },
+}
+
+// ── Leads CRM ─────────────────────────────────────────────────────────────────
+export const leadApi = {
+  list: async () => {
+    await delay(280)
+    return db.leads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  },
+
+  byStatus: async (status: import('@/lib/mock-db').MockLead['status']) => {
+    await delay(200)
+    return db.leads.filter(l => l.status === status)
+  },
+
+  create: async (data: Omit<import('@/lib/mock-db').MockLead, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await delay(350)
+    const novo = {
+      ...data, id: 'lead-' + uid(),
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }
+    db.leads.push(novo)
+    return novo
+  },
+
+  updateStatus: async (id: string, status: import('@/lib/mock-db').MockLead['status'], data?: Partial<import('@/lib/mock-db').MockLead>) => {
+    await delay(300)
+    const lead = db.leads.find(l => l.id === id)
+    if (!lead) throw new Error('Lead não encontrado')
+    lead.status = status
+    lead.updatedAt = new Date().toISOString()
+    if (data) Object.assign(lead, data)
+    return lead
+  },
+
+  delete: async (id: string) => {
+    await delay(250)
+    const idx = db.leads.findIndex(l => l.id === id)
+    if (idx !== -1) db.leads.splice(idx, 1)
+  },
+}
+
+// ── Notificações ──────────────────────────────────────────────────────────────
+export const notificationApi = {
+  list: async () => {
+    await delay(200)
+    return db.notificationConfigs
+  },
+
+  toggle: async (id: string, enabled: boolean) => {
+    await delay(250)
+    const config = db.notificationConfigs.find(n => n.id === id)
+    if (!config) throw new Error('Configuração não encontrada')
+    config.enabled = enabled
+    return config
+  },
+
+  update: async (id: string, data: Partial<{ enabled: boolean; daysOffset: number }>) => {
+    await delay(250)
+    const config = db.notificationConfigs.find(n => n.id === id)
+    if (!config) throw new Error('Configuração não encontrada')
+    Object.assign(config, data)
+    return config
   },
 }
 
@@ -433,6 +621,7 @@ export const workoutApi = {
   savePlan: async (data: {
     alunoId: string; alunoName: string; ptId: string
     label: string; focus: string; exercises: import('@/types').Exercise[]
+    validUntil?: string
   }) => {
     await delay(350)
     const existing = db.workoutPlans.find(p => p.alunoId === data.alunoId && p.label === data.label)
@@ -443,6 +632,16 @@ export const workoutApi = {
     const novo = { ...data, id: 'wp-' + uid(), updatedAt: new Date().toISOString() }
     db.workoutPlans.push(novo)
     return novo
+  },
+
+  // PT: actualiza validade de um plano
+  updateValidity: async (planId: string, validUntil: string) => {
+    await delay(250)
+    const plan = db.workoutPlans.find(p => p.id === planId)
+    if (!plan) throw new Error('Plano não encontrado')
+    plan.validUntil = validUntil
+    plan.updatedAt = new Date().toISOString()
+    return plan
   },
 
   // PT: adiciona exercício a um plano existente

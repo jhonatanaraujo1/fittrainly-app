@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { workoutApi } from '@/lib/api'
@@ -50,30 +50,30 @@ function ExerciseForm({ onSave, onCancel }: {
           onChange={e => field('name', e.target.value)}
           className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="flex flex-col gap-2.5">
           <select
             value={form.muscleGroup}
             onChange={e => field('muscleGroup', e.target.value)}
-            className="text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
           >
             {MUSCLE_GROUPS.map(g => <option key={g}>{g}</option>)}
           </select>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <input
               type="number" min={1} max={10} value={form.sets}
               onChange={e => field('sets', e.target.value)}
-              className="w-16 text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 text-center"
+              className="text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 text-center min-h-[44px]"
               placeholder="Séries"
             />
             <input
-              type="text" value={form.reps} placeholder="Reps (ex: 12)"
+              type="text" value={form.reps} placeholder="Reps"
               onChange={e => field('reps', e.target.value)}
-              className="flex-1 text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
             />
             <input
               type="text" value={form.rest} placeholder="Descanso"
               onChange={e => field('rest', e.target.value)}
-              className="flex-1 text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="text-sm px-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
             />
           </div>
         </div>
@@ -116,6 +116,8 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [newFocus, setNewFocus] = useState('')
+  const [editingValidity, setEditingValidity] = useState(false)
+  const [validityDate, setValidityDate] = useState('')
 
   useEffect(() => {
     workoutApi.plans(alunoId).then(data => {
@@ -173,6 +175,24 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
     setActiveLabel(label)
     setNewFocus('')
     setShowForm(false)
+  }
+
+  async function handleSaveValidity() {
+    if (!activePlan || !validityDate) return
+    try {
+      const updated = await workoutApi.updateValidity(activePlan.id, validityDate)
+      setPlans(prev => prev.map(p => p.id === activePlan.id ? { ...p, ...updated } as WorkoutPlan : p))
+      toast.success('Validade actualizada!')
+      setEditingValidity(false)
+    } catch { toast.error('Erro ao actualizar validade') }
+  }
+
+  function getPlanValidityStatus(validUntil?: string): { label: string; color: string; icon: 'ok' | 'warn' | 'expired' } | null {
+    if (!validUntil) return null
+    const days = Math.ceil((new Date(validUntil).getTime() - Date.now()) / 86400000)
+    if (days < 0) return { label: 'Expirado', color: 'text-red-600 bg-red-50 border-red-200', icon: 'expired' }
+    if (days <= 5) return { label: `Expira em ${days}d`, color: 'text-amber-600 bg-amber-50 border-amber-200', icon: 'warn' }
+    return { label: `Válido até ${new Date(validUntil).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}`, color: 'text-green-600 bg-green-50 border-green-200', icon: 'ok' }
   }
 
   async function handleDeletePlan() {
@@ -244,12 +264,66 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
           {/* Active plan */}
           {activePlan ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{activePlan.label}</p>
                   <p className="text-xs text-gray-400">{activePlan.focus}</p>
+                  {/* Validity badge */}
+                  {(() => {
+                    const vs = getPlanValidityStatus(activePlan.validUntil)
+                    if (!vs) return (
+                      <button
+                        onClick={() => { setEditingValidity(true); setValidityDate('') }}
+                        className="mt-1.5 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <Calendar className="w-3 h-3" /> Definir validade
+                      </button>
+                    )
+                    return (
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${vs.color}`}>
+                          {vs.icon === 'ok' && <CheckCircle2 className="w-3 h-3" />}
+                          {vs.icon === 'warn' && <AlertTriangle className="w-3 h-3" />}
+                          {vs.icon === 'expired' && <AlertTriangle className="w-3 h-3" />}
+                          {vs.label}
+                        </span>
+                        <button
+                          onClick={() => { setEditingValidity(true); setValidityDate(activePlan.validUntil ?? '') }}
+                          className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline"
+                        >
+                          alterar
+                        </button>
+                      </div>
+                    )
+                  })()}
+                  {/* Validity editor */}
+                  {editingValidity && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <input
+                        type="date"
+                        value={validityDate}
+                        onChange={e => setValidityDate(e.target.value)}
+                        className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[36px]"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSaveValidity}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors min-h-[36px]"
+                          style={{ background: '#111111' }}
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => setEditingValidity(false)}
+                          className="text-xs text-gray-400 hover:text-gray-600 min-h-[36px] px-1"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs text-gray-400">{activePlan.exercises.length} exercícios</span>
                   <button
                     onClick={handleDeletePlan}

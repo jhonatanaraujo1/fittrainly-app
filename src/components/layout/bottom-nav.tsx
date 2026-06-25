@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, Receipt,
-  Calendar, UserCheck, CalendarPlus, History, LogOut, Layers, Dumbbell,
+  LayoutDashboard, Users, Users2,
+  Calendar, UserCheck, CalendarPlus, History, LogOut, Dumbbell,
+  TrendingUp, ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -12,16 +13,16 @@ import type { UserRole } from '@/types'
 
 const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementType }[]> = {
   ADMIN: [
-    { href: '/admin', label: 'Início', icon: LayoutDashboard },
-    { href: '/admin/schedule', label: 'Agenda', icon: Calendar },
-    { href: '/admin/personal-trainers', label: 'PTs', icon: Users },
-    { href: '/admin/modalidades', label: 'Modal.', icon: Layers },
+    { href: '/admin',          label: 'Início',  icon: LayoutDashboard },
+    { href: '/admin/alunos',   label: 'Alunos',  icon: Users2 },
+    { href: '/admin/schedule', label: 'Agenda',  icon: Calendar },
+    { href: '/admin/leads',    label: 'Leads',   icon: TrendingUp },
   ],
   PERSONAL_TRAINER: [
-    { href: '/pt', label: 'Início', icon: LayoutDashboard },
-    { href: '/pt/availability', label: 'Horários', icon: Calendar },
-    { href: '/pt/students', label: 'Alunos', icon: UserCheck },
-    { href: '/pt/treinos', label: 'Treinos', icon: Dumbbell },
+    { href: '/pt',              label: 'Início',   icon: LayoutDashboard },
+    { href: '/pt/availability', label: 'Agenda',   icon: Calendar },
+    { href: '/pt/students',     label: 'Alunos',   icon: UserCheck },
+    { href: '/pt/treinos',      label: 'Treinos',  icon: ClipboardList },
   ],
   ALUNO: [
     { href: '/aluno', label: 'Início', icon: LayoutDashboard },

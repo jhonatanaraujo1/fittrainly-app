@@ -65,6 +65,10 @@ export interface Aluno {
   personalTrainerName: string
   nextSession?: string
   completedSessions?: number
+  status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'
+  dataNascimento?: string
+  inscricaoDate: string
+  objetivo?: string
 }
 
 export interface Availability {
@@ -178,5 +182,63 @@ export interface WorkoutPlan {
   label: string
   focus: string
   exercises: Exercise[]
+  validUntil?: string
   updatedAt: string
+}
+
+export type AlunoStatus = 'ATIVO' | 'INATIVO' | 'SUSPENSO'
+
+export interface Avaliacao {
+  id: string
+  alunoId: string
+  alunoName: string
+  ptId: string
+  tipo: 'PRIMEIRA' | 'REAVALIACAO'
+  data: string
+  frequenciaSemanal?: number
+  peso?: number
+  altura?: number
+  imc?: number
+  percentualGordura?: number
+  massaMuscular?: number
+  objetivo?: string
+  observacoes?: string
+  proximaAvaliacao?: string
+  createdAt: string
+}
+
+export interface Pack {
+  id: string
+  alunoId: string
+  alunoName: string
+  total: number
+  used: number
+  expiresAt?: string
+  status: 'ACTIVE' | 'EXPIRED' | 'DEPLETED'
+  createdAt: string
+}
+
+export interface Lead {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  status: 'NOVO' | 'CONTACTADO' | 'VISITA_AGENDADA' | 'VISITOU' | 'INSCRITO' | 'PERDIDO'
+  interesse?: string
+  source?: string
+  responsavel?: string
+  visitaDate?: string
+  observacoes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NotificationConfig {
+  id: string
+  type: string
+  label: string
+  description: string
+  enabled: boolean
+  daysOffset?: number
+  triggerLabel: string
 }

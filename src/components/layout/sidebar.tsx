@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, CalendarPlus, History,
   Dumbbell, LogOut, Layers, ClipboardList,
+  Bell, TrendingUp, Users2,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -15,11 +16,14 @@ import type { UserRole } from '@/types'
 const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementType }[]> = {
   ADMIN: [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/alunos', label: 'Alunos', icon: Users2 },
     { href: '/admin/schedule', label: 'Agenda do Estúdio', icon: Calendar },
     { href: '/admin/personal-trainers', label: 'Personal Trainers', icon: Users },
     { href: '/admin/modalidades', label: 'Modalidades', icon: Layers },
     { href: '/admin/plans', label: 'Planos de Aluguel', icon: CreditCard },
     { href: '/admin/billing', label: 'Faturação', icon: Receipt },
+    { href: '/admin/leads', label: 'Leads', icon: TrendingUp },
+    { href: '/admin/notificacoes', label: 'Notificações', icon: Bell },
   ],
   PERSONAL_TRAINER: [
     { href: '/pt', label: 'Dashboard', icon: LayoutDashboard },
