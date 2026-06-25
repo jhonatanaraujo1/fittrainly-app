@@ -95,8 +95,9 @@ export default function AlunoPerfilPage() {
   const [evalForm, setEvalForm] = useState(evalFormInit)
 
   // ── Pack form ────────────────────────────────────────────────────────────────
-  const [packTotal, setPackTotal]       = useState('10')
-  const [packExpires, setPackExpires]   = useState('')
+  const [packTotal, setPackTotal]         = useState('10')
+  const [packDuration, setPackDuration]   = useState<'30' | '60'>('60')
+  const [packExpires, setPackExpires]     = useState('')
 
   // ── Data ─────────────────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery<AlunoDetail>({
@@ -207,9 +208,10 @@ export default function AlunoPerfilPage() {
   function handlePackSubmit(e: React.FormEvent) {
     e.preventDefault()
     createPack.mutate({
-      alunoId:   id,
-      total:     parseInt(packTotal),
-      expiresAt: packExpires || undefined,
+      alunoId:         id,
+      total:           parseInt(packTotal),
+      sessionDuration: parseInt(packDuration) as 30 | 60,
+      expiresAt:       packExpires || undefined,
     })
   }
 
@@ -332,6 +334,16 @@ export default function AlunoPerfilPage() {
                         {['5', '10', '20'].map(v => (
                           <SelectItem key={v} value={v}>{v} sessões</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Duração por sessão *</Label>
+                    <Select value={packDuration} onValueChange={v => setPackDuration(v as '30' | '60')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 minutos</SelectItem>
+                        <SelectItem value="60">60 minutos</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -756,6 +768,16 @@ export default function AlunoPerfilPage() {
                         {['5', '10', '20'].map(v => (
                           <SelectItem key={v} value={v}>{v} sessões</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Duração por sessão *</Label>
+                    <Select value={packDuration} onValueChange={v => setPackDuration(v as '30' | '60')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 minutos</SelectItem>
+                        <SelectItem value="60">60 minutos</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

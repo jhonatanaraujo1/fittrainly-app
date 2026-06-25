@@ -85,7 +85,7 @@ export default function MinhasSessionsPage() {
       qc.invalidateQueries({ queryKey: ['aluno-dashboard'] })
       toast.success('Falta marcada — o teu PT foi notificado')
     },
-    onError: () => toast.error('Cancela com pelo menos 2h de antecedência'),
+    onError: (e: Error) => toast.error(e.message || 'Cancela com pelo menos 24h de antecedência'),
   })
 
   async function handleConfirm(availId: string) {
@@ -119,9 +119,21 @@ export default function MinhasSessionsPage() {
     <div className="p-4 lg:p-7 space-y-5 max-w-2xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-black text-gray-900 tracking-tight">Minhas Sessões</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Confirma a tua presença ou marca falta com antecedência</p>
+        <h1 className="text-xl font-black text-gray-900 tracking-tight">Agendar Sessão</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Confirma a tua presença nos horários disponíveis do teu PT</p>
       </div>
+      {/* Pack info banner */}
+      {slots[0]?.packRemaining !== undefined && (
+        <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${slots[0].packRemaining > 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+          <span>{slots[0].packRemaining > 0 ? '✅' : '⚠️'}</span>
+          <span>
+            {slots[0].packRemaining > 0
+              ? <><strong>{slots[0].packRemaining}</strong> sessões disponíveis no teu pack · Duração: <strong>{slots[0].sessionDuration} min</strong></>
+              : 'Sem sessões no pack — fala com o teu PT para carregar mais'
+            }
+          </span>
+        </div>
+      )}
 
       {/* PT Selector */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2 shadow-sm">

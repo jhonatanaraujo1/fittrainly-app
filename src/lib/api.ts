@@ -1,10 +1,25 @@
 'use client'
 
 import {
-  db, delay, uid, getCurrentUser, syncSlotCounts,
-  getSlotsForPT, getSlotsInRange, getPlanById, getPTById,
+  db, delay, uid, getCurrentUser,
+  getPlanById, getPTById,
+  getStudioSlotCount, getPTSlotCount,
+  getSlotTimesForDay, addMinutesToTime,
   sessionsThisWeek, estimatedRevenue, getOccupationByDay,
+  STUDIO_MAX_SPOTS,
 } from './mock-db'
+import { addDays, addWeeks, startOfWeek } from 'date-fns'
+
+function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function slotKeyToISO(date: string, time: string): { start: string; end: string } {
+  return {
+    start: `${date}T${time}:00Z`,
+    end:   `${date}T${addMinutesToTime(time, 40)}:00Z`,
+  }
+}
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
@@ -48,17 +63,33 @@ export const dashboardApi = {
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
     const now = new Date()
 
-    const nextSessions = db.availabilities
-      .filter(s => s.personalTrainerId === pt.id && new Date(s.startTime) > now && s.confirmedCount > 0)
-      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-      .slice(0, 5)
-      .map(s => ({
-        availabilityId: s.id,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        confirmedAlunos: s.confirmedCount,
-        maxAlunos: s.maxAlunos,
-      }))
+    // Next sessions: PT releases in the future that have at least 1 confirmed booking from this PT's alunos
+    const monday = startOfWeek(now, { weekStartsOn: 1 })
+    const twoWeeks = addDays(monday, 14)
+
+    const nextSessions = db.ptReleases
+      .filter(r => r.ptId === pt.id && new Date(`${r.date}T${r.slotTime}:00Z`) > now && new Date(`${r.date}T${r.slotTime}:00Z`) <= twoWeeks)
+      .sort((a, b) => new Date(`${a.date}T${a.slotTime}:00Z`).getTime() - new Date(`${b.date}T${b.slotTime}:00Z`).getTime())
+      .map(r => {
+        const key = `${r.date}-${r.slotTime}`
+        const { start, end } = slotKeyToISO(r.date, r.slotTime)
+        const ptCount = getPTSlotCount(pt.id, r.date, r.slotTime)
+        const studioCount = getStudioSlotCount(r.date, r.slotTime)
+        const alunosBooked = db.bookings
+          .filter(b => b.slotKey === key && b.personalTrainerId === pt.id && b.status === 'CONFIRMED')
+          .map(b => b.alunoName)
+        return {
+          availabilityId: key,
+          startTime: start,
+          endTime: end,
+          confirmedAlunos: ptCount,
+          maxAlunos: STUDIO_MAX_SPOTS,
+          studioCount,
+          alunosBooked,
+        }
+      })
+      .filter(s => s.confirmedAlunos > 0)
+      .slice(0, 8)
 
     const myAlunos = db.alunos.filter(a => a.personalTrainerId === pt.id)
     const myBookings = db.bookings.filter(b => b.personalTrainerId === pt.id)
@@ -99,15 +130,14 @@ export const dashboardApi = {
     const myBookings = db.bookings.filter(b => b.alunoId === aluno.id)
     const upcoming = myBookings.filter(b => b.status === 'CONFIRMED' && new Date(b.startTime) > now)
     const nextBooking = upcoming.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0]
-    const nextSlot = nextBooking ? db.availabilities.find(s => s.id === nextBooking.availabilityId) : undefined
 
     return {
       nextSession: nextBooking ? {
-        availabilityId: nextBooking.availabilityId,
+        availabilityId: nextBooking.slotKey,
         startTime: nextBooking.startTime,
         endTime: nextBooking.endTime,
-        confirmedAlunos: nextSlot?.confirmedCount ?? 1,
-        maxAlunos: nextSlot?.maxAlunos ?? 1,
+        confirmedAlunos: getStudioSlotCount(nextBooking.slotKey.slice(0, 10), nextBooking.slotKey.slice(11)),
+        maxAlunos: STUDIO_MAX_SPOTS,
       } : undefined,
       upcomingCount: upcoming.length,
       completedCount: myBookings.filter(b => b.status === 'COMPLETED').length,
@@ -149,18 +179,10 @@ export const ptApi = {
     return { ...pt, plan: p ? { id: p.id, name: p.name, type: p.type } : undefined }
   },
 
-  create: async (data: {
-    name: string; email: string; password: string
-    phone?: string; specialty?: string; bio?: string; planId?: string
-  }) => {
+  create: async (data: { name: string; email: string; password: string; phone?: string; specialty?: string; bio?: string; planId?: string }) => {
     await delay(500)
     const newUser = { id: 'u-' + uid(), email: data.email, password: data.password, name: data.name, role: 'PERSONAL_TRAINER' as const }
-    const newPT = {
-      id: 'pt-' + uid(), userId: newUser.id, name: data.name, email: data.email,
-      phone: data.phone, specialty: data.specialty, bio: data.bio,
-      active: true, inadimplente: false, planId: data.planId,
-      alunoCount: 0, hoursThisMonth: 0,
-    }
+    const newPT = { id: 'pt-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone, specialty: data.specialty, bio: data.bio, active: true, inadimplente: false, planId: data.planId, alunoCount: 0, hoursThisMonth: 0 }
     db.users.push(newUser)
     db.pts.push(newPT)
     return { ...newPT, plan: getPlanById(data.planId) ?? null }
@@ -179,9 +201,10 @@ export const ptApi = {
 export const alunoApi = {
   list: async () => {
     await delay(250)
+    const now = new Date()
     return db.alunos.map(a => ({
       ...a,
-      nextSession: db.bookings.find(b => b.alunoId === a.id && b.status === 'CONFIRMED' && new Date(b.startTime) > new Date())?.startTime,
+      nextSession: db.bookings.find(b => b.alunoId === a.id && b.status === 'CONFIRMED' && new Date(b.startTime) > now)?.startTime,
       completedSessions: db.bookings.filter(b => b.alunoId === a.id && b.status === 'COMPLETED').length,
     }))
   },
@@ -196,11 +219,31 @@ export const alunoApi = {
     await delay(250)
     const user = getCurrentUser()
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
+    const now = new Date()
     return db.alunos.filter(a => a.personalTrainerId === pt.id).map(a => ({
       ...a,
-      nextSession: db.bookings.find(b => b.alunoId === a.id && b.status === 'CONFIRMED' && new Date(b.startTime) > new Date())?.startTime,
+      nextSession: db.bookings.find(b => b.alunoId === a.id && b.status === 'CONFIRMED' && new Date(b.startTime) > now)?.startTime,
       completedSessions: db.bookings.filter(b => b.alunoId === a.id && b.status === 'COMPLETED').length,
+      activePack: db.packs.find(p => p.alunoId === a.id && p.status === 'ACTIVE'),
     }))
+  },
+
+  // PT can create a new aluno linked to themselves
+  createByPT: async (data: { name: string; email: string; phone?: string; objetivo?: string; dataNascimento?: string }) => {
+    await delay(400)
+    const user = getCurrentUser()
+    const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
+    const newUser = { id: 'u-' + uid(), email: data.email, password: 'aluno123', name: data.name, role: 'ALUNO' as const }
+    const newAluno = {
+      id: 'al-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone,
+      personalTrainerId: pt.id, personalTrainerName: pt.name,
+      completedSessions: 0, status: 'ATIVO' as const,
+      dataNascimento: data.dataNascimento, inscricaoDate: new Date().toISOString().split('T')[0],
+      objetivo: data.objetivo,
+    }
+    db.users.push(newUser)
+    db.alunos.push(newAluno)
+    return newAluno
   },
 
   create: async (data: { name: string; email: string; password: string; personalTrainerId: string }) => {
@@ -209,10 +252,8 @@ export const alunoApi = {
     const newUser = { id: 'u-' + uid(), email: data.email, password: data.password, name: data.name, role: 'ALUNO' as const }
     const newAluno = {
       id: 'al-' + uid(), userId: newUser.id, name: data.name, email: data.email,
-      personalTrainerId: data.personalTrainerId,
-      personalTrainerName: pt?.name ?? '',
-      completedSessions: 0,
-      status: 'ATIVO' as const,
+      personalTrainerId: data.personalTrainerId, personalTrainerName: pt?.name ?? '',
+      completedSessions: 0, status: 'ATIVO' as const,
       inscricaoDate: new Date().toISOString().split('T')[0],
     }
     db.users.push(newUser)
@@ -221,143 +262,196 @@ export const alunoApi = {
   },
 }
 
-// ── Modalidades ───────────────────────────────────────────────────────────────
-export const modalidadeApi = {
-  list: async () => {
-    await delay(200)
-    return [...db.modalidades]
-  },
-
-  create: async (data: { name: string; categoria?: string; descricao?: string; cor?: string }) => {
-    await delay(400)
-    const nova = {
-      id: 'mod-' + uid(), name: data.name, categoria: data.categoria,
-      descricao: data.descricao, cor: data.cor ?? '#111111',
-      active: true, createdAt: new Date().toISOString(),
-    }
-    db.modalidades.push(nova)
-    return nova
-  },
-
-  update: async (id: string, data: object) => {
-    await delay(300)
-    const idx = db.modalidades.findIndex(m => m.id === id)
-    if (idx === -1) throw new Error('Modalidade não encontrada')
-    db.modalidades[idx] = { ...db.modalidades[idx], ...data }
-    return db.modalidades[idx]
-  },
-
-  delete: async (id: string) => {
-    await delay(300)
-    const idx = db.modalidades.findIndex(m => m.id === id)
-    if (idx !== -1) db.modalidades.splice(idx, 1)
-  },
-}
-
-// ── Plans ─────────────────────────────────────────────────────────────────────
-export const planApi = {
-  list: async () => {
-    await delay(200)
-    return db.plans.map(p => ({
-      ...p,
-      ptCount: db.pts.filter(pt => pt.planId === p.id).length,
-    }))
-  },
-
-  create: async (data: { name: string; type: string; priceHourly?: number; priceWeekly?: number; priceMonthly?: number; description?: string }) => {
-    await delay(400)
-    const novo = { id: 'plan-' + uid(), ...data } as typeof db.plans[0]
-    db.plans.push(novo)
-    return novo
-  },
-
-  update: async (id: string, data: object) => {
-    await delay(300)
-    const idx = db.plans.findIndex(p => p.id === id)
-    if (idx === -1) throw new Error('Plano não encontrado')
-    db.plans[idx] = { ...db.plans[idx], ...data }
-    return db.plans[idx]
-  },
-}
-
-// ── Availability ──────────────────────────────────────────────────────────────
+// ── Availability — PT releases studio slots ───────────────────────────────────
 export const availabilityApi = {
+  // Returns the studio grid for a week — each slot shows PT's release status + studio occupancy
+  studioGrid: async (startDate: string, endDate: string) => {
+    await delay(250)
+    const user = getCurrentUser()
+    const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const result: Array<{
+      date: string; slotTime: string; startTime: string; endTime: string
+      released: boolean; releaseId?: string
+      studioCount: number; myBookings: number; studioMax: number
+    }> = []
+
+    for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+      const date = localDate(d)
+      const times = getSlotTimesForDay(d)
+      for (const time of times) {
+        const release = db.ptReleases.find(r => r.ptId === pt.id && r.date === date && r.slotTime === time)
+        const { start: s, end: e } = slotKeyToISO(date, time)
+        result.push({
+          date, slotTime: time,
+          startTime: s, endTime: e,
+          released: !!release,
+          releaseId: release?.id,
+          studioCount: getStudioSlotCount(date, time),
+          myBookings: getPTSlotCount(pt.id, date, time),
+          studioMax: STUDIO_MAX_SPOTS,
+        })
+      }
+    }
+    return result
+  },
+
+  // Legacy: returns PT's released slots as Availability-shaped objects
   mySlots: async (startDate: string, endDate: string) => {
     await delay(250)
     const user = getCurrentUser()
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
-    return getSlotsForPT(pt.id, startDate, endDate)
+    const start = new Date(startDate).getTime()
+    const end = new Date(endDate).getTime()
+
+    return db.ptReleases
+      .filter(r => {
+        const t = new Date(`${r.date}T${r.slotTime}:00Z`).getTime()
+        return r.ptId === pt.id && t >= start && t <= end
+      })
+      .map(r => {
+        const { start: s, end: e } = slotKeyToISO(r.date, r.slotTime)
+        const key = `${r.date}-${r.slotTime}`
+        const ptCount = getPTSlotCount(pt.id, r.date, r.slotTime)
+        const studioCount = getStudioSlotCount(r.date, r.slotTime)
+        return {
+          id: key,
+          personalTrainerId: pt.id,
+          personalTrainerName: pt.name,
+          startTime: s, endTime: e,
+          maxAlunos: STUDIO_MAX_SPOTS,
+          confirmedCount: studioCount,
+          availableSlots: STUDIO_MAX_SPOTS - studioCount,
+          myBookings: ptCount,
+        }
+      })
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
   },
 
+  // Returns PT's released slots with aluno isBooked info (for aluno booking page)
   ptSlots: async (ptId: string, startDate: string, endDate: string) => {
     await delay(250)
-    return getSlotsForPT(ptId, startDate, endDate).map(s => ({
-      ...s,
-      isBooked: db.bookings.some(b => {
-        const user = getCurrentUser()
-        const aluno = db.alunos.find(a => a.userId === user?.id)
-        return b.availabilityId === s.id && b.alunoId === aluno?.id && b.status === 'CONFIRMED'
-      }),
-    }))
+    const user = getCurrentUser()
+    const aluno = db.alunos.find(a => a.userId === user?.id) ?? db.alunos[0]
+    const pack = db.packs.find(p => p.alunoId === aluno.id && p.status === 'ACTIVE')
+    const start = new Date(startDate).getTime()
+    const end = new Date(endDate).getTime()
+
+    return db.ptReleases
+      .filter(r => {
+        const t = new Date(`${r.date}T${r.slotTime}:00Z`).getTime()
+        return r.ptId === ptId && t >= start && t <= end
+      })
+      .map(r => {
+        const { start: s, end: e } = slotKeyToISO(r.date, r.slotTime)
+        const key = `${r.date}-${r.slotTime}`
+        const studioCount = getStudioSlotCount(r.date, r.slotTime)
+        const isBooked = db.bookings.some(b => b.slotKey === key && b.alunoId === aluno.id && b.status === 'CONFIRMED')
+        return {
+          id: key,
+          personalTrainerId: ptId,
+          personalTrainerName: r.ptName,
+          startTime: s, endTime: e,
+          maxAlunos: STUDIO_MAX_SPOTS,
+          confirmedCount: studioCount,
+          availableSlots: Math.max(0, STUDIO_MAX_SPOTS - studioCount),
+          isBooked,
+          sessionDuration: pack?.sessionDuration ?? 60,
+          packRemaining: pack ? pack.total - pack.used : 0,
+        }
+      })
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
   },
 
-  create: async (data: { startTime: string; endTime: string; maxAlunos?: number }) => {
-    await delay(350)
+  // PT releases a slot (creates MockPTRelease)
+  create: async (data: { date: string; slotTime: string }) => {
+    await delay(300)
     const user = getCurrentUser()
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
-    const novo = {
-      id: 'av-' + uid(), personalTrainerId: pt.id, personalTrainerName: pt.name,
-      startTime: data.startTime, endTime: data.endTime,
-      maxAlunos: data.maxAlunos ?? 1, confirmedCount: 0, availableSlots: data.maxAlunos ?? 1,
-    }
-    db.availabilities.push(novo)
-    return novo
+    const existing = db.ptReleases.find(r => r.ptId === pt.id && r.date === data.date && r.slotTime === data.slotTime)
+    if (existing) return existing
+    const release = { id: 'rel-' + uid(), ptId: pt.id, ptName: pt.name, date: data.date, slotTime: data.slotTime }
+    db.ptReleases.push(release)
+    return release
   },
 
-  delete: async (id: string) => {
+  // Admin creates a release on behalf of a PT
+  createForPT: async (data: { ptId: string; date: string; slotTime: string }) => {
     await delay(300)
-    const hasBookings = db.bookings.some(b => b.availabilityId === id && b.status === 'CONFIRMED')
-    if (hasBookings) throw new Error('Slot tem reservas confirmadas e não pode ser apagado')
-    const idx = db.availabilities.findIndex(s => s.id === id)
-    if (idx !== -1) db.availabilities.splice(idx, 1)
+    const pt = getPTById(data.ptId)
+    if (!pt) throw new Error('PT não encontrado')
+    const existing = db.ptReleases.find(r => r.ptId === data.ptId && r.date === data.date && r.slotTime === data.slotTime)
+    if (existing) return existing
+    const release = { id: 'rel-' + uid(), ptId: data.ptId, ptName: pt.name, date: data.date, slotTime: data.slotTime }
+    db.ptReleases.push(release)
+    return release
   },
 
-  attendees: async (id: string) => {
+  // PT or admin removes a release
+  delete: async (releaseId: string) => {
+    await delay(280)
+    const release = db.ptReleases.find(r => r.id === releaseId)
+    if (!release) throw new Error('Release não encontrado')
+    const key = `${release.date}-${release.slotTime}`
+    const hasBookings = db.bookings.some(b => b.slotKey === key && b.personalTrainerId === release.ptId && b.status === 'CONFIRMED')
+    if (hasBookings) throw new Error('Tens alunos confirmados neste slot — cancela as reservas primeiro')
+    const idx = db.ptReleases.findIndex(r => r.id === releaseId)
+    if (idx !== -1) db.ptReleases.splice(idx, 1)
+  },
+
+  // Returns who's booked in a specific slot (for PT agenda view)
+  attendees: async (slotKey: string) => {
     await delay(200)
-    return db.bookings.filter(b => b.availabilityId === id && b.status === 'CONFIRMED')
+    const user = getCurrentUser()
+    const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
+    return db.bookings
+      .filter(b => b.slotKey === slotKey && b.personalTrainerId === pt.id && b.status === 'CONFIRMED')
       .map(b => ({ alunoId: b.alunoId, alunoName: b.alunoName, status: b.status }))
   },
 }
 
 // ── Admin Schedule ────────────────────────────────────────────────────────────
 export const adminScheduleApi = {
+  // Returns all studio slots for date range with PT releases per slot
   list: async (startDate: string, endDate: string) => {
     await delay(280)
-    return getSlotsInRange(startDate, endDate).map(s => ({
-      ...s,
-      attendees: db.bookings
-        .filter(b => b.availabilityId === s.id && b.status === 'CONFIRMED')
-        .map(b => ({ id: b.alunoId, name: b.alunoName })),
-    }))
-  },
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const result: Array<{
+      date: string; slotTime: string; startTime: string; endTime: string
+      studioCount: number; studioMax: number
+      releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+    }> = []
 
-  create: async (data: { ptId: string; startTime: string; endTime: string; maxAlunos?: number }) => {
-    await delay(350)
-    const pt = getPTById(data.ptId)
-    const novo = {
-      id: 'av-' + uid(), personalTrainerId: data.ptId,
-      personalTrainerName: pt?.name ?? '',
-      startTime: data.startTime, endTime: data.endTime,
-      maxAlunos: data.maxAlunos ?? 1, confirmedCount: 0, availableSlots: data.maxAlunos ?? 1,
+    for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+      const date = localDate(d)
+      const times = getSlotTimesForDay(d)
+      for (const time of times) {
+        const { start: s, end: e } = slotKeyToISO(date, time)
+        const releases = db.ptReleases
+          .filter(r => r.date === date && r.slotTime === time)
+          .map(r => ({ releaseId: r.id, ptId: r.ptId, ptName: r.ptName, confirmedCount: getPTSlotCount(r.ptId, date, time) }))
+        result.push({
+          date, slotTime: time,
+          startTime: s, endTime: e,
+          studioCount: getStudioSlotCount(date, time),
+          studioMax: STUDIO_MAX_SPOTS,
+          releases,
+        })
+      }
     }
-    db.availabilities.push(novo)
-    return novo
+    return result
   },
 
-  delete: async (id: string) => {
-    await delay(300)
-    const idx = db.availabilities.findIndex(s => s.id === id)
-    if (idx !== -1) db.availabilities.splice(idx, 1)
+  addRelease: async (data: { ptId: string; date: string; slotTime: string }) => {
+    return availabilityApi.createForPT(data)
+  },
+
+  removeRelease: async (releaseId: string) => {
+    await delay(280)
+    const idx = db.ptReleases.findIndex(r => r.id === releaseId)
+    if (idx !== -1) db.ptReleases.splice(idx, 1)
   },
 }
 
@@ -367,40 +461,91 @@ export const bookingApi = {
     await delay(250)
     const user = getCurrentUser()
     const aluno = db.alunos.find(a => a.userId === user?.id) ?? db.alunos[0]
-    return db.bookings.filter(b => b.alunoId === aluno.id)
+    return db.bookings
+      .filter(b => b.alunoId === aluno.id)
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
   },
 
-  create: async (availabilityId: string) => {
+  // slotKey = "YYYY-MM-DD-HH:MM" (=availabilityId)
+  create: async (slotKey: string) => {
     await delay(400)
     const user = getCurrentUser()
     const aluno = db.alunos.find(a => a.userId === user?.id) ?? db.alunos[0]
-    const slot = db.availabilities.find(s => s.id === availabilityId)
-    if (!slot) throw new Error('Slot não encontrado')
-    if (slot.confirmedCount >= slot.maxAlunos) throw new Error('Slot lotado')
-    const alreadyBooked = db.bookings.some(b => b.availabilityId === availabilityId && b.alunoId === aluno.id && b.status === 'CONFIRMED')
-    if (alreadyBooked) throw new Error('Já tens uma reserva neste slot')
+
+    // Parse slotKey
+    const date = slotKey.slice(0, 10)
+    const slotTime = slotKey.slice(11)
+
+    // Check PT released this slot (any PT — aluno is linked to specific PT)
+    const ptRelease = db.ptReleases.find(r => r.ptId === aluno.personalTrainerId && r.date === date && r.slotTime === slotTime)
+    if (!ptRelease) throw new Error('O teu PT não tem disponibilidade neste horário')
+
+    // Check studio max (4 across all PTs)
+    const studioCount = getStudioSlotCount(date, slotTime)
+    if (studioCount >= STUDIO_MAX_SPOTS) throw new Error('Slot lotado — 4/4 vagas do estúdio preenchidas')
+
+    // Check aluno not already booked
+    const already = db.bookings.some(b => b.slotKey === slotKey && b.alunoId === aluno.id && b.status === 'CONFIRMED')
+    if (already) throw new Error('Já tens uma reserva neste horário')
+
+    // Check active pack with remaining sessions
+    const pack = db.packs.find(p => p.alunoId === aluno.id && p.status === 'ACTIVE')
+    if (!pack) throw new Error('Não tens sessões disponíveis. Fala com o teu PT para carregar um pack.')
+    if (pack.total - pack.used <= 0) throw new Error('Pack sem sessões disponíveis — fala com o teu PT')
+
+    const { start, end } = slotKeyToISO(date, slotTime)
     const booking = {
-      id: 'bk-' + uid(), availabilityId, alunoId: aluno.id, alunoName: aluno.name,
-      personalTrainerId: slot.personalTrainerId, personalTrainerName: slot.personalTrainerName,
-      startTime: slot.startTime, endTime: slot.endTime,
-      status: 'CONFIRMED' as const, createdAt: new Date().toISOString(),
+      id: 'bk-' + uid(),
+      slotKey, availabilityId: slotKey,
+      alunoId: aluno.id, alunoName: aluno.name,
+      personalTrainerId: aluno.personalTrainerId,
+      personalTrainerName: aluno.personalTrainerName,
+      startTime: start, endTime: end,
+      sessionDuration: pack.sessionDuration,
+      status: 'CONFIRMED' as const,
+      createdAt: new Date().toISOString(),
     }
     db.bookings.push(booking)
-    slot.confirmedCount++
-    slot.availableSlots--
-    syncSlotCounts()
+
+    // Debit pack
+    pack.used++
+    if (pack.total - pack.used === 0) pack.status = 'DEPLETED'
+
     return booking
   },
 
-  cancel: async (id: string) => {
+  // Cancel with role-based time enforcement
+  // Aluno: >= 24h | PT: >= 12h | Admin: always
+  cancel: async (bookingId: string) => {
     await delay(300)
-    const booking = db.bookings.find(b => b.id === id)
+    const booking = db.bookings.find(b => b.id === bookingId)
     if (!booking) throw new Error('Reserva não encontrada')
+
+    const user = getCurrentUser()
+    const role = user?.role ?? 'ALUNO'
+    const now = new Date()
+    const sessionTime = new Date(booking.startTime)
+    const hoursUntil = (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+
+    if (role === 'ALUNO' && hoursUntil < 24) {
+      throw new Error('Só podes cancelar com pelo menos 24h de antecedência')
+    }
+    if (role === 'PERSONAL_TRAINER' && hoursUntil < 12) {
+      throw new Error('Só podes cancelar com pelo menos 12h de antecedência')
+    }
+    // ADMIN: no restriction
+
     booking.status = 'CANCELLED'
-    const slot = db.availabilities.find(s => s.id === booking.availabilityId)
-    if (slot) { slot.confirmedCount = Math.max(0, slot.confirmedCount - 1); slot.availableSlots++ }
-    syncSlotCounts()
+
+    // Refund session to pack if future booking
+    if (hoursUntil > 0) {
+      const pack = db.packs.find(p => p.alunoId === booking.alunoId && (p.status === 'ACTIVE' || p.status === 'DEPLETED'))
+      if (pack) {
+        pack.used = Math.max(0, pack.used - 1)
+        if (pack.status === 'DEPLETED') pack.status = 'ACTIVE'
+      }
+    }
+
     return booking
   },
 }
@@ -428,21 +573,14 @@ export const adminApi = {
     return { aluno, bookings, packs, avaliacoes, workoutPlan }
   },
 
-  createAluno: async (data: {
-    name: string; email: string; phone?: string
-    personalTrainerId: string; dataNascimento?: string; objetivo?: string
-  }) => {
+  createAluno: async (data: { name: string; email: string; phone?: string; personalTrainerId: string; dataNascimento?: string; objetivo?: string }) => {
     await delay(400)
     const pt = db.pts.find(p => p.id === data.personalTrainerId)
     if (!pt) throw new Error('PT não encontrado')
-    const newUser = {
-      id: 'u-' + uid(), email: data.email, name: data.name,
-      password: 'aluno123', role: 'ALUNO' as const,
-    }
+    const newUser = { id: 'u-' + uid(), email: data.email, name: data.name, password: 'aluno123', role: 'ALUNO' as const }
     db.users.push(newUser)
     const newAluno = {
-      id: 'al-' + uid(), userId: newUser.id, name: data.name,
-      email: data.email, phone: data.phone,
+      id: 'al-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone,
       personalTrainerId: data.personalTrainerId, personalTrainerName: pt.name,
       completedSessions: 0, status: 'ATIVO' as const,
       dataNascimento: data.dataNascimento, inscricaoDate: new Date().toISOString().split('T')[0],
@@ -452,10 +590,7 @@ export const adminApi = {
     return newAluno
   },
 
-  updateAluno: async (id: string, data: Partial<{
-    status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'
-    personalTrainerId: string; phone: string; objetivo: string
-  }>) => {
+  updateAluno: async (id: string, data: Partial<{ status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'; personalTrainerId: string; phone: string; objetivo: string }>) => {
     await delay(300)
     const aluno = db.alunos.find(a => a.id === id)
     if (!aluno) throw new Error('Aluno não encontrado')
@@ -466,28 +601,78 @@ export const adminApi = {
     Object.assign(aluno, data)
     return aluno
   },
+
+  // Admin cancels any booking (no time restriction)
+  cancelBooking: async (bookingId: string) => {
+    await delay(300)
+    const booking = db.bookings.find(b => b.id === bookingId)
+    if (!booking) throw new Error('Reserva não encontrada')
+    booking.status = 'CANCELLED'
+    const pack = db.packs.find(p => p.alunoId === booking.alunoId && (p.status === 'ACTIVE' || p.status === 'DEPLETED'))
+    if (pack) {
+      pack.used = Math.max(0, pack.used - 1)
+      if (pack.status === 'DEPLETED') pack.status = 'ACTIVE'
+    }
+    return booking
+  },
+}
+
+// ── Modalidades ───────────────────────────────────────────────────────────────
+export const modalidadeApi = {
+  list: async () => { await delay(200); return [...db.modalidades] },
+  create: async (data: { name: string; categoria?: string; descricao?: string; cor?: string }) => {
+    await delay(400)
+    const nova = { id: 'mod-' + uid(), name: data.name, categoria: data.categoria, descricao: data.descricao, cor: data.cor ?? '#111111', active: true, createdAt: new Date().toISOString() }
+    db.modalidades.push(nova)
+    return nova
+  },
+  update: async (id: string, data: object) => {
+    await delay(300)
+    const idx = db.modalidades.findIndex(m => m.id === id)
+    if (idx === -1) throw new Error('Modalidade não encontrada')
+    db.modalidades[idx] = { ...db.modalidades[idx], ...data }
+    return db.modalidades[idx]
+  },
+  delete: async (id: string) => {
+    await delay(300)
+    const idx = db.modalidades.findIndex(m => m.id === id)
+    if (idx !== -1) db.modalidades.splice(idx, 1)
+  },
+}
+
+// ── Plans ─────────────────────────────────────────────────────────────────────
+export const planApi = {
+  list: async () => {
+    await delay(200)
+    return db.plans.map(p => ({ ...p, ptCount: db.pts.filter(pt => pt.planId === p.id).length }))
+  },
+  create: async (data: { name: string; type: string; priceHourly?: number; priceWeekly?: number; priceMonthly?: number; description?: string }) => {
+    await delay(400)
+    const novo = { id: 'plan-' + uid(), ...data } as typeof db.plans[0]
+    db.plans.push(novo)
+    return novo
+  },
+  update: async (id: string, data: object) => {
+    await delay(300)
+    const idx = db.plans.findIndex(p => p.id === id)
+    if (idx === -1) throw new Error('Plano não encontrado')
+    db.plans[idx] = { ...db.plans[idx], ...data }
+    return db.plans[idx]
+  },
 }
 
 // ── Avaliações Físicas ────────────────────────────────────────────────────────
 export const avaliacaoApi = {
   byAluno: async (alunoId: string) => {
     await delay(250)
-    return db.avaliacoes
-      .filter(a => a.alunoId === alunoId)
-      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+    return db.avaliacoes.filter(a => a.alunoId === alunoId).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
   },
-
   create: async (data: Omit<import('@/lib/mock-db').MockAvaliacao, 'id' | 'createdAt'>) => {
     await delay(400)
-    const nova = {
-      ...data,
-      id: 'av-eval-' + uid(),
-      createdAt: new Date().toISOString(),
-    }
+    const nova = { ...data, id: 'av-eval-' + uid(), createdAt: new Date().toISOString() }
     db.avaliacoes.push(nova)
     return nova
   },
-
   update: async (id: string, data: Partial<import('@/lib/mock-db').MockAvaliacao>) => {
     await delay(300)
     const av = db.avaliacoes.find(a => a.id === id)
@@ -501,35 +686,28 @@ export const avaliacaoApi = {
 export const packApi = {
   byAluno: async (alunoId: string) => {
     await delay(200)
-    return db.packs.filter(p => p.alunoId === alunoId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    return db.packs.filter(p => p.alunoId === alunoId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   },
-
-  allActive: async () => {
-    await delay(250)
-    return db.packs.filter(p => p.status === 'ACTIVE')
-  },
-
-  create: async (data: { alunoId: string; total: number; expiresAt?: string }) => {
+  allActive: async () => { await delay(250); return db.packs.filter(p => p.status === 'ACTIVE') },
+  create: async (data: { alunoId: string; total: number; sessionDuration: 30 | 60; expiresAt?: string }) => {
     await delay(350)
     const aluno = db.alunos.find(a => a.id === data.alunoId)
     if (!aluno) throw new Error('Aluno não encontrado')
     const novo = {
       id: 'pack-' + uid(), alunoId: data.alunoId, alunoName: aluno.name,
       total: data.total, used: 0,
+      sessionDuration: data.sessionDuration,
       expiresAt: data.expiresAt, status: 'ACTIVE' as const,
       createdAt: new Date().toISOString(),
     }
     db.packs.push(novo)
     return novo
   },
-
   debitSession: async (packId: string) => {
     await delay(250)
     const pack = db.packs.find(p => p.id === packId)
     if (!pack) throw new Error('Pack não encontrado')
-    const remaining = pack.total - pack.used
-    if (remaining <= 0) throw new Error('Pack sem sessões disponíveis')
+    if (pack.total - pack.used <= 0) throw new Error('Pack sem sessões disponíveis')
     pack.used++
     if (pack.total - pack.used === 0) pack.status = 'DEPLETED'
     return pack
@@ -538,26 +716,14 @@ export const packApi = {
 
 // ── Leads CRM ─────────────────────────────────────────────────────────────────
 export const leadApi = {
-  list: async () => {
-    await delay(280)
-    return db.leads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-  },
-
-  byStatus: async (status: import('@/lib/mock-db').MockLead['status']) => {
-    await delay(200)
-    return db.leads.filter(l => l.status === status)
-  },
-
+  list: async () => { await delay(280); return db.leads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()) },
+  byStatus: async (status: import('@/lib/mock-db').MockLead['status']) => { await delay(200); return db.leads.filter(l => l.status === status) },
   create: async (data: Omit<import('@/lib/mock-db').MockLead, 'id' | 'createdAt' | 'updatedAt'>) => {
     await delay(350)
-    const novo = {
-      ...data, id: 'lead-' + uid(),
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    }
+    const novo = { ...data, id: 'lead-' + uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
     db.leads.push(novo)
     return novo
   },
-
   updateStatus: async (id: string, status: import('@/lib/mock-db').MockLead['status'], data?: Partial<import('@/lib/mock-db').MockLead>) => {
     await delay(300)
     const lead = db.leads.find(l => l.id === id)
@@ -567,7 +733,6 @@ export const leadApi = {
     if (data) Object.assign(lead, data)
     return lead
   },
-
   delete: async (id: string) => {
     await delay(250)
     const idx = db.leads.findIndex(l => l.id === id)
@@ -577,11 +742,7 @@ export const leadApi = {
 
 // ── Notificações ──────────────────────────────────────────────────────────────
 export const notificationApi = {
-  list: async () => {
-    await delay(200)
-    return db.notificationConfigs
-  },
-
+  list: async () => { await delay(200); return db.notificationConfigs },
   toggle: async (id: string, enabled: boolean) => {
     await delay(250)
     const config = db.notificationConfigs.find(n => n.id === id)
@@ -589,7 +750,6 @@ export const notificationApi = {
     config.enabled = enabled
     return config
   },
-
   update: async (id: string, data: Partial<{ enabled: boolean; daysOffset: number }>) => {
     await delay(250)
     const config = db.notificationConfigs.find(n => n.id === id)
@@ -601,61 +761,34 @@ export const notificationApi = {
 
 // ── Workout Plans ─────────────────────────────────────────────────────────────
 export const workoutApi = {
-  // PT: lista alunos com status de treino
   ptAlunos: async (ptId: string) => {
     await delay(250)
-    const alunos = db.alunos.filter(a => a.personalTrainerId === ptId)
-    return alunos.map(a => ({
-      ...a,
-      planCount: db.workoutPlans.filter(p => p.alunoId === a.id).length,
-    }))
+    return db.alunos.filter(a => a.personalTrainerId === ptId).map(a => ({ ...a, planCount: db.workoutPlans.filter(p => p.alunoId === a.id).length }))
   },
-
-  // PT + Aluno: lista planos de um aluno
-  plans: async (alunoId: string) => {
-    await delay(250)
-    return db.workoutPlans.filter(p => p.alunoId === alunoId)
-  },
-
-  // PT: salva (cria ou actualiza) um plano
-  savePlan: async (data: {
-    alunoId: string; alunoName: string; ptId: string
-    label: string; focus: string; exercises: import('@/types').Exercise[]
-    validUntil?: string
-  }) => {
+  plans: async (alunoId: string) => { await delay(250); return db.workoutPlans.filter(p => p.alunoId === alunoId) },
+  savePlan: async (data: { alunoId: string; alunoName: string; ptId: string; label: string; focus: string; exercises: import('@/types').Exercise[]; validUntil?: string }) => {
     await delay(350)
     const existing = db.workoutPlans.find(p => p.alunoId === data.alunoId && p.label === data.label)
-    if (existing) {
-      Object.assign(existing, { ...data, updatedAt: new Date().toISOString() })
-      return existing
-    }
+    if (existing) { Object.assign(existing, { ...data, updatedAt: new Date().toISOString() }); return existing }
     const novo = { ...data, id: 'wp-' + uid(), updatedAt: new Date().toISOString() }
     db.workoutPlans.push(novo)
     return novo
   },
-
-  // PT: actualiza validade de um plano
   updateValidity: async (planId: string, validUntil: string) => {
     await delay(250)
     const plan = db.workoutPlans.find(p => p.id === planId)
     if (!plan) throw new Error('Plano não encontrado')
-    plan.validUntil = validUntil
-    plan.updatedAt = new Date().toISOString()
+    plan.validUntil = validUntil; plan.updatedAt = new Date().toISOString()
     return plan
   },
-
-  // PT: adiciona exercício a um plano existente
   addExercise: async (planId: string, exercise: Omit<import('@/types').Exercise, 'id'>) => {
     await delay(300)
     const plan = db.workoutPlans.find(p => p.id === planId)
     if (!plan) throw new Error('Plano não encontrado')
     const novo = { ...exercise, id: 'ex-' + uid() }
-    plan.exercises.push(novo)
-    plan.updatedAt = new Date().toISOString()
+    plan.exercises.push(novo); plan.updatedAt = new Date().toISOString()
     return novo
   },
-
-  // PT: remove exercício de um plano
   removeExercise: async (planId: string, exerciseId: string) => {
     await delay(200)
     const plan = db.workoutPlans.find(p => p.id === planId)
@@ -663,8 +796,6 @@ export const workoutApi = {
     plan.exercises = plan.exercises.filter(e => e.id !== exerciseId)
     plan.updatedAt = new Date().toISOString()
   },
-
-  // PT: apaga um plano completo
   deletePlan: async (planId: string) => {
     await delay(300)
     const idx = db.workoutPlans.findIndex(p => p.id === planId)
@@ -685,19 +816,8 @@ export const billingApi = {
         if (plan.type === 'WEEKLY') value = (plan.priceWeekly ?? 0) * 4
         if (plan.type === 'HOURLY') value = (plan.priceHourly ?? 0) * pt.hoursThisMonth
       }
-      return {
-        ptId: pt.id,
-        ptName: pt.name,
-        planName: plan?.name ?? '—',
-        planType: plan?.type ?? '—',
-        sessionsCount: pt.hoursThisMonth,
-        value,
-      }
+      return { ptId: pt.id, ptName: pt.name, planName: plan?.name ?? '—', planType: plan?.type ?? '—', sessionsCount: pt.hoursThisMonth, value }
     })
-    return {
-      entries,
-      total: entries.reduce((s, e) => s + e.value, 0),
-      month: currentMonth,
-    }
+    return { entries, total: entries.reduce((s, e) => s + e.value, 0), month: currentMonth }
   },
 }

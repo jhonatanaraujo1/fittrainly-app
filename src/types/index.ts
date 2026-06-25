@@ -71,28 +71,67 @@ export interface Aluno {
   objetivo?: string
 }
 
+// PT-released studio slot (availability-like shape returned by ptSlots/mySlots)
 export interface Availability {
-  id: string
+  id: string                  // = slotKey "YYYY-MM-DD-HH:MM"
   personalTrainerId: string
   personalTrainerName: string
   startTime: string
   endTime: string
-  maxAlunos: number
-  confirmedCount: number
+  maxAlunos: number           // always STUDIO_MAX_SPOTS (4)
+  confirmedCount: number      // total studio bookings in this slot
   availableSlots: number
+  isBooked?: boolean          // has this aluno already booked?
+  sessionDuration?: 30 | 60  // from aluno's active pack
+  packRemaining?: number
+}
+
+// Studio grid cell (returned by studioGrid)
+export interface StudioSlot {
+  date: string
+  slotTime: string
+  startTime: string
+  endTime: string
+  released: boolean
+  releaseId?: string
+  studioCount: number
+  myBookings: number
+  studioMax: number
+}
+
+// PT release record
+export interface PTRelease {
+  id: string
+  ptId: string
+  ptName: string
+  date: string      // "YYYY-MM-DD"
+  slotTime: string  // "HH:MM"
+}
+
+// Admin schedule slot (all PTs per cell)
+export interface AdminScheduleSlot {
+  date: string
+  slotTime: string
+  startTime: string
+  endTime: string
+  studioCount: number
+  studioMax: number
+  releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
 }
 
 export type BookingStatus = 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'
 
 export interface Booking {
   id: string
-  availabilityId: string
+  slotKey: string             // "YYYY-MM-DD-HH:MM"
+  availabilityId: string      // alias of slotKey for compat
   alunoId: string
   alunoName: string
   personalTrainerId: string
   personalTrainerName: string
   startTime: string
   endTime: string
+  sessionDuration: 30 | 60
   status: BookingStatus
   createdAt: string
 }
@@ -141,6 +180,8 @@ export interface NextSession {
   endTime: string
   confirmedAlunos: number
   maxAlunos: number
+  studioCount?: number
+  alunosBooked?: string[]
 }
 
 export interface PTDashboard {
@@ -213,6 +254,7 @@ export interface Pack {
   alunoName: string
   total: number
   used: number
+  sessionDuration: 30 | 60
   expiresAt?: string
   status: 'ACTIVE' | 'EXPIRED' | 'DEPLETED'
   createdAt: string
