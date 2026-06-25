@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, MoreHorizontal, ChevronDown, ChevronRight,
   Loader2, UserPlus, Phone, Mail, Share2,
-  Globe, Users, X, TrendingUp, CheckCircle2,
+  Globe, Users, X, TrendingUp, Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format, parseISO, isThisWeek, isSameMonth, isSameYear } from 'date-fns'
@@ -29,15 +29,15 @@ import type { LeadStatus } from '@/types'
 
 const PIPELINE: LeadStatus[] = ['NOVO', 'CONTACTADO', 'VISITA_AGENDADA', 'VISITOU', 'INSCRITO']
 
-const COLUMN_META: Record<LeadStatus, { label: string; color: string; bg: string; ring: string; dot: string }> = {
-  NOVO:             { label: 'Novo Lead',      color: 'text-blue-700',   bg: 'bg-blue-50',   ring: 'ring-blue-200',   dot: 'bg-blue-500' },
-  CONTACTADO:       { label: 'Contactado',      color: 'text-amber-700',  bg: 'bg-amber-50',  ring: 'ring-amber-200',  dot: 'bg-amber-500' },
-  VISITA_AGENDADA:  { label: 'Visita Agendada', color: 'text-purple-700', bg: 'bg-purple-50', ring: 'ring-purple-200', dot: 'bg-purple-500' },
-  VISITOU:          { label: 'Visitou',          color: 'text-orange-700', bg: 'bg-orange-50', ring: 'ring-orange-200', dot: 'bg-orange-500' },
-  INSCRITO:         { label: 'Inscrito',         color: 'text-green-700',  bg: 'bg-green-50',  ring: 'ring-green-200',  dot: 'bg-green-500' },
-  NAO_DEU_FEEDBACK: { label: 'Sem Feedback',     color: 'text-rose-600',   bg: 'bg-rose-50',   ring: 'ring-rose-200',   dot: 'bg-rose-400' },
-  PERDIDO:          { label: 'Perdido',          color: 'text-gray-500',   bg: 'bg-gray-50',   ring: 'ring-gray-200',   dot: 'bg-gray-400' },
-  ARQUIVADO:        { label: 'Arquivado',        color: 'text-slate-500',  bg: 'bg-slate-50',  ring: 'ring-slate-200',  dot: 'bg-slate-400' },
+const COLUMN_META: Record<LeadStatus, { label: string; color: string; bg: string; ring: string; dot: string; confirmCls: string }> = {
+  NOVO:             { label: 'Novo Lead',      color: 'text-blue-700',   bg: 'bg-blue-50',   ring: 'ring-blue-200',   dot: 'bg-blue-500',   confirmCls: 'bg-[#111111] hover:bg-gray-800' },
+  CONTACTADO:       { label: 'Contactado',      color: 'text-amber-700',  bg: 'bg-amber-50',  ring: 'ring-amber-200',  dot: 'bg-amber-500',  confirmCls: 'bg-amber-500 hover:bg-amber-600' },
+  VISITA_AGENDADA:  { label: 'Visita Agendada', color: 'text-purple-700', bg: 'bg-purple-50', ring: 'ring-purple-200', dot: 'bg-purple-500', confirmCls: 'bg-purple-600 hover:bg-purple-700' },
+  VISITOU:          { label: 'Visitou',          color: 'text-orange-700', bg: 'bg-orange-50', ring: 'ring-orange-200', dot: 'bg-orange-500', confirmCls: 'bg-orange-500 hover:bg-orange-600' },
+  INSCRITO:         { label: 'Inscrito',         color: 'text-green-700',  bg: 'bg-green-50',  ring: 'ring-green-200',  dot: 'bg-green-500',  confirmCls: 'bg-green-600 hover:bg-green-700' },
+  NAO_DEU_FEEDBACK: { label: 'Sem Feedback',     color: 'text-rose-600',   bg: 'bg-rose-50',   ring: 'ring-rose-200',   dot: 'bg-rose-400',   confirmCls: 'bg-rose-500 hover:bg-rose-600' },
+  PERDIDO:          { label: 'Perdido',          color: 'text-gray-500',   bg: 'bg-gray-50',   ring: 'ring-gray-200',   dot: 'bg-gray-400',   confirmCls: 'bg-gray-700 hover:bg-gray-800' },
+  ARQUIVADO:        { label: 'Arquivado',        color: 'text-slate-500',  bg: 'bg-slate-50',  ring: 'ring-slate-200',  dot: 'bg-slate-400',  confirmCls: 'bg-slate-600 hover:bg-slate-700' },
 }
 
 const MOVABLE_PIPELINE: LeadStatus[] = ['NOVO', 'CONTACTADO', 'VISITA_AGENDADA', 'VISITOU', 'INSCRITO']
@@ -50,7 +50,16 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
 const INTERESSE_OPTIONS = ['Musculação', 'Funcional', 'Yoga/Pilates', 'Emagrecimento', 'Outro']
 const SOURCE_OPTIONS = ['Instagram', 'Google', 'Referência', 'Outro']
 
-type DialogMode = 'agendar-visita' | 'registar-visita' | 'sem-feedback'
+const TAGS = [
+  { id: 'alta-intencao', label: 'Alta intenção',   cls: 'bg-green-100 text-green-700 ring-1 ring-green-200' },
+  { id: 'segue-preco',   label: 'Preço sensível',  cls: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200' },
+  { id: 'follow-up',     label: 'Follow-up',       cls: 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' },
+  { id: 'referencia',    label: 'Referência',      cls: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200' },
+  { id: 'urgente',       label: 'Urgente',         cls: 'bg-red-100 text-red-700 ring-1 ring-red-200' },
+  { id: 'grupo',         label: 'Quer grupo',      cls: 'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200' },
+] as const
+
+type TagId = typeof TAGS[number]['id']
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -65,20 +74,38 @@ function isCurrentMonth(isoDate?: string): boolean {
   return isSameMonth(d, now) && isSameYear(d, now)
 }
 
-// ── Obs Dialog — Sem Feedback ─────────────────────────────────────────────────
+// ── Universal Move Dialog ─────────────────────────────────────────────────────
 
-function ObsDialog({ lead, onClose, onConfirm }: {
+function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
   lead: MockLead
+  targetStatus: LeadStatus
   onClose: () => void
   onConfirm: (id: string, status: LeadStatus, data?: Partial<MockLead>) => void
 }) {
-  const [obs, setObs] = useState(lead.observacoes ?? '')
-  const [isPending, setIsPending] = useState(false)
+  const [obs, setObs]               = useState(lead.observacoes ?? '')
+  const [selectedTags, setTags]     = useState<TagId[]>((lead.tags ?? []) as TagId[])
+  const [visitaDate, setVisitaDate] = useState('')
+  const [isPending, setIsPending]   = useState(false)
+
+  const needsDate  = targetStatus === 'VISITA_AGENDADA'
+  const canConfirm = !needsDate || !!visitaDate
+  const targetMeta = COLUMN_META[targetStatus]
+  const fromMeta   = COLUMN_META[lead.status]
+
+  function toggleTag(id: TagId) {
+    setTags(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
+  }
 
   async function handleConfirm() {
+    if (!canConfirm) return
     setIsPending(true)
     try {
-      onConfirm(lead.id, 'NAO_DEU_FEEDBACK', { observacoes: obs || undefined })
+      const data: Partial<MockLead> = {}
+      if (obs.trim()) data.observacoes = obs.trim()
+      if (selectedTags.length > 0) data.tags = selectedTags
+      if (targetStatus === 'VISITA_AGENDADA') data.visitaDate = visitaDate
+      if (targetStatus === 'INSCRITO') data.inscritoEm = new Date().toISOString()
+      onConfirm(lead.id, targetStatus, data)
       onClose()
     } finally {
       setIsPending(false)
@@ -89,207 +116,102 @@ function ObsDialog({ lead, onClose, onConfirm }: {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.2 }}
+        exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.22 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
       >
+        {/* Header */}
         <div className="px-6 pt-6 pb-4 flex items-start justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-1">Sem Feedback</p>
-            <h3 className="text-base font-black text-gray-900">{lead.name}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Este lead foi contactado mas não deu resposta.</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${fromMeta.bg} ${fromMeta.color}`}>
+                {fromMeta.label}
+              </span>
+              <span className="text-gray-300 text-xs">→</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${targetMeta.bg} ${targetMeta.color}`}>
+                {targetMeta.label}
+              </span>
+            </div>
+            <h3 className="text-base font-black text-gray-900 truncate">{lead.name}</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors">
+          <button onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors flex-shrink-0 ml-2"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="px-6 pb-4">
+
+        <div className="px-6 space-y-4 pb-4">
+          {/* DateTimePicker — only for VISITA_AGENDADA */}
+          {needsDate && (
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-gray-700">
+                Data e hora da visita <span className="text-rose-500">*</span>
+              </Label>
+              <DateTimePicker
+                value={visitaDate}
+                onChange={v => setVisitaDate(v)}
+                placeholder="Selecionar data e hora"
+              />
+            </div>
+          )}
+
+          {/* Observação — always */}
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold text-gray-700">
               Observação <span className="text-gray-400 font-normal">(opcional)</span>
             </Label>
             <textarea
-              value={obs} onChange={(e) => setObs(e.target.value)}
-              placeholder="Ex: Visitou mas não atendeu chamadas posteriores..."
+              value={obs}
+              onChange={e => setObs(e.target.value)}
+              placeholder="Notas, contexto, próximos passos..."
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
             />
           </div>
-        </div>
-        <div className="px-6 pb-6 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">
-            Cancelar
-          </button>
-          <button onClick={handleConfirm} disabled={isPending}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-500 hover:bg-rose-600 transition-colors min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40"
-          >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  )
-}
 
-// ── Advance Dialog — Agendar / Registar Visita ─────────────────────────────────
-
-function AdvanceDialog({ lead, mode, onClose, onConfirm }: {
-  lead: MockLead; mode: 'agendar-visita' | 'registar-visita'; onClose: () => void
-  onConfirm: (id: string, status: LeadStatus, data?: Partial<MockLead>) => void
-}) {
-  const [conseguiuMarcar, setConseguiuMarcar] = useState<boolean | null>(null)
-  const [visitaDate, setVisitaDate] = useState('')
-  const [compareceu, setCompareceu] = useState<boolean | null>(null)
-  const [inscreveu, setInscreveu] = useState<boolean | null>(null)
-  const [planoEscolhido, setPlanoEscolhido] = useState('')
-  const [isPending, setIsPending] = useState(false)
-
-  async function handleConfirm() {
-    setIsPending(true)
-    try {
-      if (mode === 'agendar-visita') {
-        if (conseguiuMarcar === null) return
-        if (conseguiuMarcar) {
-          const isoDate = visitaDate || new Date().toISOString()
-          onConfirm(lead.id, 'VISITA_AGENDADA', { visitaDate: isoDate })
-        } else {
-          toast.info('Ok — lead mantém-se em "Contactado".')
-          onClose(); return
-        }
-      } else {
-        if (compareceu === null) return
-        if (!compareceu) {
-          onConfirm(lead.id, 'VISITOU', {})
-        } else if (inscreveu) {
-          const obs = planoEscolhido ? `Plano: ${planoEscolhido}` : undefined
-          onConfirm(lead.id, 'INSCRITO', { ...(obs ? { observacoes: obs } : {}), inscritoEm: new Date().toISOString() })
-        } else {
-          onConfirm(lead.id, 'VISITOU', {})
-        }
-      }
-      onClose()
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  const canConfirm = mode === 'agendar-visita'
-    ? conseguiuMarcar !== null
-    : compareceu !== null && (compareceu === false || inscreveu !== null)
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.2 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-      >
-        <div className="px-6 pt-6 pb-4 flex items-start justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-              {mode === 'agendar-visita' ? 'Agendar Visita' : 'Registar Visita'}
-            </p>
-            <h3 className="text-base font-black text-gray-900">{lead.name}</h3>
+          {/* Tags — always */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-gray-700">
+              Tags <span className="text-gray-400 font-normal">(opcional)</span>
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {TAGS.map(tag => {
+                const active = selectedTags.includes(tag.id)
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.id)}
+                    className={`
+                      flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all min-h-[32px]
+                      ${active ? tag.cls : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}
+                    `}
+                  >
+                    {active && <Check className="w-3 h-3" />}
+                    {tag.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors">
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="px-6 pb-4 space-y-5">
-          {mode === 'agendar-visita' ? (
-            <>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-gray-700">Conseguiu marcar uma visita ao estúdio?</p>
-                <div className="flex gap-2">
-                  {([true, false] as const).map(v => (
-                    <button key={String(v)} type="button" onClick={() => setConseguiuMarcar(v)}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all min-h-[44px] ${
-                        conseguiuMarcar === v
-                          ? v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
-                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >{v ? 'Sim' : 'Não'}</button>
-                  ))}
-                </div>
-              </div>
-              {conseguiuMarcar === true && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-                  <p className="text-sm font-semibold text-gray-700">Data e hora da visita</p>
-                  <DateTimePicker
-                    value={visitaDate}
-                    onChange={v => setVisitaDate(v)}
-                    placeholder="Selecionar data e hora"
-                  />
-                </motion.div>
-              )}
-              {conseguiuMarcar === false && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                  className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-700">
-                  Ok. O lead mantém-se em "Contactado" para nova tentativa.
-                </motion.div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-gray-700">A lead compareceu à visita?</p>
-                <div className="flex gap-2">
-                  {([true, false] as const).map(v => (
-                    <button key={String(v)} type="button"
-                      onClick={() => { setCompareceu(v); if (!v) setInscreveu(null) }}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all min-h-[44px] ${
-                        compareceu === v
-                          ? v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
-                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >{v ? 'Sim' : 'Não compareceu'}</button>
-                  ))}
-                </div>
-              </div>
-              {compareceu === true && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-gray-700">Inscreveu-se?</p>
-                    <div className="flex gap-2">
-                      {([true, false] as const).map(v => (
-                        <button key={String(v)} type="button" onClick={() => setInscreveu(v)}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all min-h-[44px] ${
-                            inscreveu === v
-                              ? v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
-                              : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
-                          }`}
-                        >{v ? 'Sim' : 'Ainda não'}</button>
-                      ))}
-                    </div>
-                  </div>
-                  {inscreveu === true && (
-                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-                      <p className="text-sm font-semibold text-gray-700">
-                        Plano escolhido <span className="text-gray-400 font-normal">(opcional)</span>
-                      </p>
-                      <Input placeholder="Ex: Pack 10 sessões — Plano Mensal" value={planoEscolhido}
-                        onChange={e => setPlanoEscolhido(e.target.value)} className="text-base min-h-[44px]" />
-                      <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-                        Este lead será movido para "Inscrito"
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.div>
-              )}
-            </>
-          )}
-        </div>
-
+        {/* Footer */}
         <div className="px-6 pb-6 flex gap-2">
           <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]"
+          >
             Cancelar
           </button>
-          <button onClick={handleConfirm} disabled={isPending || !canConfirm}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            style={{ background: '#111111' }}>
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
+          <button
+            onClick={handleConfirm}
+            disabled={isPending || !canConfirm}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40 ${targetMeta.confirmCls}`}
+          >
+            {isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : `Mover → ${targetMeta.label}`
+            }
           </button>
         </div>
       </motion.div>
@@ -354,10 +276,9 @@ function StatusPickerMenu({ lead, onMoveTo, onClose }: {
 
 // ── Lead Card ─────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, onMoveTo, onOpenDialog, isAdvancing }: {
+function LeadCard({ lead, onOpenDialog, isAdvancing }: {
   lead: MockLead
-  onMoveTo: (id: string, status: LeadStatus, data?: Partial<MockLead>) => void
-  onOpenDialog: (lead: MockLead, mode: DialogMode) => void
+  onOpenDialog: (lead: MockLead, targetStatus: LeadStatus) => void
   isAdvancing: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -365,34 +286,10 @@ function LeadCard({ lead, onMoveTo, onOpenDialog, isAdvancing }: {
 
   function handleMenuMove(status: LeadStatus) {
     setMenuOpen(false)
-    if (status === 'NAO_DEU_FEEDBACK') {
-      onOpenDialog(lead, 'sem-feedback')
-    } else if (status === 'VISITA_AGENDADA' && (lead.status === 'CONTACTADO' || lead.status === 'NOVO')) {
-      onOpenDialog(lead, 'agendar-visita')
-    } else if (status === 'INSCRITO') {
-      onMoveTo(lead.id, 'INSCRITO', { inscritoEm: new Date().toISOString() })
-    } else {
-      onMoveTo(lead.id, status)
-    }
+    onOpenDialog(lead, status)
   }
 
-  function handleQuickAction() {
-    if (lead.status === 'CONTACTADO') onOpenDialog(lead, 'agendar-visita')
-    else if (lead.status === 'VISITA_AGENDADA') onOpenDialog(lead, 'registar-visita')
-    else if (lead.status === 'NOVO') onMoveTo(lead.id, 'CONTACTADO')
-    else if (lead.status === 'VISITOU') onMoveTo(lead.id, 'INSCRITO', { inscritoEm: new Date().toISOString() })
-  }
-
-  const quickLabel =
-    lead.status === 'CONTACTADO' ? 'Agendar visita' :
-    lead.status === 'VISITA_AGENDADA' ? 'Registar visita' :
-    lead.status === 'NOVO' ? 'Marcar contactado' :
-    lead.status === 'VISITOU' ? 'Inscrever' : null
-
-  const quickCls =
-    lead.status === 'VISITA_AGENDADA' ? 'bg-purple-600 hover:bg-purple-700 text-white' :
-    lead.status === 'CONTACTADO' ? 'bg-amber-500 hover:bg-amber-600 text-white' :
-    'border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+  const leadTags = (lead.tags ?? []).map(id => TAGS.find(t => t.id === id)).filter(Boolean)
 
   return (
     <motion.div
@@ -446,6 +343,17 @@ function LeadCard({ lead, onMoveTo, onOpenDialog, isAdvancing }: {
         <span className="text-[10px] text-gray-400 ml-auto">{daysAgo(lead.createdAt)}</span>
       </div>
 
+      {/* Tags */}
+      {leadTags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {leadTags.map(tag => tag && (
+            <span key={tag.id} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tag.cls}`}>
+              {tag.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Visita badge */}
       {lead.visitaDate && (
         <div className="text-xs font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
@@ -464,18 +372,73 @@ function LeadCard({ lead, onMoveTo, onOpenDialog, isAdvancing }: {
         </p>
       )}
 
-      {/* Quick action */}
-      {quickLabel && (
-        <button
-          onClick={handleQuickAction}
-          disabled={isAdvancing}
-          className={`mt-auto w-full min-h-[40px] text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${quickCls}`}
-        >
-          {isAdvancing
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            : <><ChevronRight className="w-3.5 h-3.5" />{quickLabel}</>
-          }
-        </button>
+      {/* Quick actions — per status */}
+      {isAdvancing ? (
+        <div className="mt-auto flex items-center justify-center min-h-[40px]">
+          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        </div>
+      ) : (
+        <>
+          {lead.status === 'NOVO' && (
+            <button
+              onClick={() => onOpenDialog(lead, 'CONTACTADO')}
+              className="mt-auto w-full min-h-[40px] text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ChevronRight className="w-3.5 h-3.5" /> Marcar contactado
+            </button>
+          )}
+
+          {lead.status === 'CONTACTADO' && (
+            <div className="mt-auto flex gap-2">
+              <button
+                onClick={() => onOpenDialog(lead, 'VISITA_AGENDADA')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <ChevronRight className="w-3.5 h-3.5" /> Agendar visita
+              </button>
+              <button
+                onClick={() => onOpenDialog(lead, 'NAO_DEU_FEEDBACK')}
+                className="min-h-[40px] px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                Sem feedback
+              </button>
+            </div>
+          )}
+
+          {lead.status === 'VISITA_AGENDADA' && (
+            <div className="mt-auto flex gap-2">
+              <button
+                onClick={() => onOpenDialog(lead, 'VISITOU')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" /> Compareceu
+              </button>
+              <button
+                onClick={() => onOpenDialog(lead, 'NAO_DEU_FEEDBACK')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center justify-center"
+              >
+                Não veio
+              </button>
+            </div>
+          )}
+
+          {lead.status === 'VISITOU' && (
+            <div className="mt-auto flex gap-2">
+              <button
+                onClick={() => onOpenDialog(lead, 'INSCRITO')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" /> Inscrever
+              </button>
+              <button
+                onClick={() => onOpenDialog(lead, 'VISITA_AGENDADA')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors flex items-center justify-center"
+              >
+                Reagendar
+              </button>
+            </div>
+          )}
+        </>
       )}
     </motion.div>
   )
@@ -483,11 +446,10 @@ function LeadCard({ lead, onMoveTo, onOpenDialog, isAdvancing }: {
 
 // ── Kanban Column ─────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, leads, onMoveTo, onOpenDialog, advancingId, badge }: {
+function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge }: {
   status: LeadStatus
   leads: MockLead[]
-  onMoveTo: (id: string, status: LeadStatus, data?: Partial<MockLead>) => void
-  onOpenDialog: (lead: MockLead, mode: DialogMode) => void
+  onOpenDialog: (lead: MockLead, targetStatus: LeadStatus) => void
   advancingId: string | null
   badge?: string
 }) {
@@ -508,7 +470,6 @@ function KanbanColumn({ status, leads, onMoveTo, onOpenDialog, advancingId, badg
             <LeadCard
               key={lead.id}
               lead={lead}
-              onMoveTo={onMoveTo}
               onOpenDialog={onOpenDialog}
               isAdvancing={advancingId === lead.id}
             />
@@ -668,16 +629,12 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type ActiveDialog =
-  | { type: 'agendar-visita'; lead: MockLead }
-  | { type: 'registar-visita'; lead: MockLead }
-  | { type: 'sem-feedback'; lead: MockLead }
-  | null
+type ActiveDialog = { lead: MockLead; targetStatus: LeadStatus } | null
 
 export default function LeadsPage() {
   const qc = useQueryClient()
-  const [advancingId, setAdvancingId] = useState<string | null>(null)
-  const [mobileTab, setMobileTab] = useState<LeadStatus>('NOVO')
+  const [advancingId, setAdvancingId]   = useState<string | null>(null)
+  const [mobileTab, setMobileTab]       = useState<LeadStatus>('NOVO')
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
@@ -699,14 +656,8 @@ export default function LeadsPage() {
     onSettled: () => setAdvancingId(null),
   })
 
-  function handleMoveTo(id: string, status: LeadStatus, data?: Partial<MockLead>) {
-    updateStatusMutation.mutate({ id, status, data })
-  }
-
-  function handleOpenDialog(lead: MockLead, mode: DialogMode) {
-    if (mode === 'agendar-visita') setActiveDialog({ type: 'agendar-visita', lead })
-    else if (mode === 'registar-visita') setActiveDialog({ type: 'registar-visita', lead })
-    else if (mode === 'sem-feedback') setActiveDialog({ type: 'sem-feedback', lead })
+  function handleOpenDialog(lead: MockLead, targetStatus: LeadStatus) {
+    setActiveDialog({ lead, targetStatus })
   }
 
   function handleDialogConfirm(id: string, status: LeadStatus, data?: Partial<MockLead>) {
@@ -726,12 +677,9 @@ export default function LeadsPage() {
     return map
   }, [allLeads])
 
-  // INSCRITO: pipeline shows only current month
   const inscritoThisMonth = byStatus.INSCRITO.filter((l) => isCurrentMonth(l.inscritoEm ?? l.updatedAt))
-  const inscritoArchived = byStatus.INSCRITO.filter((l) => !isCurrentMonth(l.inscritoEm ?? l.updatedAt))
-
-  // All archived leads (explicit ARQUIVADO + old INSCRITO)
-  const allArchived = useMemo(() => [...byStatus.ARQUIVADO, ...inscritoArchived], [byStatus.ARQUIVADO, inscritoArchived])
+  const inscritoArchived  = byStatus.INSCRITO.filter((l) => !isCurrentMonth(l.inscritoEm ?? l.updatedAt))
+  const allArchived       = useMemo(() => [...byStatus.ARQUIVADO, ...inscritoArchived], [byStatus.ARQUIVADO, inscritoArchived])
 
   const arquivadosByMonth = useMemo(() => {
     const monthMap = new Map<string, { label: string; leads: MockLead[] }>()
@@ -747,9 +695,8 @@ export default function LeadsPage() {
       .map(([, v]) => v)
   }, [allArchived])
 
-  // Stats
-  const pipelineLeads = allLeads.filter((l) => (PIPELINE as string[]).includes(l.status))
-  const visitasEstaSemana = allLeads.filter((l) => l.visitaDate != null && isThisWeek(parseISO(l.visitaDate))).length
+  const pipelineLeads          = allLeads.filter((l) => (PIPELINE as string[]).includes(l.status))
+  const visitasEstaSemana      = allLeads.filter((l) => l.visitaDate != null && isThisWeek(parseISO(l.visitaDate))).length
   const inscritoThisMonthCount = inscritoThisMonth.length
 
   return (
@@ -768,9 +715,9 @@ export default function LeadsPage() {
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
-          { label: 'No pipeline',     value: pipelineLeads.length },
-          { label: 'Visitas semana',  value: visitasEstaSemana },
-          { label: 'Inscritos mês',   value: inscritoThisMonthCount },
+          { label: 'No pipeline',    value: pipelineLeads.length },
+          { label: 'Visitas semana', value: visitasEstaSemana },
+          { label: 'Inscritos mês',  value: inscritoThisMonthCount },
         ].map(({ label, value }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 flex flex-col gap-0.5">
             <p className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-wide leading-tight">{label}</p>
@@ -803,7 +750,7 @@ export default function LeadsPage() {
           <div className="lg:hidden">
             <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 sm:-mx-5 sm:px-5 scrollbar-hide">
               {PIPELINE.map((status) => {
-                const meta = COLUMN_META[status]
+                const meta  = COLUMN_META[status]
                 const count = status === 'INSCRITO' ? inscritoThisMonth.length : (byStatus[status]?.length ?? 0)
                 return (
                   <button
@@ -827,7 +774,6 @@ export default function LeadsPage() {
                   <LeadCard
                     key={lead.id}
                     lead={lead}
-                    onMoveTo={handleMoveTo}
                     onOpenDialog={handleOpenDialog}
                     isAdvancing={advancingId === lead.id}
                   />
@@ -849,7 +795,6 @@ export default function LeadsPage() {
                   key={status}
                   status={status}
                   leads={status === 'INSCRITO' ? inscritoThisMonth : byStatus[status]}
-                  onMoveTo={handleMoveTo}
                   onOpenDialog={handleOpenDialog}
                   advancingId={advancingId}
                   badge={
@@ -867,48 +812,31 @@ export default function LeadsPage() {
       {/* Bottom sections */}
       {!isLoading && (
         <div className="space-y-0 pb-8">
-          {/* Sem Feedback */}
-          <CollapsibleSection
-            title="Sem Feedback"
-            count={byStatus.NAO_DEU_FEEDBACK.length}
-            chipCls="bg-rose-50 text-rose-600"
-          >
+          <CollapsibleSection title="Sem Feedback" count={byStatus.NAO_DEU_FEEDBACK.length} chipCls="bg-rose-50 text-rose-600">
             {byStatus.NAO_DEU_FEEDBACK.length === 0 ? (
               <p className="text-sm text-gray-400 py-3">Nenhum lead sem feedback.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {byStatus.NAO_DEU_FEEDBACK.map((lead) => (
-                  <LeadCard key={lead.id} lead={lead} onMoveTo={handleMoveTo}
-                    onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
                 ))}
               </div>
             )}
           </CollapsibleSection>
 
-          {/* Perdidos */}
-          <CollapsibleSection
-            title="Perdidos"
-            count={byStatus.PERDIDO.length}
-            chipCls="bg-gray-100 text-gray-500"
-          >
+          <CollapsibleSection title="Perdidos" count={byStatus.PERDIDO.length} chipCls="bg-gray-100 text-gray-500">
             {byStatus.PERDIDO.length === 0 ? (
               <p className="text-sm text-gray-400 py-3">Nenhum lead perdido.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {byStatus.PERDIDO.map((lead) => (
-                  <LeadCard key={lead.id} lead={lead} onMoveTo={handleMoveTo}
-                    onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
                 ))}
               </div>
             )}
           </CollapsibleSection>
 
-          {/* Arquivados */}
-          <CollapsibleSection
-            title="Arquivados"
-            count={allArchived.length}
-            chipCls="bg-slate-100 text-slate-500"
-          >
+          <CollapsibleSection title="Arquivados" count={allArchived.length} chipCls="bg-slate-100 text-slate-500">
             {allArchived.length === 0 ? (
               <p className="text-sm text-gray-400 py-3">Sem inscritos arquivados.</p>
             ) : (
@@ -918,8 +846,7 @@ export default function LeadsPage() {
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 capitalize">{label}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {leads.map((lead) => (
-                        <LeadCard key={lead.id} lead={lead} onMoveTo={handleMoveTo}
-                          onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                        <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
                       ))}
                     </div>
                   </div>
@@ -930,24 +857,14 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Dialogs */}
+      {/* Universal Move Dialog */}
       <AnimatePresence>
-        {activeDialog?.type === 'agendar-visita' && (
-          <AdvanceDialog
-            lead={activeDialog.lead} mode="agendar-visita"
-            onClose={() => setActiveDialog(null)} onConfirm={handleDialogConfirm}
-          />
-        )}
-        {activeDialog?.type === 'registar-visita' && (
-          <AdvanceDialog
-            lead={activeDialog.lead} mode="registar-visita"
-            onClose={() => setActiveDialog(null)} onConfirm={handleDialogConfirm}
-          />
-        )}
-        {activeDialog?.type === 'sem-feedback' && (
-          <ObsDialog
+        {activeDialog && (
+          <MoveDialog
             lead={activeDialog.lead}
-            onClose={() => setActiveDialog(null)} onConfirm={handleDialogConfirm}
+            targetStatus={activeDialog.targetStatus}
+            onClose={() => setActiveDialog(null)}
+            onConfirm={handleDialogConfirm}
           />
         )}
       </AnimatePresence>

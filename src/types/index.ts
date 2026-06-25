@@ -281,6 +281,7 @@ export interface Lead {
   responsavel?: string
   visitaDate?: string
   observacoes?: string
+  tags?: string[]
   inscritoEm?: string
   createdAt: string
   updatedAt: string

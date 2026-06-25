@@ -118,8 +118,8 @@ export interface MockLead {
   id: string; name: string; email?: string; phone?: string
   status: 'NOVO' | 'CONTACTADO' | 'VISITA_AGENDADA' | 'VISITOU' | 'INSCRITO' | 'PERDIDO' | 'NAO_DEU_FEEDBACK' | 'ARQUIVADO'
   interesse?: string; source?: string; responsavel?: string
-  visitaDate?: string; observacoes?: string
-  inscritoEm?: string  // ISO date when moved to INSCRITO — used to auto-archive old months
+  visitaDate?: string; observacoes?: string; tags?: string[]
+  inscritoEm?: string
   createdAt: string; updatedAt: string
 }
 export interface MockNotificationConfig {
