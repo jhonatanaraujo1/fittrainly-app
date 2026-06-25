@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, MoreHorizontal, ChevronRight, ChevronDown,
   Loader2, UserPlus, Phone, Mail, Share2,
-  Globe, Users, ArrowRight, X, TrendingUp,
+  Globe, Users, ArrowRight, X, TrendingUp, CheckCircle2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format, parseISO, isThisWeek } from 'date-fns'
@@ -65,23 +65,279 @@ function daysAgo(isoDate: string): string {
   return formatDistanceToNow(parseISO(isoDate), { addSuffix: true, locale: pt })
 }
 
+// ── Advance Dialog ─────────────────────────────────────────────────────────────
+type DialogMode = 'agendar-visita' | 'registar-visita'
+
+function AdvanceDialog({
+  lead,
+  mode,
+  onClose,
+  onConfirm,
+}: {
+  lead: MockLead
+  mode: DialogMode
+  onClose: () => void
+  onConfirm: (id: string, status: LeadStatus, data?: Partial<MockLead>) => void
+}) {
+  const [conseguiuMarcar, setConseguiuMarcar] = useState<boolean | null>(null)
+  const [visitaDate, setVisitaDate] = useState('')
+  const [compareceu, setCompareceu] = useState<boolean | null>(null)
+  const [inscreveu, setInscreveu] = useState<boolean | null>(null)
+  const [planoEscolhido, setPlanoEscolhido] = useState('')
+  const [isPending, setIsPending] = useState(false)
+
+  async function handleConfirm() {
+    setIsPending(true)
+    try {
+      if (mode === 'agendar-visita') {
+        if (conseguiuMarcar === null) return
+        if (conseguiuMarcar) {
+          const isoDate = visitaDate ? new Date(visitaDate).toISOString() : new Date().toISOString()
+          onConfirm(lead.id, 'VISITA_AGENDADA', { visitaDate: isoDate })
+        } else {
+          toast.info('Ok — vamos criar um lembrete para tentar novamente.')
+          onClose()
+        }
+      } else {
+        if (compareceu === null) return
+        if (!compareceu) {
+          onConfirm(lead.id, 'VISITOU', {})
+        } else if (inscreveu) {
+          const obs = planoEscolhido ? `Plano: ${planoEscolhido}` : undefined
+          onConfirm(lead.id, 'INSCRITO', obs ? { observacoes: obs } : {})
+        } else {
+          onConfirm(lead.id, 'VISITOU', {})
+        }
+      }
+      onClose()
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  const canConfirm = mode === 'agendar-visita'
+    ? conseguiuMarcar !== null
+    : compareceu !== null && (compareceu === false || inscreveu !== null)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }}
+        transition={{ duration: 0.2 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 flex items-start justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+              {mode === 'agendar-visita' ? 'Agendar Visita' : 'Registar Visita'}
+            </p>
+            <h3 className="text-base font-black text-gray-900">{lead.name}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 pb-4 space-y-5">
+          {mode === 'agendar-visita' ? (
+            <>
+              {/* P1: Conseguiu marcar? */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-700">Conseguiu marcar uma visita ao estúdio?</p>
+                <div className="flex gap-2">
+                  {([true, false] as const).map(v => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      onClick={() => setConseguiuMarcar(v)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all min-h-[44px] ${
+                        conseguiuMarcar === v
+                          ? v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
+                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {v ? 'Sim' : 'Não'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* P2: Data da visita */}
+              {conseguiuMarcar === true && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-2"
+                >
+                  <p className="text-sm font-semibold text-gray-700">Data e hora da visita</p>
+                  <Input
+                    type="datetime-local"
+                    value={visitaDate}
+                    onChange={e => setVisitaDate(e.target.value)}
+                    className="text-sm"
+                  />
+                </motion.div>
+              )}
+
+              {conseguiuMarcar === false && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-700"
+                >
+                  Ok. O lead mantém-se em "Contactado" para nova tentativa.
+                </motion.div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* P1: Compareceu? */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-700">A lead compareceu à visita?</p>
+                <div className="flex gap-2">
+                  {([true, false] as const).map(v => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      onClick={() => { setCompareceu(v); if (!v) setInscreveu(null) }}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all min-h-[44px] ${
+                        compareceu === v
+                          ? v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
+                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {v ? 'Sim' : 'Não compareceu'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* P2: Inscreveu-se? */}
+              {compareceu === true && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">Inscreveu-se?</p>
+                    <div className="flex gap-2">
+                      {([true, false] as const).map(v => (
+                        <button
+                          key={String(v)}
+                          type="button"
+                          onClick={() => setInscreveu(v)}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all min-h-[44px] ${
+                            inscreveu === v
+                              ? v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
+                              : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          {v ? 'Sim' : 'Ainda não'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* P3: Plano escolhido */}
+                  {inscreveu === true && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-2"
+                    >
+                      <p className="text-sm font-semibold text-gray-700">Plano escolhido <span className="text-gray-400 font-normal">(opcional)</span></p>
+                      <Input
+                        placeholder="Ex: Pack 10 sessões — Plano Mensal"
+                        value={planoEscolhido}
+                        onChange={e => setPlanoEscolhido(e.target.value)}
+                      />
+                      <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                        Este lead será movido para "Inscrito"
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={isPending || !canConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{ background: '#111111' }}
+          >
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 // ── Lead Card ─────────────────────────────────────────────────────────────────
 function LeadCard({
   lead,
   onAdvance,
   onMarkLost,
   onConvert,
+  onOpenDialog,
   isAdvancing,
 }: {
   lead: MockLead
   onAdvance: (id: string, status: LeadStatus) => void
   onMarkLost: (id: string) => void
   onConvert: (id: string) => void
+  onOpenDialog: (lead: MockLead, mode: DialogMode) => void
   isAdvancing: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const SourceIcon = lead.source ? (SOURCE_ICON[lead.source] ?? Globe) : Globe
   const next = nextStatus(lead.status)
+
+  function handleQuickAdvance() {
+    if (lead.status === 'CONTACTADO') {
+      onOpenDialog(lead, 'agendar-visita')
+    } else if (lead.status === 'VISITA_AGENDADA') {
+      onOpenDialog(lead, 'registar-visita')
+    } else if (next) {
+      onAdvance(lead.id, next)
+    }
+  }
+
+  function handleMenuAdvance() {
+    setMenuOpen(false)
+    if (lead.status === 'CONTACTADO') {
+      onOpenDialog(lead, 'agendar-visita')
+    } else if (lead.status === 'VISITA_AGENDADA') {
+      onOpenDialog(lead, 'registar-visita')
+    } else if (next) {
+      onAdvance(lead.id, next)
+    }
+  }
+
+  const quickLabel = lead.status === 'CONTACTADO'
+    ? 'Agendar visita'
+    : lead.status === 'VISITA_AGENDADA'
+      ? 'Registar visita'
+      : 'Avançar'
 
   return (
     <motion.div
@@ -108,7 +364,6 @@ function LeadCard({
           )}
         </div>
 
-        {/* Context menu — simple popover */}
         <div className="relative flex-shrink-0">
           <button
             onClick={() => setMenuOpen((v) => !v)}
@@ -120,34 +375,21 @@ function LeadCard({
           <AnimatePresence>
             {menuOpen && (
               <>
-                {/* backdrop */}
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setMenuOpen(false)}
-                />
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: -4 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
                   transition={{ duration: 0.1 }}
-                  className="absolute right-0 top-full mt-1 z-20 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[180px]"
+                  className="absolute right-0 top-full mt-1 z-20 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[190px]"
                 >
                   {next && (
                     <button
-                      onClick={() => { onAdvance(lead.id, next); setMenuOpen(false) }}
+                      onClick={handleMenuAdvance}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                     >
                       <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
-                      Avançar para {COLUMN_META[next].label}
-                    </button>
-                  )}
-                  {lead.status === 'VISITA_AGENDADA' && (
-                    <button
-                      onClick={() => { onAdvance(lead.id, 'VISITOU'); setMenuOpen(false) }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                      Registar visita
+                      {quickLabel}
                     </button>
                   )}
                   {lead.status === 'INSCRITO' && (
@@ -156,7 +398,7 @@ function LeadCard({
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors min-h-[44px]"
                     >
                       <TrendingUp className="w-3.5 h-3.5" />
-                      Converter
+                      Converter em aluno
                     </button>
                   )}
                   <div className="h-px bg-gray-100 my-1" />
@@ -193,7 +435,7 @@ function LeadCard({
       {/* Visita date */}
       {lead.visitaDate && (
         <div className="text-xs font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
-          Visita: {format(parseISO(lead.visitaDate), 'd MMM', { locale: pt })}
+          Visita: {format(parseISO(lead.visitaDate), "d MMM 'às' HH'h'mm", { locale: pt })}
         </div>
       )}
 
@@ -202,18 +444,22 @@ function LeadCard({
         <p className="text-xs text-gray-500 line-clamp-2 leading-snug">{lead.observacoes}</p>
       )}
 
-      {/* Quick advance / register visit button */}
+      {/* Quick advance button */}
       {lead.status === 'VISITA_AGENDADA' ? (
         <button
-          onClick={() => onAdvance(lead.id, 'VISITOU')}
+          onClick={handleQuickAdvance}
           disabled={isAdvancing}
           className="mt-auto w-full h-9 min-h-[36px] text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors flex items-center justify-center gap-1.5"
         >
-          {isAdvancing ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <><ChevronRight className="w-3.5 h-3.5" /> Registar visita</>
-          )}
+          {isAdvancing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ChevronRight className="w-3.5 h-3.5" /> Registar visita</>}
+        </button>
+      ) : lead.status === 'CONTACTADO' ? (
+        <button
+          onClick={handleQuickAdvance}
+          disabled={isAdvancing}
+          className="mt-auto w-full h-9 min-h-[36px] text-xs font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors flex items-center justify-center gap-1.5"
+        >
+          {isAdvancing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ChevronRight className="w-3.5 h-3.5" /> Agendar visita</>}
         </button>
       ) : next ? (
         <button
@@ -221,11 +467,7 @@ function LeadCard({
           disabled={isAdvancing}
           className="mt-auto w-full h-9 min-h-[36px] text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors flex items-center justify-center gap-1.5"
         >
-          {isAdvancing ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <><ArrowRight className="w-3.5 h-3.5" /> Avançar</>
-          )}
+          {isAdvancing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ArrowRight className="w-3.5 h-3.5" /> Avançar</>}
         </button>
       ) : null}
     </motion.div>
@@ -239,6 +481,7 @@ function KanbanColumn({
   onAdvance,
   onMarkLost,
   onConvert,
+  onOpenDialog,
   advancingId,
 }: {
   status: LeadStatus
@@ -246,23 +489,18 @@ function KanbanColumn({
   onAdvance: (id: string, status: LeadStatus) => void
   onMarkLost: (id: string) => void
   onConvert: (id: string) => void
+  onOpenDialog: (lead: MockLead, mode: DialogMode) => void
   advancingId: string | null
 }) {
   const meta = COLUMN_META[status]
 
   return (
     <div className="flex flex-col gap-3 min-w-[260px] flex-1">
-      {/* Column header */}
       <div className={`flex items-center justify-between px-3 py-2 rounded-xl ${meta.bg} ring-1 ${meta.ring}`}>
-        <span className={`text-xs font-bold uppercase tracking-wide ${meta.color}`}>
-          {meta.label}
-        </span>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full bg-white ${meta.color}`}>
-          {leads.length}
-        </span>
+        <span className={`text-xs font-bold uppercase tracking-wide ${meta.color}`}>{meta.label}</span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full bg-white ${meta.color}`}>{leads.length}</span>
       </div>
 
-      {/* Cards */}
       <div className="flex flex-col gap-3 min-h-[120px]">
         <AnimatePresence initial={false}>
           {leads.map((lead) => (
@@ -272,11 +510,11 @@ function KanbanColumn({
               onAdvance={onAdvance}
               onMarkLost={onMarkLost}
               onConvert={onConvert}
+              onOpenDialog={onOpenDialog}
               isAdvancing={advancingId === lead.id}
             />
           ))}
         </AnimatePresence>
-
         {leads.length === 0 && (
           <div className="flex-1 rounded-xl border-2 border-dashed border-gray-100 flex items-center justify-center min-h-[80px]">
             <p className="text-xs text-gray-300 font-medium">Sem leads</p>
@@ -289,48 +527,24 @@ function KanbanColumn({
 
 // ── New Lead Form ─────────────────────────────────────────────────────────────
 type NewLeadForm = {
-  name: string
-  phone: string
-  email: string
-  interesse: string
-  source: string
-  observacoes: string
+  name: string; phone: string; email: string
+  interesse: string; source: string; observacoes: string
 }
-
-const EMPTY_FORM: NewLeadForm = {
-  name: '', phone: '', email: '', interesse: '', source: '', observacoes: '',
-}
+const EMPTY_FORM: NewLeadForm = { name: '', phone: '', email: '', interesse: '', source: '', observacoes: '' }
 
 function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewLeadForm>(EMPTY_FORM)
 
   const createMutation = useMutation({
-    mutationFn: () =>
-      leadApi.create({
-        name: form.name,
-        phone: form.phone || undefined,
-        email: form.email || undefined,
-        interesse: form.interesse || undefined,
-        source: form.source || undefined,
-        observacoes: form.observacoes || undefined,
-        status: 'NOVO',
-      }),
-    onSuccess: (lead) => {
-      onCreated(lead)
-      toast.success(`Lead "${lead.name}" adicionado! 🎉`)
-      setOpen(false)
-      setForm(EMPTY_FORM)
-    },
+    mutationFn: () => leadApi.create({ name: form.name, phone: form.phone || undefined, email: form.email || undefined, interesse: form.interesse || undefined, source: form.source || undefined, observacoes: form.observacoes || undefined, status: 'NOVO' }),
+    onSuccess: (lead) => { onCreated(lead); toast.success(`Lead "${lead.name}" adicionado! 🎉`); setOpen(false); setForm(EMPTY_FORM) },
     onError: () => toast.error('Erro ao criar lead'),
   })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name || !form.phone) {
-      toast.error('Nome e telefone são obrigatórios')
-      return
-    }
+    if (!form.name || !form.phone) { toast.error('Nome e telefone são obrigatórios'); return }
     createMutation.mutate()
   }
 
@@ -344,71 +558,39 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
         className="inline-flex items-center gap-2 h-9 px-4 text-white text-sm font-medium rounded-lg transition-colors min-h-[44px]"
         style={{ background: '#111111' }}
       >
-        <Plus className="w-4 h-4" />
-        Novo Lead
+        <Plus className="w-4 h-4" /> Novo Lead
       </SheetTrigger>
-
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader className="mb-6">
-          <SheetTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5" />
-            Novo Lead
-          </SheetTitle>
+          <SheetTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5" /> Novo Lead</SheetTitle>
         </SheetHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs">Nome *</Label>
-            <Input
-              placeholder="André Pereira"
-              value={form.name}
-              onChange={(e) => setField('name', e.target.value)}
-            />
+            <Input placeholder="André Pereira" value={form.name} onChange={(e) => setField('name', e.target.value)} />
           </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs">Telefone *</Label>
-            <Input
-              placeholder="+351 916 000 000"
-              value={form.phone}
-              onChange={(e) => setField('phone', e.target.value)}
-            />
+            <Input placeholder="+351 916 000 000" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
           </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs">Email</Label>
-            <Input
-              type="email"
-              placeholder="andre@email.com"
-              value={form.email}
-              onChange={(e) => setField('email', e.target.value)}
-            />
+            <Input type="email" placeholder="andre@email.com" value={form.email} onChange={(e) => setField('email', e.target.value)} />
           </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs">Interesse</Label>
             <Select value={form.interesse} onValueChange={(v) => setField('interesse', v ?? '')}>
               <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-              <SelectContent>
-                {INTERESSE_OPTIONS.map((o) => (
-                  <SelectItem key={o} value={o}>{o}</SelectItem>
-                ))}
-              </SelectContent>
+              <SelectContent>{INTERESSE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs">Origem</Label>
             <Select value={form.source} onValueChange={(v) => setField('source', v ?? '')}>
               <SelectTrigger><SelectValue placeholder="Como nos conheceu?" /></SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map((o) => (
-                  <SelectItem key={o} value={o}>{o}</SelectItem>
-                ))}
-              </SelectContent>
+              <SelectContent>{SOURCE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-
           <div className="space-y-1.5">
             <Label className="text-xs">Observações</Label>
             <textarea
@@ -419,26 +601,10 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
             />
           </div>
-
           <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => { setOpen(false); setForm(EMPTY_FORM) }}
-              className="flex-1 h-10 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="flex-1 h-10 rounded-lg text-sm font-medium text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: '#111111' }}
-            >
-              {createMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                'Adicionar Lead'
-              )}
+            <button type="button" onClick={() => { setOpen(false); setForm(EMPTY_FORM) }} className="flex-1 h-10 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
+            <button type="submit" disabled={createMutation.isPending} className="flex-1 h-10 rounded-lg text-sm font-medium text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: '#111111' }}>
+              {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Adicionar Lead'}
             </button>
           </div>
         </form>
@@ -453,6 +619,7 @@ export default function LeadsPage() {
   const [advancingId, setAdvancingId] = useState<string | null>(null)
   const [showLost, setShowLost] = useState(false)
   const [mobileTab, setMobileTab] = useState<LeadStatus>('NOVO')
+  const [advanceDialog, setAdvanceDialog] = useState<{ lead: MockLead; mode: DialogMode } | null>(null)
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
     queryKey: ['leads'],
@@ -460,15 +627,13 @@ export default function LeadsPage() {
   })
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: LeadStatus }) =>
-      leadApi.updateStatus(id, status),
+    mutationFn: ({ id, status, data }: { id: string; status: LeadStatus; data?: Partial<MockLead> }) =>
+      leadApi.updateStatus(id, status, data),
     onMutate: ({ id }) => setAdvancingId(id),
     onSuccess: (updated) => {
-      qc.setQueryData<MockLead[]>(['leads'], (prev) =>
-        prev?.map((l) => (l.id === updated.id ? updated : l)) ?? prev
-      )
+      qc.setQueryData<MockLead[]>(['leads'], (prev) => prev?.map((l) => (l.id === updated.id ? updated : l)) ?? prev)
       const meta = COLUMN_META[updated.status]
-      toast.success(`Lead movido para "${meta.label}"`)
+      toast.success(`Lead movido para "${meta.label}" 🎉`)
     },
     onError: () => toast.error('Erro ao mover lead'),
     onSettled: () => setAdvancingId(null),
@@ -487,29 +652,26 @@ export default function LeadsPage() {
   }
 
   function handleCreated(lead: MockLead) {
-    qc.setQueryData<MockLead[]>(['leads'], (prev) =>
-      prev ? [lead, ...prev] : [lead]
-    )
+    qc.setQueryData<MockLead[]>(['leads'], (prev) => prev ? [lead, ...prev] : [lead])
+  }
+
+  function handleOpenDialog(lead: MockLead, mode: DialogMode) {
+    setAdvanceDialog({ lead, mode })
+  }
+
+  function handleDialogConfirm(id: string, status: LeadStatus, data?: Partial<MockLead>) {
+    updateStatusMutation.mutate({ id, status, data })
   }
 
   // Stats
   const activeLeads = allLeads.filter((l) => l.status !== 'PERDIDO')
-  const visitasEstaSemana = allLeads.filter(
-    (l) => l.visitaDate != null && isThisWeek(parseISO(l.visitaDate))
-  ).length
+  const visitasEstaSemana = allLeads.filter((l) => l.visitaDate != null && isThisWeek(parseISO(l.visitaDate))).length
   const inscritoCount = allLeads.filter((l) => l.status === 'INSCRITO').length
-  const conversionRate = activeLeads.length > 0
-    ? Math.round((inscritoCount / activeLeads.length) * 100)
-    : 0
+  const conversionRate = activeLeads.length > 0 ? Math.round((inscritoCount / activeLeads.length) * 100) : 0
 
-  // Group by status
   const byStatus = useMemo(() => {
-    const map: Record<LeadStatus, MockLead[]> = {
-      NOVO: [], CONTACTADO: [], VISITA_AGENDADA: [], VISITOU: [], INSCRITO: [], PERDIDO: [],
-    }
-    for (const lead of allLeads) {
-      map[lead.status].push(lead)
-    }
+    const map: Record<LeadStatus, MockLead[]> = { NOVO: [], CONTACTADO: [], VISITA_AGENDADA: [], VISITOU: [], INSCRITO: [], PERDIDO: [] }
+    for (const lead of allLeads) map[lead.status].push(lead)
     return map
   }, [allLeads])
 
@@ -542,7 +704,7 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Kanban board */}
+      {/* Kanban */}
       {isLoading ? (
         <>
           <div className="lg:hidden flex flex-col gap-3">
@@ -573,13 +735,10 @@ export default function LeadsPage() {
                     key={status}
                     onClick={() => setMobileTab(status)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
-                      mobileTab === status
-                        ? `${meta.bg} ${meta.color} ring-1 ${meta.ring}`
-                        : 'bg-gray-100 text-gray-500'
+                      mobileTab === status ? `${meta.bg} ${meta.color} ring-1 ${meta.ring}` : 'bg-gray-100 text-gray-500'
                     }`}
                   >
-                    {meta.label}
-                    <span className="text-xs font-semibold">{count}</span>
+                    {meta.label}<span className="text-xs font-semibold">{count}</span>
                   </button>
                 )
               })}
@@ -593,6 +752,7 @@ export default function LeadsPage() {
                     onAdvance={handleAdvance}
                     onMarkLost={handleMarkLost}
                     onConvert={handleConvert}
+                    onOpenDialog={handleOpenDialog}
                     isAdvancing={advancingId === lead.id}
                   />
                 ))}
@@ -616,6 +776,7 @@ export default function LeadsPage() {
                   onAdvance={handleAdvance}
                   onMarkLost={handleMarkLost}
                   onConvert={handleConvert}
+                  onOpenDialog={handleOpenDialog}
                   advancingId={advancingId}
                 />
               ))}
@@ -624,18 +785,15 @@ export default function LeadsPage() {
         </>
       )}
 
-      {/* Leads perdidos — colapsável */}
+      {/* Leads perdidos */}
       <div className="border-t border-gray-100 pt-4">
         <button
           onClick={() => setShowLost((v) => !v)}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors font-medium min-h-[44px]"
         >
-          <ChevronDown
-            className={`w-4 h-4 transition-transform duration-200 ${showLost ? 'rotate-0' : '-rotate-90'}`}
-          />
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showLost ? 'rotate-0' : '-rotate-90'}`} />
           Ver leads perdidos ({byStatus.PERDIDO.length})
         </button>
-
         <AnimatePresence>
           {showLost && (
             <motion.div
@@ -652,6 +810,7 @@ export default function LeadsPage() {
                   onAdvance={handleAdvance}
                   onMarkLost={handleMarkLost}
                   onConvert={handleConvert}
+                  onOpenDialog={handleOpenDialog}
                   advancingId={advancingId}
                 />
               </div>
@@ -659,6 +818,18 @@ export default function LeadsPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Advance Dialog */}
+      <AnimatePresence>
+        {advanceDialog && (
+          <AdvanceDialog
+            lead={advanceDialog.lead}
+            mode={advanceDialog.mode}
+            onClose={() => setAdvanceDialog(null)}
+            onConfirm={handleDialogConfirm}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

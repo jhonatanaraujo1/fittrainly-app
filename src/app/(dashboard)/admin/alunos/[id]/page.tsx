@@ -84,9 +84,13 @@ export default function AlunoPerfilPage() {
   // ── Eval form ────────────────────────────────────────────────────────────────
   const evalFormInit = {
     tipo: 'PRIMEIRA' as 'PRIMEIRA' | 'REAVALIACAO',
-    data: '', frequenciaSemanal: '', peso: '', altura: '',
+    data: '', diasTreino: [] as string[], peso: '', altura: '',
     percentualGordura: '', massaMuscular: '', objetivo: '',
-    observacoes: '', proximaAvaliacao: '',
+    observacoes: '',
+    marcarProximaAF: '' as '' | 'sim' | 'nao',
+    proximaAFDate: '',
+    lembreteDate: '',
+    prescricaoPlanoDate: '',
   }
   const [evalForm, setEvalForm] = useState(evalFormInit)
 
@@ -187,7 +191,7 @@ export default function AlunoPerfilPage() {
       ptId:              data.aluno.personalTrainerId,
       tipo:              evalForm.tipo,
       data:              evalForm.data,
-      frequenciaSemanal: evalForm.frequenciaSemanal ? parseInt(evalForm.frequenciaSemanal) : undefined,
+      frequenciaSemanal: evalForm.diasTreino.length > 0 ? evalForm.diasTreino.length : undefined,
       peso:              evalForm.peso     ? parseFloat(evalForm.peso)     : undefined,
       altura:            evalForm.altura   ? parseFloat(evalForm.altura)   : undefined,
       imc:               evalForm.peso && evalForm.altura ? parseFloat(calcIMC(parseFloat(evalForm.peso), parseFloat(evalForm.altura))) : undefined,
@@ -195,7 +199,7 @@ export default function AlunoPerfilPage() {
       massaMuscular:     evalForm.massaMuscular     ? parseFloat(evalForm.massaMuscular)     : undefined,
       objetivo:          evalForm.objetivo || undefined,
       observacoes:       evalForm.observacoes || undefined,
-      proximaAvaliacao:  evalForm.proximaAvaliacao || undefined,
+      proximaAvaliacao:  evalForm.marcarProximaAF === 'sim' ? evalForm.proximaAFDate || undefined : undefined,
     })
   }
 
@@ -494,10 +498,6 @@ export default function AlunoPerfilPage() {
                       <Input type="date" value={evalForm.data} onChange={e => setEvalForm(f => ({ ...f, data: e.target.value }))} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Frequência semanal</Label>
-                      <Input type="number" min="1" max="7" placeholder="3" value={evalForm.frequenciaSemanal} onChange={e => setEvalForm(f => ({ ...f, frequenciaSemanal: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1.5">
                       <Label className="text-xs">Peso (kg)</Label>
                       <Input type="number" step="0.1" placeholder="75.0" value={evalForm.peso} onChange={e => setEvalForm(f => ({ ...f, peso: e.target.value }))} />
                     </div>
@@ -505,14 +505,9 @@ export default function AlunoPerfilPage() {
                       <Label className="text-xs">Altura (cm)</Label>
                       <Input type="number" placeholder="175" value={evalForm.altura} onChange={e => setEvalForm(f => ({ ...f, altura: e.target.value }))} />
                     </div>
-                    <div className="space-y-1.5">
-                      {/* IMC calculado em tempo real */}
-                      <Label className="text-xs">IMC (calculado)</Label>
-                      <div className={`h-9 flex items-center px-3 rounded-md border text-sm font-medium ${
-                        liveIMC !== '—'
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : 'bg-gray-50 text-gray-400 border-gray-200'
-                      }`}>
+                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
+                      <Label className="text-xs">IMC (calculado automaticamente)</Label>
+                      <div className={`h-9 flex items-center px-3 rounded-md border text-sm font-medium ${liveIMC !== '—' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
                         {liveIMC}
                       </div>
                     </div>
@@ -530,13 +525,106 @@ export default function AlunoPerfilPage() {
                     </div>
                     <div className="col-span-1 sm:col-span-2 space-y-1.5">
                       <Label className="text-xs">Observações</Label>
-                      <Textarea rows={3} className="resize-none" placeholder="Histórico de lesões, observações gerais..." value={evalForm.observacoes} onChange={e => setEvalForm(f => ({ ...f, observacoes: e.target.value }))} />
-                    </div>
-                    <div className="col-span-1 sm:col-span-2 space-y-1.5">
-                      <Label className="text-xs">Próxima avaliação</Label>
-                      <Input type="date" value={evalForm.proximaAvaliacao} onChange={e => setEvalForm(f => ({ ...f, proximaAvaliacao: e.target.value }))} />
+                      <Textarea rows={2} className="resize-none" placeholder="Histórico de lesões, observações gerais..." value={evalForm.observacoes} onChange={e => setEvalForm(f => ({ ...f, observacoes: e.target.value }))} />
                     </div>
                   </div>
+
+                  {/* ── Fecho da Avaliação ──────────────────────────────── */}
+                  <div className="border-t border-gray-100 pt-4 space-y-4">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Fecho da Avaliação</p>
+
+                    {/* P1: Dias de treino */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">P1. Dias de treino por semana</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(['2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'] as const).map(dia => {
+                          const selected = evalForm.diasTreino.includes(dia)
+                          return (
+                            <button
+                              key={dia}
+                              type="button"
+                              onClick={() => setEvalForm(f => ({
+                                ...f,
+                                diasTreino: selected
+                                  ? f.diasTreino.filter(d => d !== dia)
+                                  : [...f.diasTreino, dia],
+                              }))}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[36px] ${
+                                selected ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              {dia}
+                            </button>
+                          )
+                        })}
+                        {evalForm.diasTreino.length > 0 && (
+                          <span className="text-xs text-gray-400 self-center">{evalForm.diasTreino.length}×/semana</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* P2: Marcar próxima AF? */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">P2. Pretende marcar já a próxima Avaliação Física?</Label>
+                      <div className="flex gap-2">
+                        {(['sim', 'nao'] as const).map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setEvalForm(f => ({ ...f, marcarProximaAF: v }))}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors min-h-[40px] ${
+                              evalForm.marcarProximaAF === v
+                                ? v === 'sim' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-200 text-gray-700 border-gray-200'
+                                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            {v === 'sim' ? 'Sim' : 'Não'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* P3: Data próxima AF (se Sim) */}
+                    {evalForm.marcarProximaAF === 'sim' && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">P3. Data da próxima Avaliação Física <span className="text-gray-400 font-normal">(máx. 90 dias)</span></Label>
+                        <Input
+                          type="date"
+                          value={evalForm.proximaAFDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          max={new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]}
+                          onChange={e => setEvalForm(f => ({ ...f, proximaAFDate: e.target.value }))}
+                        />
+                      </div>
+                    )}
+
+                    {/* P4: Lembrete (se Não) */}
+                    {evalForm.marcarProximaAF === 'nao' && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">P4. Data de lembrete para marcar a próxima AF <span className="text-gray-400 font-normal">(máx. 90 dias)</span></Label>
+                        <Input
+                          type="date"
+                          value={evalForm.lembreteDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          max={new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]}
+                          onChange={e => setEvalForm(f => ({ ...f, lembreteDate: e.target.value }))}
+                        />
+                      </div>
+                    )}
+
+                    {/* P5: Prescrição do plano */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">P5. Data para Prescrição do Plano de Treino <span className="text-gray-400 font-normal">(máx. 7 dias)</span></Label>
+                      <Input
+                        type="date"
+                        value={evalForm.prescricaoPlanoDate}
+                        min={new Date().toISOString().split('T')[0]}
+                        max={new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]}
+                        onChange={e => setEvalForm(f => ({ ...f, prescricaoPlanoDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" className="h-9 text-sm" onClick={() => setEvalSheetOpen(false)}>
                       Cancelar
