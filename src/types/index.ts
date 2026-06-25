@@ -260,17 +260,28 @@ export interface Pack {
   createdAt: string
 }
 
+export type LeadStatus =
+  | 'NOVO'
+  | 'CONTACTADO'
+  | 'VISITA_AGENDADA'
+  | 'VISITOU'
+  | 'INSCRITO'
+  | 'PERDIDO'
+  | 'NAO_DEU_FEEDBACK'
+  | 'ARQUIVADO'
+
 export interface Lead {
   id: string
   name: string
   email?: string
   phone?: string
-  status: 'NOVO' | 'CONTACTADO' | 'VISITA_AGENDADA' | 'VISITOU' | 'INSCRITO' | 'PERDIDO'
+  status: LeadStatus
   interesse?: string
   source?: string
   responsavel?: string
   visitaDate?: string
   observacoes?: string
+  inscritoEm?: string
   createdAt: string
   updatedAt: string
 }
