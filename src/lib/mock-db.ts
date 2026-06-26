@@ -60,6 +60,32 @@ export interface MockAluno {
   nextSession?: string; completedSessions?: number
   status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'
   dataNascimento?: string; inscricaoDate: string; objetivo?: string
+
+  // Dados pessoais extras
+  genero?: 'MASCULINO' | 'FEMININO' | 'OUTRO'
+  profissao?: string
+
+  // Anamnese — saúde
+  doencas?: string[]
+  doencasOutras?: string
+  cirurgias?: string
+  medicamentos?: string
+  limitacoesFisicas?: string
+  fumante?: boolean
+  alcool?: 'NUNCA' | 'OCASIONAL' | 'FREQUENTE'
+
+  // Histórico de atividade
+  praticouAtividade?: boolean
+  atividadeAnterior?: string
+  tempoSemAtividade?: string
+  nivelAtividade?: 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO'
+  horasSono?: number
+  nivelEstresse?: 'BAIXO' | 'MEDIO' | 'ALTO'
+
+  // Objetivos
+  prazoObjetivo?: string
+  disponibilidadeSemanal?: number
+  observacoesGerais?: string
 }
 
 // PT releases a studio slot for their alunos to book
@@ -220,14 +246,103 @@ function createDB() {
   ]
 
   const alunos: MockAluno[] = [
-    { id: AL.carlos, userId: U.carlos, name: 'Carlos Mendes',   email: 'carlos@fittrainly.com', phone: '+351 913 001 001', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 12, status: 'ATIVO',    dataNascimento: '1991-03-14', inscricaoDate: '2026-01-10', objetivo: 'Hipertrofia e definição muscular' },
-    { id: AL.maria,  userId: U.maria,  name: 'Maria Fernandes', email: 'maria@fittrainly.com',  phone: '+351 913 001 002', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 8,  status: 'ATIVO',    dataNascimento: '1988-07-22', inscricaoDate: '2026-02-03', objetivo: 'Emagrecimento e tonificação' },
-    { id: AL.sofia,  userId: U.sofia,  name: 'Sofia Rodrigues', email: 'sofia@fittrainly.com',  phone: '+351 913 001 003', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 5,  status: 'ATIVO',    dataNascimento: '1995-11-05', inscricaoDate: '2026-03-15', objetivo: 'Condicionamento físico geral' },
-    { id: AL.rui,    userId: U.rui,    name: 'Rui Oliveira',    email: 'rui@fittrainly.com',    phone: '+351 913 001 004', personalTrainerId: PT.joao,  personalTrainerName: 'João Silva',   completedSessions: 3,  status: 'INATIVO',  dataNascimento: '1983-05-30', inscricaoDate: '2026-04-01', objetivo: 'Reabilitação pós-lesão e força' },
-    { id: AL.helena, userId: U.helena, name: 'Helena Martins',  email: 'helena@fittrainly.com', phone: '+351 913 001 005', personalTrainerId: PT.ana,   personalTrainerName: 'Ana Costa',    completedSessions: 7,  status: 'ATIVO',    dataNascimento: '1979-09-18', inscricaoDate: '2026-01-20', objetivo: 'Mobilidade e longevidade' },
-    { id: AL.tiago,  userId: U.tiago,  name: 'Tiago Ferreira',  email: 'tiago@fittrainly.com',  phone: '+351 913 001 006', personalTrainerId: PT.ana,   personalTrainerName: 'Ana Costa',    completedSessions: 4,  status: 'ATIVO',    dataNascimento: '1999-02-14', inscricaoDate: '2026-02-28', objetivo: 'Performance desportiva' },
-    { id: AL.paula,  userId: U.paula,  name: 'Paula Lima',      email: 'paula@fittrainly.com',  phone: '+351 913 001 007', personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos', completedSessions: 2,  status: 'ATIVO',    dataNascimento: '1985-12-01', inscricaoDate: '2026-05-10', objetivo: 'Perda de peso e saúde metabólica' },
-    { id: AL.miguel, userId: U.miguel, name: 'Miguel Sousa',    email: 'miguel@fittrainly.com', phone: '+351 913 001 008', personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos', completedSessions: 1,  status: 'SUSPENSO', dataNascimento: '1992-08-09', inscricaoDate: '2026-05-20', objetivo: 'Ganho de massa muscular' },
+    {
+      id: AL.carlos, userId: U.carlos, name: 'Carlos Mendes', email: 'carlos@fittrainly.com', phone: '+351 913 001 001',
+      personalTrainerId: PT.joao, personalTrainerName: 'João Silva', completedSessions: 12,
+      status: 'ATIVO', dataNascimento: '1991-03-14', inscricaoDate: '2026-01-10',
+      genero: 'MASCULINO', profissao: 'Engenheiro de Software',
+      objetivo: 'Hipertrofia e definição muscular', prazoObjetivo: '6 meses', disponibilidadeSemanal: 4,
+      doencas: [], cirurgias: 'Meniscectomia joelho direito (2019)', medicamentos: 'Nenhum',
+      limitacoesFisicas: 'Evitar impacto elevado no joelho direito',
+      fumante: false, alcool: 'OCASIONAL',
+      praticouAtividade: true, atividadeAnterior: 'Futebol amador durante 10 anos', tempoSemAtividade: '2 anos',
+      nivelAtividade: 'POUCO_ATIVO', horasSono: 7, nivelEstresse: 'MEDIO',
+      observacoesGerais: 'Disponível de manhã nos dias de semana. Prefere treinos de força.',
+    },
+    {
+      id: AL.maria, userId: U.maria, name: 'Maria Fernandes', email: 'maria@fittrainly.com', phone: '+351 913 001 002',
+      personalTrainerId: PT.joao, personalTrainerName: 'João Silva', completedSessions: 8,
+      status: 'ATIVO', dataNascimento: '1988-07-22', inscricaoDate: '2026-02-03',
+      genero: 'FEMININO', profissao: 'Professora',
+      objetivo: 'Emagrecimento e tonificação', prazoObjetivo: '3 meses', disponibilidadeSemanal: 3,
+      doencas: ['HIPERTENSAO'], doencasOutras: '', cirurgias: 'Nenhuma', medicamentos: 'Losartana 50mg',
+      limitacoesFisicas: 'Monitorar pressão arterial durante exercícios de alta intensidade',
+      fumante: false, alcool: 'NUNCA',
+      praticouAtividade: true, atividadeAnterior: 'Caminhadas regulares e yoga', tempoSemAtividade: '6 meses',
+      nivelAtividade: 'POUCO_ATIVO', horasSono: 6, nivelEstresse: 'ALTO',
+      observacoesGerais: 'Trabalha pela manhã, prefere treinos ao fim do dia.',
+    },
+    {
+      id: AL.sofia, userId: U.sofia, name: 'Sofia Rodrigues', email: 'sofia@fittrainly.com', phone: '+351 913 001 003',
+      personalTrainerId: PT.joao, personalTrainerName: 'João Silva', completedSessions: 5,
+      status: 'ATIVO', dataNascimento: '1995-11-05', inscricaoDate: '2026-03-15',
+      genero: 'FEMININO', profissao: 'Designer Gráfico',
+      objetivo: 'Condicionamento físico geral', prazoObjetivo: '4 meses', disponibilidadeSemanal: 3,
+      doencas: [], cirurgias: 'Nenhuma', medicamentos: 'Nenhum',
+      limitacoesFisicas: 'Nenhuma', fumante: false, alcool: 'OCASIONAL',
+      praticouAtividade: false, nivelAtividade: 'SEDENTARIO', horasSono: 8, nivelEstresse: 'BAIXO',
+      observacoesGerais: 'Primeira experiência com treino personalizado.',
+    },
+    {
+      id: AL.rui, userId: U.rui, name: 'Rui Oliveira', email: 'rui@fittrainly.com', phone: '+351 913 001 004',
+      personalTrainerId: PT.joao, personalTrainerName: 'João Silva', completedSessions: 3,
+      status: 'INATIVO', dataNascimento: '1983-05-30', inscricaoDate: '2026-04-01',
+      genero: 'MASCULINO', profissao: 'Contabilista',
+      objetivo: 'Reabilitação pós-lesão e força', prazoObjetivo: '8 meses', disponibilidadeSemanal: 2,
+      doencas: ['ARTRITE'], cirurgias: 'Cirurgia ao ombro esquerdo (2023)', medicamentos: 'Anti-inflamatório ocasional',
+      limitacoesFisicas: 'Movimentos acima da cabeça com ombro esquerdo — carga zero', fumante: false, alcool: 'OCASIONAL',
+      praticouAtividade: true, atividadeAnterior: 'Natação e ciclismo', tempoSemAtividade: '1 ano',
+      nivelAtividade: 'POUCO_ATIVO', horasSono: 7, nivelEstresse: 'MEDIO',
+      observacoesGerais: 'Em processo de reabilitação. Médico autorizou retorno gradual à actividade física.',
+    },
+    {
+      id: AL.helena, userId: U.helena, name: 'Helena Martins', email: 'helena@fittrainly.com', phone: '+351 913 001 005',
+      personalTrainerId: PT.ana, personalTrainerName: 'Ana Costa', completedSessions: 7,
+      status: 'ATIVO', dataNascimento: '1979-09-18', inscricaoDate: '2026-01-20',
+      genero: 'FEMININO', profissao: 'Médica',
+      objetivo: 'Mobilidade e longevidade', prazoObjetivo: '12 meses', disponibilidadeSemanal: 3,
+      doencas: ['OSTEOPOROSE'], doencasOutras: 'Hipotiroidismo controlado', cirurgias: 'Nenhuma',
+      medicamentos: 'Levotiroxina 75mcg, Vitamina D 2000UI', limitacoesFisicas: 'Evitar impacto elevado e exercícios de compressão vertebral',
+      fumante: false, alcool: 'NUNCA',
+      praticouAtividade: true, atividadeAnterior: 'Pilates há 5 anos', tempoSemAtividade: '4 meses',
+      nivelAtividade: 'ATIVO', horasSono: 7, nivelEstresse: 'ALTO',
+      observacoesGerais: 'Tem conhecimento médico, gosta de explicações detalhadas sobre os exercícios.',
+    },
+    {
+      id: AL.tiago, userId: U.tiago, name: 'Tiago Ferreira', email: 'tiago@fittrainly.com', phone: '+351 913 001 006',
+      personalTrainerId: PT.ana, personalTrainerName: 'Ana Costa', completedSessions: 4,
+      status: 'ATIVO', dataNascimento: '1999-02-14', inscricaoDate: '2026-02-28',
+      genero: 'MASCULINO', profissao: 'Estudante de Desporto',
+      objetivo: 'Performance desportiva', prazoObjetivo: '6 meses', disponibilidadeSemanal: 5,
+      doencas: [], cirurgias: 'Nenhuma', medicamentos: 'Suplementação: Creatina, Whey Protein',
+      limitacoesFisicas: 'Nenhuma', fumante: false, alcool: 'NUNCA',
+      praticouAtividade: true, atividadeAnterior: 'Futebol federado (12 anos)', tempoSemAtividade: '0',
+      nivelAtividade: 'MUITO_ATIVO', horasSono: 8, nivelEstresse: 'BAIXO',
+      observacoesGerais: 'Muito motivado. Treina também por conta própria 2x por semana.',
+    },
+    {
+      id: AL.paula, userId: U.paula, name: 'Paula Lima', email: 'paula@fittrainly.com', phone: '+351 913 001 007',
+      personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos', completedSessions: 2,
+      status: 'ATIVO', dataNascimento: '1985-12-01', inscricaoDate: '2026-05-10',
+      genero: 'FEMININO', profissao: 'Gestora de Recursos Humanos',
+      objetivo: 'Perda de peso e saúde metabólica', prazoObjetivo: '6 meses', disponibilidadeSemanal: 3,
+      doencas: ['DIABETES'], doencasOutras: '', cirurgias: 'Nenhuma', medicamentos: 'Metformina 500mg',
+      limitacoesFisicas: 'Monitorar glicemia antes e após exercício', fumante: false, alcool: 'OCASIONAL',
+      praticouAtividade: false, nivelAtividade: 'SEDENTARIO', horasSono: 6, nivelEstresse: 'ALTO',
+      observacoesGerais: 'Encaminhada pelo médico. Dieta acompanhada por nutricionista.',
+    },
+    {
+      id: AL.miguel, userId: U.miguel, name: 'Miguel Sousa', email: 'miguel@fittrainly.com', phone: '+351 913 001 008',
+      personalTrainerId: PT.pedro, personalTrainerName: 'Pedro Santos', completedSessions: 1,
+      status: 'SUSPENSO', dataNascimento: '1992-08-09', inscricaoDate: '2026-05-20',
+      genero: 'MASCULINO', profissao: 'Mecânico',
+      objetivo: 'Ganho de massa muscular', prazoObjetivo: '8 meses', disponibilidadeSemanal: 4,
+      doencas: [], cirurgias: 'Nenhuma', medicamentos: 'Nenhum',
+      limitacoesFisicas: 'Hérnia discal L4-L5: evitar flexão lombar com carga', fumante: true, alcool: 'FREQUENTE',
+      praticouAtividade: true, atividadeAnterior: 'Ginásio por conta própria', tempoSemAtividade: '3 meses',
+      nivelAtividade: 'POUCO_ATIVO', horasSono: 5, nivelEstresse: 'ALTO',
+      observacoesGerais: 'Conta suspensa temporariamente. Awaiting médico.',
+    },
   ]
 
   // ── PT Releases — each PT releases their preferred studio slots ──────────────

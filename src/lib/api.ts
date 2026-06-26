@@ -573,24 +573,44 @@ export const adminApi = {
     return { aluno, bookings, packs, avaliacoes, workoutPlan }
   },
 
-  createAluno: async (data: { name: string; email: string; phone?: string; personalTrainerId: string; dataNascimento?: string; objetivo?: string }) => {
+  createAluno: async (data: {
+    name: string; email: string; phone?: string; personalTrainerId: string
+    dataNascimento?: string; genero?: 'MASCULINO' | 'FEMININO' | 'OUTRO'; profissao?: string
+    objetivo?: string; prazoObjetivo?: string; disponibilidadeSemanal?: number
+    doencas?: string[]; doencasOutras?: string; cirurgias?: string; medicamentos?: string
+    limitacoesFisicas?: string; fumante?: boolean; alcool?: 'NUNCA' | 'OCASIONAL' | 'FREQUENTE'
+    praticouAtividade?: boolean; atividadeAnterior?: string; tempoSemAtividade?: string
+    nivelAtividade?: 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO'
+    horasSono?: number; nivelEstresse?: 'BAIXO' | 'MEDIO' | 'ALTO'; observacoesGerais?: string
+  }) => {
     await delay(400)
     const pt = db.pts.find(p => p.id === data.personalTrainerId)
     if (!pt) throw new Error('PT não encontrado')
     const newUser = { id: 'u-' + uid(), email: data.email, name: data.name, password: 'aluno123', role: 'ALUNO' as const }
     db.users.push(newUser)
+    const { personalTrainerId, ...rest } = data
     const newAluno = {
-      id: 'al-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone,
-      personalTrainerId: data.personalTrainerId, personalTrainerName: pt.name,
+      id: 'al-' + uid(), userId: newUser.id,
+      personalTrainerId, personalTrainerName: pt.name,
       completedSessions: 0, status: 'ATIVO' as const,
-      dataNascimento: data.dataNascimento, inscricaoDate: new Date().toISOString().split('T')[0],
-      objetivo: data.objetivo,
+      inscricaoDate: new Date().toISOString().split('T')[0],
+      doencas: data.doencas ?? [],
+      ...rest,
     }
     db.alunos.push(newAluno)
     return newAluno
   },
 
-  updateAluno: async (id: string, data: Partial<{ status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'; personalTrainerId: string; phone: string; objetivo: string }>) => {
+  updateAluno: async (id: string, data: Partial<{
+    status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'; personalTrainerId: string; phone: string
+    objetivo: string; genero: 'MASCULINO' | 'FEMININO' | 'OUTRO'; profissao: string
+    prazoObjetivo: string; disponibilidadeSemanal: number
+    doencas: string[]; doencasOutras: string; cirurgias: string; medicamentos: string
+    limitacoesFisicas: string; fumante: boolean; alcool: 'NUNCA' | 'OCASIONAL' | 'FREQUENTE'
+    praticouAtividade: boolean; atividadeAnterior: string; tempoSemAtividade: string
+    nivelAtividade: 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO'
+    horasSono: number; nivelEstresse: 'BAIXO' | 'MEDIO' | 'ALTO'; observacoesGerais: string
+  }>) => {
     await delay(300)
     const aluno = db.alunos.find(a => a.id === id)
     if (!aluno) throw new Error('Aluno não encontrado')

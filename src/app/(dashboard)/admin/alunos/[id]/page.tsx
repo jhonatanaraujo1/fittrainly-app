@@ -8,6 +8,7 @@ import {
   ArrowLeft, ChevronDown, Plus, Loader2, AlertTriangle,
   CalendarDays, Activity, Package, ClipboardList, History,
   Scale, Ruler, Percent, Dumbbell, CheckCircle2, Clock,
+  Heart, Edit2, X, Save,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,371 @@ function calcIMC(peso?: number, altura?: number): string {
   if (!peso || !altura) return '—'
   const imc = peso / ((altura / 100) ** 2)
   return imc.toFixed(1)
+}
+
+// ── Anamnese constants ─────────────────────────────────────────────────────────
+
+const DOENCAS_LABELS: Record<string, string> = {
+  HIPERTENSAO: 'Hipertensão', DIABETES: 'Diabetes', CARDIOPATIA: 'Cardiopatia',
+  ARTRITE: 'Artrite', OSTEOPOROSE: 'Osteoporose', ASMA: 'Asma',
+  COLUNA: 'Problema de coluna', OBESIDADE: 'Obesidade',
+}
+const NIVEL_ATIVIDADE_LABEL: Record<string, string> = {
+  SEDENTARIO: 'Sedentário', POUCO_ATIVO: 'Pouco ativo', ATIVO: 'Ativo', MUITO_ATIVO: 'Muito ativo',
+}
+const ALCOOL_LABEL: Record<string, string> = { NUNCA: 'Nunca', OCASIONAL: 'Ocasional', FREQUENTE: 'Frequente' }
+const ESTRESSE_CLS: Record<string, string> = {
+  BAIXO: 'bg-emerald-50 text-emerald-700', MEDIO: 'bg-amber-50 text-amber-700', ALTO: 'bg-red-50 text-red-600',
+}
+
+// ── Anamnese Tab ───────────────────────────────────────────────────────────────
+
+const DOENCAS_OPTIONS = [
+  { key: 'HIPERTENSAO', label: 'Hipertensão' }, { key: 'DIABETES', label: 'Diabetes' },
+  { key: 'CARDIOPATIA', label: 'Cardiopatia' }, { key: 'ARTRITE', label: 'Artrite' },
+  { key: 'OSTEOPOROSE', label: 'Osteoporose' }, { key: 'ASMA', label: 'Asma' },
+  { key: 'COLUNA', label: 'Problema de coluna' }, { key: 'OBESIDADE', label: 'Obesidade' },
+]
+
+function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const qcInternal = useQueryClient()
+
+  const [draft, setDraft] = useState({
+    genero:            aluno.genero ?? '' as '' | 'MASCULINO' | 'FEMININO' | 'OUTRO',
+    profissao:         aluno.profissao ?? '',
+    doencas:           aluno.doencas ?? [] as string[],
+    doencasOutras:     aluno.doencasOutras ?? '',
+    cirurgias:         aluno.cirurgias ?? '',
+    medicamentos:      aluno.medicamentos ?? '',
+    limitacoesFisicas: aluno.limitacoesFisicas ?? '',
+    fumante:           aluno.fumante === undefined ? '' : String(aluno.fumante) as '' | 'true' | 'false',
+    alcool:            aluno.alcool ?? '' as '' | 'NUNCA' | 'OCASIONAL' | 'FREQUENTE',
+    praticouAtividade: aluno.praticouAtividade === undefined ? '' : String(aluno.praticouAtividade) as '' | 'true' | 'false',
+    atividadeAnterior: aluno.atividadeAnterior ?? '',
+    tempoSemAtividade: aluno.tempoSemAtividade ?? '',
+    nivelAtividade:    aluno.nivelAtividade ?? '' as '' | 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO',
+    horasSono:         aluno.horasSono !== undefined ? String(aluno.horasSono) : '',
+    nivelEstresse:     aluno.nivelEstresse ?? '' as '' | 'BAIXO' | 'MEDIO' | 'ALTO',
+    prazoObjetivo:     aluno.prazoObjetivo ?? '',
+    disponibilidadeSemanal: aluno.disponibilidadeSemanal !== undefined ? String(aluno.disponibilidadeSemanal) : '',
+    observacoesGerais: aluno.observacoesGerais ?? '',
+  })
+
+  const set = <K extends keyof typeof draft>(k: K, v: typeof draft[K]) => setDraft(d => ({ ...d, [k]: v }))
+
+  const save = useMutation({
+    mutationFn: () => adminApi.updateAluno(aluno.id, {
+      genero:            draft.genero || undefined,
+      profissao:         draft.profissao || undefined,
+      doencas:           draft.doencas,
+      doencasOutras:     draft.doencasOutras || undefined,
+      cirurgias:         draft.cirurgias || undefined,
+      medicamentos:      draft.medicamentos || undefined,
+      limitacoesFisicas: draft.limitacoesFisicas || undefined,
+      fumante:           draft.fumante ? draft.fumante === 'true' : undefined,
+      alcool:            draft.alcool || undefined,
+      praticouAtividade: draft.praticouAtividade ? draft.praticouAtividade === 'true' : undefined,
+      atividadeAnterior: draft.atividadeAnterior || undefined,
+      tempoSemAtividade: draft.tempoSemAtividade || undefined,
+      nivelAtividade:    draft.nivelAtividade || undefined,
+      horasSono:         draft.horasSono ? parseInt(draft.horasSono) : undefined,
+      nivelEstresse:     draft.nivelEstresse || undefined,
+      prazoObjetivo:     draft.prazoObjetivo || undefined,
+      disponibilidadeSemanal: draft.disponibilidadeSemanal ? parseInt(draft.disponibilidadeSemanal) : undefined,
+      observacoesGerais: draft.observacoesGerais || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Anamnese actualizada ✅')
+      setEditing(false)
+      onSaved()
+    },
+    onError: () => toast.error('Erro ao guardar anamnese'),
+  })
+
+  // ── Read view ────────────────────────────────────────────────────────────────
+  if (!editing) {
+    const hasHealth = (aluno.doencas?.length ?? 0) > 0 || aluno.doencasOutras || aluno.cirurgias || aluno.medicamentos || aluno.limitacoesFisicas
+    const hasActivity = aluno.nivelAtividade || aluno.praticouAtividade !== undefined
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-900">Ficha de Anamnese</h3>
+          <button onClick={() => setEditing(true)}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">
+            <Edit2 className="w-3.5 h-3.5" /> Editar
+          </button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Dados pessoais */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Dados Pessoais</p>
+            <Row label="Género" value={aluno.genero === 'MASCULINO' ? 'Masculino' : aluno.genero === 'FEMININO' ? 'Feminino' : aluno.genero === 'OUTRO' ? 'Outro' : undefined} />
+            <Row label="Profissão" value={aluno.profissao} />
+            <Row label="Objetivo" value={aluno.objetivo} />
+            <Row label="Prazo" value={aluno.prazoObjetivo} />
+            <Row label="Disponibilidade" value={aluno.disponibilidadeSemanal !== undefined ? `${aluno.disponibilidadeSemanal}×/semana` : undefined} />
+          </div>
+
+          {/* Saúde */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Saúde</p>
+            {(aluno.doencas?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-[11px] text-gray-400 mb-1.5">Doenças / Condições</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {aluno.doencas!.map(d => (
+                    <span key={d} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
+                      {DOENCAS_LABELS[d] ?? d}
+                    </span>
+                  ))}
+                </div>
+                {aluno.doencasOutras && <p className="text-xs text-gray-500 mt-1">{aluno.doencasOutras}</p>}
+              </div>
+            )}
+            {!hasHealth && <p className="text-sm text-gray-400">Sem condições de saúde registadas</p>}
+            <Row label="Cirurgias / Lesões" value={aluno.cirurgias} />
+            <Row label="Medicamentos" value={aluno.medicamentos} />
+            <Row label="Limitações físicas" value={aluno.limitacoesFisicas} highlight />
+            <Row label="Fumante" value={aluno.fumante === true ? 'Sim' : aluno.fumante === false ? 'Não' : undefined} />
+            <Row label="Álcool" value={aluno.alcool ? ALCOOL_LABEL[aluno.alcool] : undefined} />
+          </div>
+
+          {/* Histórico de atividade */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Histórico de Atividade</p>
+            <Row label="Praticou antes?" value={aluno.praticouAtividade === true ? 'Sim' : aluno.praticouAtividade === false ? 'Não' : undefined} />
+            {aluno.praticouAtividade && <Row label="Atividade anterior" value={aluno.atividadeAnterior} />}
+            {aluno.praticouAtividade && <Row label="Tempo parado" value={aluno.tempoSemAtividade} />}
+            <Row label="Nível atual" value={aluno.nivelAtividade ? NIVEL_ATIVIDADE_LABEL[aluno.nivelAtividade] : undefined} />
+            <Row label="Horas de sono" value={aluno.horasSono !== undefined ? `${aluno.horasSono}h/noite` : undefined} />
+            {aluno.nivelEstresse && (
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-gray-400">Nível de estresse</p>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${ESTRESSE_CLS[aluno.nivelEstresse]}`}>
+                  {aluno.nivelEstresse}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Observações */}
+          {aluno.observacoesGerais && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-5">
+              <p className="text-[11px] font-bold text-amber-700 uppercase tracking-widest mb-2">Observações gerais</p>
+              <p className="text-sm text-amber-900 leading-relaxed">{aluno.observacoesGerais}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Edit view ────────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-gray-900">Editar Anamnese</h3>
+        <button onClick={() => setEditing(false)} className="p-2 rounded-lg hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <X className="w-4 h-4 text-gray-400" />
+        </button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-5">
+        {/* Dados pessoais */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Dados Pessoais</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Género</Label>
+              <Select value={draft.genero} onValueChange={v => set('genero', (v ?? '') as typeof draft.genero)}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MASCULINO">Masculino</SelectItem>
+                  <SelectItem value="FEMININO">Feminino</SelectItem>
+                  <SelectItem value="OUTRO">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Profissão</Label>
+              <input value={draft.profissao} onChange={e => set('profissao', e.target.value)} placeholder="Ex: Professor" className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Prazo objetivo</Label>
+              <Select value={draft.prazoObjetivo} onValueChange={v => set('prazoObjetivo', v ?? '')}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  {['1 mês', '3 meses', '6 meses', '8 meses', '12 meses'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Dias/semana</Label>
+              <Select value={draft.disponibilidadeSemanal} onValueChange={v => set('disponibilidadeSemanal', v ?? '')}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  {['1', '2', '3', '4', '5', '6'].map(d => <SelectItem key={d} value={d}>{d}×/semana</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Saúde */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Saúde</p>
+          <div className="space-y-2">
+            <Label className="text-xs">Doenças / Condições</Label>
+            <div className="flex flex-wrap gap-2">
+              {DOENCAS_OPTIONS.map(d => {
+                const sel = draft.doencas.includes(d.key)
+                return (
+                  <button key={d.key} type="button"
+                    onClick={() => set('doencas', sel ? draft.doencas.filter(x => x !== d.key) : [...draft.doencas, d.key])}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all min-h-[32px] ${sel ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                    {d.label}
+                  </button>
+                )
+              })}
+            </div>
+            <input value={draft.doencasOutras} onChange={e => set('doencasOutras', e.target.value)} placeholder="Outras condições..." className="w-full min-h-[40px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cirurgias / Lesões</Label>
+            <input value={draft.cirurgias} onChange={e => set('cirurgias', e.target.value)} placeholder="Ex: Cirurgia ao ombro (2023)" className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Medicamentos</Label>
+            <input value={draft.medicamentos} onChange={e => set('medicamentos', e.target.value)} placeholder="Ex: Losartana 50mg" className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Limitações físicas</Label>
+            <textarea value={draft.limitacoesFisicas} onChange={e => set('limitacoesFisicas', e.target.value)} rows={2} placeholder="Restrições de exercício..." className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Fumante?</Label>
+              <Select value={draft.fumante} onValueChange={v => set('fumante', (v ?? '') as typeof draft.fumante)}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent><SelectItem value="false">Não</SelectItem><SelectItem value="true">Sim</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Álcool</Label>
+              <Select value={draft.alcool} onValueChange={v => set('alcool', (v ?? '') as typeof draft.alcool)}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NUNCA">Nunca</SelectItem>
+                  <SelectItem value="OCASIONAL">Ocasional</SelectItem>
+                  <SelectItem value="FREQUENTE">Frequente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Atividade */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Histórico de Atividade</p>
+          <div className="space-y-2">
+            <Label className="text-xs">Praticou atividade antes?</Label>
+            <div className="flex gap-2">
+              {(['true', 'false'] as const).map(v => (
+                <button key={v} type="button"
+                  onClick={() => set('praticouAtividade', v)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors min-h-[44px] ${
+                    draft.praticouAtividade === v
+                      ? v === 'true' ? 'bg-gray-900 text-white border-gray-900' : 'bg-gray-200 text-gray-700 border-gray-200'
+                      : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                  }`}>
+                  {v === 'true' ? 'Sim' : 'Não'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {draft.praticouAtividade === 'true' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual atividade?</Label>
+                <input value={draft.atividadeAnterior} onChange={e => set('atividadeAnterior', e.target.value)} placeholder="Futebol, natação..." className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Parado há quanto tempo?</Label>
+                <input value={draft.tempoSemAtividade} onChange={e => set('tempoSemAtividade', e.target.value)} placeholder="6 meses, 2 anos..." className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+              </div>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nível de atividade atual</Label>
+            <Select value={draft.nivelAtividade} onValueChange={v => set('nivelAtividade', (v ?? '') as typeof draft.nivelAtividade)}>
+              <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SEDENTARIO">Sedentário</SelectItem>
+                <SelectItem value="POUCO_ATIVO">Pouco ativo (1-2×/sem)</SelectItem>
+                <SelectItem value="ATIVO">Ativo (3-4×/sem)</SelectItem>
+                <SelectItem value="MUITO_ATIVO">Muito ativo (5+×/sem)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Horas de sono</Label>
+              <Select value={draft.horasSono} onValueChange={v => set('horasSono', v ?? '')}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>{['4', '5', '6', '7', '8', '9', '10'].map(h => <SelectItem key={h} value={h}>{h}h/noite</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nível de estresse</Label>
+              <Select value={draft.nivelEstresse} onValueChange={v => set('nivelEstresse', (v ?? '') as typeof draft.nivelEstresse)}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BAIXO">Baixo</SelectItem>
+                  <SelectItem value="MEDIO">Médio</SelectItem>
+                  <SelectItem value="ALTO">Alto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Observações */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Observações Gerais</p>
+          <textarea value={draft.observacoesGerais} onChange={e => set('observacoesGerais', e.target.value)} rows={6} placeholder="Informações adicionais relevantes para o PT..." className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none" />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={() => setEditing(false)}
+          className="h-11 px-5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" onClick={() => save.mutate()} disabled={save.isPending}
+          className="flex items-center gap-2 h-11 px-5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-colors hover:opacity-90"
+          style={{ background: '#111111' }}>
+          {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> Guardar Anamnese</>}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Row helper ──────────────────────────────────────────────────────────────────
+
+function Row({ label, value, highlight }: { label: string; value?: string | null; highlight?: boolean }) {
+  if (!value) return null
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <p className="text-[11px] text-gray-400 flex-shrink-0">{label}</p>
+      <p className={`text-xs text-right leading-relaxed ${highlight ? 'text-amber-700 font-medium' : 'text-gray-700'}`}>{value}</p>
+    </div>
+  )
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -378,6 +744,9 @@ export default function AlunoPerfilPage() {
           <TabsTrigger value="overview" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Activity className="w-3.5 h-3.5" /> Visão Geral
           </TabsTrigger>
+          <TabsTrigger value="anamnese" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
+            <Heart className="w-3.5 h-3.5" /> Anamnese
+          </TabsTrigger>
           <TabsTrigger value="avaliacoes" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Scale className="w-3.5 h-3.5" /> Avaliações
           </TabsTrigger>
@@ -483,7 +852,12 @@ export default function AlunoPerfilPage() {
           </div>
         </TabsContent>
 
-        {/* ── TAB 2: Avaliações ──────────────────────────────────────────── */}
+        {/* ── TAB 2: Anamnese ────────────────────────────────────────────── */}
+        <TabsContent value="anamnese" className="mt-4">
+          <AnamneseTab aluno={aluno} onSaved={() => { qc.invalidateQueries({ queryKey: ['aluno', id] }) }} />
+        </TabsContent>
+
+        {/* ── TAB 3: Avaliações ──────────────────────────────────────────── */}
         <TabsContent value="avaliacoes" className="mt-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-gray-900">Avaliações Físicas</h3>
