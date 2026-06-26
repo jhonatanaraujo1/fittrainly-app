@@ -602,7 +602,7 @@ export const adminApi = {
   },
 
   updateAluno: async (id: string, data: Partial<{
-    status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'; personalTrainerId: string; phone: string
+    status: 'ATIVO' | 'INATIVO' | 'SUSPENSO'; phone: string
     objetivo: string; genero: 'MASCULINO' | 'FEMININO' | 'OUTRO'; profissao: string
     prazoObjetivo: string; disponibilidadeSemanal: number
     doencas: string[]; doencasOutras: string; cirurgias: string; medicamentos: string
@@ -614,10 +614,7 @@ export const adminApi = {
     await delay(300)
     const aluno = db.alunos.find(a => a.id === id)
     if (!aluno) throw new Error('Aluno não encontrado')
-    if (data.personalTrainerId) {
-      const pt = db.pts.find(p => p.id === data.personalTrainerId)
-      if (pt) aluno.personalTrainerName = pt.name
-    }
+    // personalTrainerId is permanent — set at registration and cannot be changed
     Object.assign(aluno, data)
     return aluno
   },
