@@ -302,23 +302,29 @@ export default function PersonalTrainersPage() {
 
               {/* Actions */}
               <div className="flex gap-2">
+                <Link
+                  href={`/admin/personal-trainers/${pt.id}`}
+                  className="flex-1 h-8 text-xs font-semibold rounded-md border border-gray-900 bg-gray-900 text-white hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  Ver perfil
+                </Link>
                 <button
                   onClick={() => toggleInadimplente.mutate({ id: pt.id, value: !pt.inadimplente })}
                   disabled={toggleInadimplente.isPending}
-                  className={`flex-1 h-8 text-xs font-medium rounded-md border transition-colors flex items-center justify-center gap-1.5 ${
+                  className={`h-8 px-2 text-xs font-medium rounded-md border transition-colors flex items-center justify-center gap-1 ${
                     pt.inadimplente
                       ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
                       : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                   }`}>
                   {pt.inadimplente
-                    ? <><CheckCircle2 className="w-3 h-3" /> Marcar em dia</>
-                    : <><AlertTriangle className="w-3 h-3" /> Marcar inadimplente</>}
+                    ? <><CheckCircle2 className="w-3 h-3" /></>
+                    : <><AlertTriangle className="w-3 h-3" /></>}
                 </button>
                 <button
                   onClick={() => toggleActive.mutate({ id: pt.id, value: !pt.active })}
                   disabled={toggleActive.isPending}
-                  className="h-8 px-3 text-xs font-medium rounded-md border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">
-                  {pt.active ? 'Desativar' : 'Ativar'}
+                  className="h-8 px-2 text-xs font-medium rounded-md border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">
+                  {pt.active ? 'Off' : 'On'}
                 </button>
               </div>
             </motion.div>

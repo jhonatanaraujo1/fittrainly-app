@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Download } from 'lucide-react'
+import { Download, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +13,35 @@ import {
 import { billingApi } from '@/lib/api'
 import { formatCurrency, getInitials, avatarColor, planTypeLabel } from '@/lib/utils'
 import type { BillingEntry } from '@/types'
+
+function exportCSV(entries: BillingEntry[], total: number, month: string) {
+  const [year, m] = month.split('-')
+  const monthLabel = new Date(Number(year), Number(m) - 1, 1)
+    .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+
+  const rows = [
+    ['Personal Trainer', 'Plano', 'Tipo', 'Sessões', 'Valor (€)'],
+    ...entries.map(e => [
+      e.ptName,
+      e.planName,
+      planTypeLabel(e.planType),
+      String(e.sessionsCount ?? 0),
+      (e.value ?? 0).toFixed(2),
+    ]),
+    [],
+    ['', '', '', 'TOTAL', total.toFixed(2)],
+  ]
+
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `faturacao_${month}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast.success(`Exportado: faturacao_${month}.csv`, { icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" /> })
+}
 
 function monthOptions() {
   const opts = []
@@ -59,9 +88,10 @@ export default function BillingPage() {
           <Button
             variant="outline"
             className="h-9 text-sm gap-1.5"
-            onClick={() => toast.info('Exportação em breve')}
+            onClick={() => exportCSV(entries, total, selectedMonth)}
+            disabled={isLoading || entries.length === 0}
           >
-            <Download className="w-3.5 h-3.5" /> Exportar
+            <Download className="w-3.5 h-3.5" /> Exportar CSV
           </Button>
         </div>
       </div>
