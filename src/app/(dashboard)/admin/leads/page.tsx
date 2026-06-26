@@ -4,16 +4,19 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, MoreHorizontal, ChevronDown, ChevronRight,
-  Loader2, UserPlus, Phone, Mail, Share2,
-  Globe, Users, X, TrendingUp, Check,
+  Plus, MoreHorizontal, ChevronDown, Loader2, UserPlus,
+  Phone, Mail, Share2, Globe, Users, X, TrendingUp, Check,
+  Search, MessageCircle, Calendar, AlertCircle, Clock, ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatDistanceToNow, format, parseISO, isThisWeek, isSameMonth, isSameYear } from 'date-fns'
+import {
+  formatDistanceToNow, format, parseISO, isThisWeek,
+  isSameMonth, isSameYear, differenceInDays, isPast, isToday,
+} from 'date-fns'
 import { pt } from 'date-fns/locale'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { DateTimePicker } from '@/components/ui/date-picker'
+import { DatePicker, DateTimePicker } from '@/components/ui/date-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -48,18 +51,28 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
 }
 
 const INTERESSE_OPTIONS = ['Musculação', 'Funcional', 'Yoga/Pilates', 'Emagrecimento', 'Outro']
-const SOURCE_OPTIONS = ['Instagram', 'Google', 'Referência', 'Outro']
+const SOURCE_OPTIONS    = ['Instagram', 'Google', 'Referência', 'Outro']
+const RESPONSAVEL_OPTIONS = ['Úrsula', 'João', 'Ana', 'Pedro']
 
 const TAGS = [
-  { id: 'alta-intencao', label: 'Alta intenção',   cls: 'bg-green-100 text-green-700 ring-1 ring-green-200' },
-  { id: 'segue-preco',   label: 'Preço sensível',  cls: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200' },
-  { id: 'follow-up',     label: 'Follow-up',       cls: 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' },
-  { id: 'referencia',    label: 'Referência',      cls: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200' },
-  { id: 'urgente',       label: 'Urgente',         cls: 'bg-red-100 text-red-700 ring-1 ring-red-200' },
-  { id: 'grupo',         label: 'Quer grupo',      cls: 'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200' },
+  { id: 'alta-intencao', label: 'Alta intenção',  cls: 'bg-green-100 text-green-700 ring-1 ring-green-200' },
+  { id: 'segue-preco',   label: 'Preço sensível', cls: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200' },
+  { id: 'follow-up',     label: 'Follow-up',      cls: 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' },
+  { id: 'referencia',    label: 'Referência',     cls: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200' },
+  { id: 'urgente',       label: 'Urgente',        cls: 'bg-red-100 text-red-700 ring-1 ring-red-200' },
+  { id: 'grupo',         label: 'Quer grupo',     cls: 'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200' },
 ] as const
 
 type TagId = typeof TAGS[number]['id']
+
+// Dias sem movimento que disparam alerta por status
+const STALENESS_THRESHOLDS: Partial<Record<LeadStatus, { warn: number; crit: number }>> = {
+  NOVO:            { warn: 2,  crit: 5  },
+  CONTACTADO:      { warn: 3,  crit: 7  },
+  VISITA_AGENDADA: { warn: 2,  crit: 4  },
+  VISITOU:         { warn: 2,  crit: 4  },
+  NAO_DEU_FEEDBACK:{ warn: 7,  crit: 14 },
+}
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -74,6 +87,37 @@ function isCurrentMonth(isoDate?: string): boolean {
   return isSameMonth(d, now) && isSameYear(d, now)
 }
 
+function getStaleness(lead: MockLead): { level: 'critical' | 'warning' | null; days: number } {
+  const days = differenceInDays(new Date(), parseISO(lead.updatedAt))
+  const t = STALENESS_THRESHOLDS[lead.status as LeadStatus]
+  if (!t) return { level: null, days }
+  if (days >= t.crit) return { level: 'critical', days }
+  if (days >= t.warn) return { level: 'warning', days }
+  return { level: null, days }
+}
+
+function whatsappUrl(phone?: string): string | null {
+  if (!phone) return null
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length < 9) return null
+  return `https://wa.me/${digits}`
+}
+
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
+function matchesSearch(lead: MockLead, q: string): boolean {
+  if (!q) return true
+  const lower = q.toLowerCase()
+  return (
+    lead.name.toLowerCase().includes(lower) ||
+    (lead.phone ?? '').includes(lower) ||
+    (lead.email ?? '').toLowerCase().includes(lower) ||
+    (lead.responsavel ?? '').toLowerCase().includes(lower)
+  )
+}
+
 // ── Universal Move Dialog ─────────────────────────────────────────────────────
 
 function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
@@ -82,10 +126,12 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
   onClose: () => void
   onConfirm: (id: string, status: LeadStatus, data?: Partial<MockLead>) => void
 }) {
-  const [obs, setObs]               = useState(lead.observacoes ?? '')
-  const [selectedTags, setTags]     = useState<TagId[]>((lead.tags ?? []) as TagId[])
-  const [visitaDate, setVisitaDate] = useState('')
-  const [isPending, setIsPending]   = useState(false)
+  const [obs, setObs]                   = useState(lead.observacoes ?? '')
+  const [selectedTags, setTags]         = useState<TagId[]>((lead.tags ?? []) as TagId[])
+  const [visitaDate, setVisitaDate]     = useState('')
+  const [planoInteresse, setPlano]      = useState(lead.planoInteresse ?? '')
+  const [followUpDate, setFollowUpDate] = useState(lead.followUpDate ?? '')
+  const [isPending, setIsPending]       = useState(false)
 
   const needsDate  = targetStatus === 'VISITA_AGENDADA'
   const canConfirm = !needsDate || !!visitaDate
@@ -101,10 +147,12 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
     setIsPending(true)
     try {
       const data: Partial<MockLead> = {}
-      if (obs.trim()) data.observacoes = obs.trim()
-      if (selectedTags.length > 0) data.tags = selectedTags
+      if (obs.trim())           data.observacoes   = obs.trim()
+      if (selectedTags.length)  data.tags          = selectedTags
+      if (planoInteresse.trim()) data.planoInteresse = planoInteresse.trim()
+      if (followUpDate)         data.followUpDate  = followUpDate
       if (targetStatus === 'VISITA_AGENDADA') data.visitaDate = visitaDate
-      if (targetStatus === 'INSCRITO') data.inscritoEm = new Date().toISOString()
+      if (targetStatus === 'INSCRITO')        data.inscritoEm = new Date().toISOString()
       onConfirm(lead.id, targetStatus, data)
       onClose()
     } finally {
@@ -117,10 +165,10 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
       <motion.div
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.22 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col"
       >
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 flex items-start justify-between">
+        <div className="px-6 pt-6 pb-4 flex items-start justify-between flex-shrink-0">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${fromMeta.bg} ${fromMeta.color}`}>
@@ -140,22 +188,45 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
           </button>
         </div>
 
-        <div className="px-6 space-y-4 pb-4">
-          {/* DateTimePicker — only for VISITA_AGENDADA */}
+        {/* Scrollable body */}
+        <div className="px-6 space-y-4 pb-4 overflow-y-auto flex-1">
+          {/* DateTimePicker — only VISITA_AGENDADA */}
           {needsDate && (
             <div className="space-y-1.5">
               <Label className="text-sm font-semibold text-gray-700">
                 Data e hora da visita <span className="text-rose-500">*</span>
               </Label>
-              <DateTimePicker
-                value={visitaDate}
-                onChange={v => setVisitaDate(v)}
-                placeholder="Selecionar data e hora"
-              />
+              <DateTimePicker value={visitaDate} onChange={setVisitaDate} placeholder="Selecionar data e hora" />
             </div>
           )}
 
-          {/* Observação — always */}
+          {/* Plano de interesse */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-gray-700">
+              Plano de interesse <span className="text-gray-400 font-normal">(opcional)</span>
+            </Label>
+            <Input
+              value={planoInteresse}
+              onChange={e => setPlano(e.target.value)}
+              placeholder="Ex: Pack Mensal, 10 sessões, Trimestral..."
+              className="text-base min-h-[44px]"
+            />
+          </div>
+
+          {/* Próximo follow-up */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-gray-700">
+              Próximo contacto <span className="text-gray-400 font-normal">(opcional)</span>
+            </Label>
+            <DatePicker
+              value={followUpDate}
+              onChange={setFollowUpDate}
+              placeholder="Quando voltar a contactar?"
+              minDate={new Date().toISOString().slice(0, 10)}
+            />
+          </div>
+
+          {/* Observação */}
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold text-gray-700">
               Observação <span className="text-gray-400 font-normal">(opcional)</span>
@@ -169,7 +240,7 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
             />
           </div>
 
-          {/* Tags — always */}
+          {/* Tags */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold text-gray-700">
               Tags <span className="text-gray-400 font-normal">(opcional)</span>
@@ -178,14 +249,10 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
               {TAGS.map(tag => {
                 const active = selectedTags.includes(tag.id)
                 return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => toggleTag(tag.id)}
-                    className={`
-                      flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all min-h-[32px]
-                      ${active ? tag.cls : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}
-                    `}
+                  <button key={tag.id} type="button" onClick={() => toggleTag(tag.id)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all min-h-[32px] ${
+                      active ? tag.cls : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
                   >
                     {active && <Check className="w-3 h-3" />}
                     {tag.label}
@@ -197,7 +264,7 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 flex gap-2">
+        <div className="px-6 pb-6 pt-2 flex gap-2 flex-shrink-0 border-t border-gray-50">
           <button onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]"
           >
@@ -226,19 +293,6 @@ function StatusPickerMenu({ lead, onMoveTo, onClose }: {
   onMoveTo: (status: LeadStatus) => void
   onClose: () => void
 }) {
-  function renderBtn(status: LeadStatus) {
-    if (status === lead.status) return null
-    const meta = COLUMN_META[status]
-    return (
-      <button key={status} onClick={() => { onMoveTo(status); onClose() }}
-        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition-colors rounded-lg min-h-[40px] text-left"
-      >
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
-        <span className={`text-xs font-semibold ${meta.color}`}>{meta.label}</span>
-      </button>
-    )
-  }
-
   return (
     <>
       <div className="fixed inset-0 z-10" onClick={onClose} />
@@ -251,11 +305,31 @@ function StatusPickerMenu({ lead, onMoveTo, onClose }: {
       >
         <p className="px-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mover para...</p>
         <div className="px-1">
-          {MOVABLE_PIPELINE.map(renderBtn)}
+          {MOVABLE_PIPELINE.filter(s => s !== lead.status).map(status => {
+            const meta = COLUMN_META[status]
+            return (
+              <button key={status} onClick={() => { onMoveTo(status); onClose() }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition-colors rounded-lg min-h-[40px] text-left"
+              >
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
+                <span className={`text-xs font-semibold ${meta.color}`}>{meta.label}</span>
+              </button>
+            )
+          })}
         </div>
         <div className="h-px bg-gray-100 my-1.5 mx-3" />
         <div className="px-1">
-          {MOVABLE_EXTRA.map(renderBtn)}
+          {MOVABLE_EXTRA.filter(s => s !== lead.status).map(status => {
+            const meta = COLUMN_META[status]
+            return (
+              <button key={status} onClick={() => { onMoveTo(status); onClose() }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition-colors rounded-lg min-h-[40px] text-left"
+              >
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}`} />
+                <span className={`text-xs font-semibold ${meta.color}`}>{meta.label}</span>
+              </button>
+            )
+          })}
         </div>
         {lead.status === 'INSCRITO' && (
           <>
@@ -283,13 +357,14 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const SourceIcon = lead.source ? (SOURCE_ICON[lead.source] ?? Globe) : Globe
+  const staleness  = getStaleness(lead)
+  const waUrl      = whatsappUrl(lead.phone)
+  const leadTags   = (lead.tags ?? []).map(id => TAGS.find(t => t.id === id)).filter(Boolean)
 
-  function handleMenuMove(status: LeadStatus) {
-    setMenuOpen(false)
-    onOpenDialog(lead, status)
-  }
-
-  const leadTags = (lead.tags ?? []).map(id => TAGS.find(t => t.id === id)).filter(Boolean)
+  // Follow-up date status
+  const fuDate = lead.followUpDate ? parseISO(lead.followUpDate) : null
+  const fuOverdue = fuDate && isPast(fuDate) && !isToday(fuDate)
+  const fuToday   = fuDate && isToday(fuDate)
 
   return (
     <motion.div
@@ -298,41 +373,94 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.18 }}
       className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 relative"
     >
+      {/* Staleness stripe */}
+      {staleness.level && (
+        <div className={`absolute top-0 left-0 right-0 h-0.5 rounded-t-xl ${
+          staleness.level === 'critical' ? 'bg-red-400' : 'bg-amber-300'
+        }`} />
+      )}
+
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{lead.name}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{lead.name}</p>
+            {staleness.level && (
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                staleness.level === 'critical'
+                  ? 'bg-red-100 text-red-600'
+                  : 'bg-amber-100 text-amber-600'
+              }`}>
+                {staleness.days}d parado
+              </span>
+            )}
+          </div>
+
+          {/* Phone + WhatsApp */}
           {lead.phone && (
-            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-              <Phone className="w-3 h-3 flex-shrink-0" />{lead.phone}
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Phone className="w-3 h-3 text-gray-300 flex-shrink-0" />
+              <span className="text-xs text-gray-400">{lead.phone}</span>
+              {waUrl && (
+                <a href={waUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-green-500 hover:text-green-600 transition-colors flex-shrink-0"
+                  onClick={e => e.stopPropagation()}
+                  title="Abrir WhatsApp"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
           )}
+
+          {/* Email */}
           {lead.email && (
             <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5 truncate">
               <Mail className="w-3 h-3 flex-shrink-0" />{lead.email}
             </p>
           )}
         </div>
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="p-1 rounded-md text-gray-300 hover:text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-          <AnimatePresence>
-            {menuOpen && (
-              <StatusPickerMenu lead={lead} onMoveTo={handleMenuMove} onClose={() => setMenuOpen(false)} />
-            )}
-          </AnimatePresence>
+
+        {/* Responsável initial + menu */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {lead.responsavel && (
+            <span
+              className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-[9px] font-black flex items-center justify-center flex-shrink-0"
+              title={lead.responsavel}
+            >
+              {getInitials(lead.responsavel)}
+            </span>
+          )}
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="p-1 rounded-md text-gray-300 hover:text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            <AnimatePresence>
+              {menuOpen && (
+                <StatusPickerMenu
+                  lead={lead}
+                  onMoveTo={status => { setMenuOpen(false); onOpenDialog(lead, status) }}
+                  onClose={() => setMenuOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      {/* Badges */}
+      {/* Badges row */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {lead.interesse && (
           <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 text-white">
             {lead.interesse}
+          </span>
+        )}
+        {lead.planoInteresse && (
+          <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100">
+            {lead.planoInteresse}
           </span>
         )}
         {lead.source && (
@@ -356,8 +484,28 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
 
       {/* Visita badge */}
       {lead.visitaDate && (
-        <div className="text-xs font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
+        <div className="text-xs font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+          <Calendar className="w-3 h-3 flex-shrink-0" />
           Visita: {format(parseISO(lead.visitaDate), "d MMM 'às' HH'h'mm", { locale: pt })}
+        </div>
+      )}
+
+      {/* Follow-up date */}
+      {fuDate && (
+        <div className={`text-xs font-medium px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${
+          fuOverdue
+            ? 'bg-red-50 text-red-600'
+            : fuToday
+              ? 'bg-amber-50 text-amber-700'
+              : 'bg-gray-50 text-gray-500'
+        }`}>
+          <Clock className="w-3 h-3 flex-shrink-0" />
+          {fuOverdue
+            ? `Contacto em atraso — ${format(fuDate, "d MMM", { locale: pt })}`
+            : fuToday
+              ? 'Contactar hoje'
+              : `Contactar em ${format(fuDate, "d MMM", { locale: pt })}`
+          }
         </div>
       )}
 
@@ -372,7 +520,7 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
         </p>
       )}
 
-      {/* Quick actions — per status */}
+      {/* Quick actions */}
       {isAdvancing ? (
         <div className="mt-auto flex items-center justify-center min-h-[40px]">
           <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -380,60 +528,43 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
       ) : (
         <>
           {lead.status === 'NOVO' && (
-            <button
-              onClick={() => onOpenDialog(lead, 'CONTACTADO')}
-              className="mt-auto w-full min-h-[40px] text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
-            >
+            <button onClick={() => onOpenDialog(lead, 'CONTACTADO')}
+              className="mt-auto w-full min-h-[40px] text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
               <ChevronRight className="w-3.5 h-3.5" /> Marcar contactado
             </button>
           )}
-
           {lead.status === 'CONTACTADO' && (
             <div className="mt-auto flex gap-2">
-              <button
-                onClick={() => onOpenDialog(lead, 'VISITA_AGENDADA')}
-                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5"
-              >
+              <button onClick={() => onOpenDialog(lead, 'VISITA_AGENDADA')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5">
                 <ChevronRight className="w-3.5 h-3.5" /> Agendar visita
               </button>
-              <button
-                onClick={() => onOpenDialog(lead, 'NAO_DEU_FEEDBACK')}
-                className="min-h-[40px] px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors whitespace-nowrap"
-              >
+              <button onClick={() => onOpenDialog(lead, 'NAO_DEU_FEEDBACK')}
+                className="min-h-[40px] px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors whitespace-nowrap">
                 Sem feedback
               </button>
             </div>
           )}
-
           {lead.status === 'VISITA_AGENDADA' && (
             <div className="mt-auto flex gap-2">
-              <button
-                onClick={() => onOpenDialog(lead, 'VISITOU')}
-                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors flex items-center justify-center gap-1.5"
-              >
+              <button onClick={() => onOpenDialog(lead, 'VISITOU')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors flex items-center justify-center gap-1.5">
                 <Check className="w-3.5 h-3.5" /> Compareceu
               </button>
-              <button
-                onClick={() => onOpenDialog(lead, 'NAO_DEU_FEEDBACK')}
-                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center justify-center"
-              >
+              <button onClick={() => onOpenDialog(lead, 'NAO_DEU_FEEDBACK')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center justify-center">
                 Não veio
               </button>
             </div>
           )}
-
           {lead.status === 'VISITOU' && (
             <div className="mt-auto flex gap-2">
-              <button
-                onClick={() => onOpenDialog(lead, 'INSCRITO')}
-                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
-              >
+              <button onClick={() => onOpenDialog(lead, 'INSCRITO')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5">
                 <Check className="w-3.5 h-3.5" /> Inscrever
               </button>
-              <button
-                onClick={() => onOpenDialog(lead, 'VISITA_AGENDADA')}
-                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors flex items-center justify-center"
-              >
+              <button onClick={() => onOpenDialog(lead, 'VISITA_AGENDADA')}
+                className="flex-1 min-h-[40px] text-xs font-semibold rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors flex items-center justify-center">
                 Reagendar
               </button>
             </div>
@@ -454,7 +585,6 @@ function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge }: {
   badge?: string
 }) {
   const meta = COLUMN_META[status]
-
   return (
     <div className="flex flex-col gap-3 min-w-[260px] flex-1">
       <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${meta.bg} ring-1 ${meta.ring}`}>
@@ -466,13 +596,8 @@ function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge }: {
       </div>
       <div className="flex flex-col gap-3 min-h-[100px]">
         <AnimatePresence initial={false}>
-          {leads.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              onOpenDialog={onOpenDialog}
-              isAdvancing={advancingId === lead.id}
-            />
+          {leads.map(lead => (
+            <LeadCard key={lead.id} lead={lead} onOpenDialog={onOpenDialog} isAdvancing={advancingId === lead.id} />
           ))}
         </AnimatePresence>
         {leads.length === 0 && (
@@ -491,11 +616,9 @@ function CollapsibleSection({ title, count, chipCls, children }: {
   title: string; count: number; chipCls: string; children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-
   return (
     <div className="border-t border-gray-100 pt-4">
-      <button
-        onClick={() => setOpen((v) => !v)}
+      <button onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors min-h-[44px] w-full text-left"
       >
         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`} />
@@ -519,8 +642,15 @@ function CollapsibleSection({ title, count, chipCls, children }: {
 
 // ── New Lead Sheet ─────────────────────────────────────────────────────────────
 
-type NewLeadForm = { name: string; phone: string; email: string; interesse: string; source: string; observacoes: string }
-const EMPTY_FORM: NewLeadForm = { name: '', phone: '', email: '', interesse: '', source: '', observacoes: '' }
+type NewLeadForm = {
+  name: string; phone: string; email: string
+  interesse: string; source: string; responsavel: string
+  planoInteresse: string; observacoes: string
+}
+const EMPTY_FORM: NewLeadForm = {
+  name: '', phone: '', email: '', interesse: '', source: '',
+  responsavel: '', planoInteresse: '', observacoes: '',
+}
 
 function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
   const [open, setOpen] = useState(false)
@@ -530,9 +660,12 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
     mutationFn: () => leadApi.create({
       name: form.name, phone: form.phone || undefined, email: form.email || undefined,
       interesse: form.interesse || undefined, source: form.source || undefined,
-      observacoes: form.observacoes || undefined, status: 'NOVO',
+      responsavel: form.responsavel || undefined,
+      planoInteresse: form.planoInteresse || undefined,
+      observacoes: form.observacoes || undefined,
+      status: 'NOVO',
     }),
-    onSuccess: (lead) => {
+    onSuccess: lead => {
       onCreated(lead)
       toast.success(`Lead "${lead.name}" criado!`)
       setOpen(false); setForm(EMPTY_FORM)
@@ -547,7 +680,7 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
   }
 
   function setField<K extends keyof NewLeadForm>(key: K, value: NewLeadForm[K]) {
-    setForm((f) => ({ ...f, [key]: value }))
+    setForm(f => ({ ...f, [key]: value }))
   }
 
   return (
@@ -565,50 +698,49 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Nome *</Label>
-            <Input placeholder="André Pereira" value={form.name} onChange={(e) => setField('name', e.target.value)}
-              className="text-base min-h-[44px]" />
+            <Input placeholder="André Pereira" value={form.name} onChange={e => setField('name', e.target.value)} className="text-base min-h-[44px]" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Telefone *</Label>
-            <Input placeholder="+351 916 000 000" value={form.phone} onChange={(e) => setField('phone', e.target.value)}
-              className="text-base min-h-[44px]" />
+            <Input placeholder="+351 916 000 000" value={form.phone} onChange={e => setField('phone', e.target.value)} className="text-base min-h-[44px]" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Email</Label>
-            <Input type="email" placeholder="andre@email.com" value={form.email} onChange={(e) => setField('email', e.target.value)}
-              className="text-base min-h-[44px]" />
+            <Input type="email" placeholder="andre@email.com" value={form.email} onChange={e => setField('email', e.target.value)} className="text-base min-h-[44px]" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm font-semibold">Interesse</Label>
-            <Select value={form.interesse} onValueChange={(v) => setField('interesse', v ?? '')}>
-              <SelectTrigger className="text-base min-h-[44px]">
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {INTERESSE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Interesse</Label>
+              <Select value={form.interesse} onValueChange={v => setField('interesse', v ?? '')}>
+                <SelectTrigger className="text-base min-h-[44px]"><SelectValue placeholder="Modalidade..." /></SelectTrigger>
+                <SelectContent>{INTERESSE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Origem</Label>
+              <Select value={form.source} onValueChange={v => setField('source', v ?? '')}>
+                <SelectTrigger className="text-base min-h-[44px]"><SelectValue placeholder="Canal..." /></SelectTrigger>
+                <SelectContent>{SOURCE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm font-semibold">Origem</Label>
-            <Select value={form.source} onValueChange={(v) => setField('source', v ?? '')}>
-              <SelectTrigger className="text-base min-h-[44px]">
-                <SelectValue placeholder="Como nos conheceu?" />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Responsável</Label>
+              <Select value={form.responsavel} onValueChange={v => setField('responsavel', v ?? '')}>
+                <SelectTrigger className="text-base min-h-[44px]"><SelectValue placeholder="Quem trata?" /></SelectTrigger>
+                <SelectContent>{RESPONSAVEL_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Plano interesse</Label>
+              <Input placeholder="Ex: Mensal, 10 sess." value={form.planoInteresse} onChange={e => setField('planoInteresse', e.target.value)} className="text-base min-h-[44px]" />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Observações</Label>
-            <textarea
-              placeholder="Notas sobre o contacto..."
-              value={form.observacoes}
-              onChange={(e) => setField('observacoes', e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
-            />
+            <textarea placeholder="Notas sobre o contacto..." value={form.observacoes} onChange={e => setField('observacoes', e.target.value)} rows={3}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none" />
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => { setOpen(false); setForm(EMPTY_FORM) }}
@@ -636,6 +768,7 @@ export default function LeadsPage() {
   const [advancingId, setAdvancingId]   = useState<string | null>(null)
   const [mobileTab, setMobileTab]       = useState<LeadStatus>('NOVO')
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
+  const [search, setSearch]             = useState('')
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
     queryKey: ['leads'],
@@ -646,10 +779,8 @@ export default function LeadsPage() {
     mutationFn: ({ id, status, data }: { id: string; status: LeadStatus; data?: Partial<MockLead> }) =>
       leadApi.updateStatus(id, status, data),
     onMutate: ({ id }) => setAdvancingId(id),
-    onSuccess: (updated) => {
-      qc.setQueryData<MockLead[]>(['leads'], (prev) =>
-        prev?.map((l) => (l.id === updated.id ? updated : l)) ?? prev
-      )
+    onSuccess: updated => {
+      qc.setQueryData<MockLead[]>(['leads'], prev => prev?.map(l => l.id === updated.id ? updated : l) ?? prev)
       toast.success(`Lead movido para "${COLUMN_META[updated.status].label}"`)
     },
     onError: () => toast.error('Erro ao mover lead'),
@@ -665,20 +796,25 @@ export default function LeadsPage() {
   }
 
   function handleCreated(lead: MockLead) {
-    qc.setQueryData<MockLead[]>(['leads'], (prev) => (prev ? [lead, ...prev] : [lead]))
+    qc.setQueryData<MockLead[]>(['leads'], prev => prev ? [lead, ...prev] : [lead])
   }
 
-  // ── Grouping ──────────────────────────────────────────────────────────────
+  // ── Filter + group ────────────────────────────────────────────────────────
+
+  const filteredLeads = useMemo(
+    () => search ? allLeads.filter(l => matchesSearch(l, search)) : allLeads,
+    [allLeads, search],
+  )
 
   const byStatus = useMemo(() => {
     const all: LeadStatus[] = ['NOVO', 'CONTACTADO', 'VISITA_AGENDADA', 'VISITOU', 'INSCRITO', 'NAO_DEU_FEEDBACK', 'PERDIDO', 'ARQUIVADO']
-    const map = Object.fromEntries(all.map((s) => [s, [] as MockLead[]])) as Record<LeadStatus, MockLead[]>
-    for (const lead of allLeads) map[lead.status]?.push(lead)
+    const map = Object.fromEntries(all.map(s => [s, [] as MockLead[]])) as Record<LeadStatus, MockLead[]>
+    for (const lead of filteredLeads) map[lead.status]?.push(lead)
     return map
-  }, [allLeads])
+  }, [filteredLeads])
 
-  const inscritoThisMonth = byStatus.INSCRITO.filter((l) => isCurrentMonth(l.inscritoEm ?? l.updatedAt))
-  const inscritoArchived  = byStatus.INSCRITO.filter((l) => !isCurrentMonth(l.inscritoEm ?? l.updatedAt))
+  const inscritoThisMonth = byStatus.INSCRITO.filter(l => isCurrentMonth(l.inscritoEm ?? l.updatedAt))
+  const inscritoArchived  = byStatus.INSCRITO.filter(l => !isCurrentMonth(l.inscritoEm ?? l.updatedAt))
   const allArchived       = useMemo(() => [...byStatus.ARQUIVADO, ...inscritoArchived], [byStatus.ARQUIVADO, inscritoArchived])
 
   const arquivadosByMonth = useMemo(() => {
@@ -690,13 +826,13 @@ export default function LeadsPage() {
       if (!monthMap.has(key)) monthMap.set(key, { label, leads: [] })
       monthMap.get(key)!.leads.push(lead)
     }
-    return Array.from(monthMap.entries())
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([, v]) => v)
+    return Array.from(monthMap.entries()).sort(([a], [b]) => b.localeCompare(a)).map(([, v]) => v)
   }, [allArchived])
 
-  const pipelineLeads          = allLeads.filter((l) => (PIPELINE as string[]).includes(l.status))
-  const visitasEstaSemana      = allLeads.filter((l) => l.visitaDate != null && isThisWeek(parseISO(l.visitaDate))).length
+  // Stats
+  const pipelineLeads     = allLeads.filter(l => (PIPELINE as string[]).includes(l.status))
+  const visitasEstaSemana = allLeads.filter(l => l.visitaDate != null && isThisWeek(parseISO(l.visitaDate))).length
+  const followUpsHoje     = allLeads.filter(l => l.followUpDate && (isToday(parseISO(l.followUpDate)) || (isPast(parseISO(l.followUpDate)) && !isToday(parseISO(l.followUpDate))))).length
   const inscritoThisMonthCount = inscritoThisMonth.length
 
   return (
@@ -712,31 +848,66 @@ export default function LeadsPage() {
         <NewLeadSheet onCreated={handleCreated} />
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Pesquisar por nome, telefone, email ou responsável..."
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
       {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {[
-          { label: 'No pipeline',    value: pipelineLeads.length },
-          { label: 'Visitas semana', value: visitasEstaSemana },
-          { label: 'Inscritos mês',  value: inscritoThisMonthCount },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 flex flex-col gap-0.5">
-            <p className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-wide leading-tight">{label}</p>
-            <p className="text-xl sm:text-2xl font-black text-gray-900">{value}</p>
+          { label: 'No pipeline',     value: pipelineLeads.length,      icon: null },
+          { label: 'Visitas semana',  value: visitasEstaSemana,          icon: null },
+          { label: 'Inscritos mês',   value: inscritoThisMonthCount,     icon: null },
+          { label: 'Follow-ups',      value: followUpsHoje,              icon: AlertCircle, urgent: followUpsHoje > 0 },
+        ].map(({ label, value, urgent }) => (
+          <div key={label} className={`bg-white rounded-xl border shadow-sm px-3 py-3 flex flex-col gap-0.5 ${
+            urgent && value > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-100'
+          }`}>
+            <p className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide leading-tight ${
+              urgent && value > 0 ? 'text-amber-600' : 'text-gray-400'
+            }`}>{label}</p>
+            <p className={`text-xl sm:text-2xl font-black ${
+              urgent && value > 0 ? 'text-amber-700' : 'text-gray-900'
+            }`}>{value}</p>
           </div>
         ))}
       </div>
+
+      {/* Search empty state */}
+      {search && filteredLeads.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <Search className="w-8 h-8 text-gray-200" />
+          <p className="text-sm text-gray-400">Nenhum lead encontrado para &ldquo;{search}&rdquo;</p>
+          <button onClick={() => setSearch('')} className="text-sm text-gray-600 underline">Limpar pesquisa</button>
+        </div>
+      )}
 
       {/* Kanban */}
       {isLoading ? (
         <>
           <div className="lg:hidden space-y-3">
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {PIPELINE.map((s) => <Skeleton key={s} className="flex-shrink-0 h-11 w-28 rounded-xl" />)}
+              {PIPELINE.map(s => <Skeleton key={s} className="flex-shrink-0 h-11 w-28 rounded-xl" />)}
             </div>
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
           </div>
           <div className="hidden lg:flex gap-4 overflow-x-auto pb-4">
-            {PIPELINE.map((s) => (
+            {PIPELINE.map(s => (
               <div key={s} className="min-w-[260px] flex-1 flex flex-col gap-3">
                 <Skeleton className="h-10 rounded-xl" />
                 {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
@@ -744,18 +915,16 @@ export default function LeadsPage() {
             ))}
           </div>
         </>
-      ) : (
+      ) : !search || filteredLeads.length > 0 ? (
         <>
           {/* Mobile tab bar */}
           <div className="lg:hidden">
             <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 sm:-mx-5 sm:px-5 scrollbar-hide">
-              {PIPELINE.map((status) => {
+              {PIPELINE.map(status => {
                 const meta  = COLUMN_META[status]
                 const count = status === 'INSCRITO' ? inscritoThisMonth.length : (byStatus[status]?.length ?? 0)
                 return (
-                  <button
-                    key={status}
-                    onClick={() => setMobileTab(status)}
+                  <button key={status} onClick={() => setMobileTab(status)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium min-h-[44px] transition-colors ${
                       mobileTab === status
                         ? `${meta.bg} ${meta.color} ring-1 ${meta.ring}`
@@ -770,13 +939,8 @@ export default function LeadsPage() {
             </div>
             <div className="flex flex-col gap-3 mt-3">
               <AnimatePresence initial={false}>
-                {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).map((lead) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    onOpenDialog={handleOpenDialog}
-                    isAdvancing={advancingId === lead.id}
-                  />
+                {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).map(lead => (
+                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
                 ))}
               </AnimatePresence>
               {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).length === 0 && (
@@ -790,72 +954,66 @@ export default function LeadsPage() {
           {/* Desktop kanban */}
           <div className="hidden lg:block overflow-x-auto pb-4 -mx-7 px-7">
             <div className="flex gap-4 min-w-max">
-              {PIPELINE.map((status) => (
+              {PIPELINE.map(status => (
                 <KanbanColumn
                   key={status}
                   status={status}
                   leads={status === 'INSCRITO' ? inscritoThisMonth : byStatus[status]}
                   onOpenDialog={handleOpenDialog}
                   advancingId={advancingId}
-                  badge={
-                    status === 'INSCRITO' && byStatus.INSCRITO.length > inscritoThisMonth.length
-                      ? 'este mês'
-                      : undefined
-                  }
+                  badge={status === 'INSCRITO' && byStatus.INSCRITO.length > inscritoThisMonth.length ? 'este mês' : undefined}
                 />
               ))}
             </div>
           </div>
-        </>
-      )}
 
-      {/* Bottom sections */}
-      {!isLoading && (
-        <div className="space-y-0 pb-8">
-          <CollapsibleSection title="Sem Feedback" count={byStatus.NAO_DEU_FEEDBACK.length} chipCls="bg-rose-50 text-rose-600">
-            {byStatus.NAO_DEU_FEEDBACK.length === 0 ? (
-              <p className="text-sm text-gray-400 py-3">Nenhum lead sem feedback.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {byStatus.NAO_DEU_FEEDBACK.map((lead) => (
-                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
+          {/* Bottom sections */}
+          <div className="space-y-0 pb-8">
+            <CollapsibleSection title="Sem Feedback" count={byStatus.NAO_DEU_FEEDBACK.length} chipCls="bg-rose-50 text-rose-600">
+              {byStatus.NAO_DEU_FEEDBACK.length === 0 ? (
+                <p className="text-sm text-gray-400 py-3">Nenhum lead sem feedback.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {byStatus.NAO_DEU_FEEDBACK.map(lead => (
+                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                  ))}
+                </div>
+              )}
+            </CollapsibleSection>
 
-          <CollapsibleSection title="Perdidos" count={byStatus.PERDIDO.length} chipCls="bg-gray-100 text-gray-500">
-            {byStatus.PERDIDO.length === 0 ? (
-              <p className="text-sm text-gray-400 py-3">Nenhum lead perdido.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {byStatus.PERDIDO.map((lead) => (
-                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
+            <CollapsibleSection title="Perdidos" count={byStatus.PERDIDO.length} chipCls="bg-gray-100 text-gray-500">
+              {byStatus.PERDIDO.length === 0 ? (
+                <p className="text-sm text-gray-400 py-3">Nenhum lead perdido.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {byStatus.PERDIDO.map(lead => (
+                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                  ))}
+                </div>
+              )}
+            </CollapsibleSection>
 
-          <CollapsibleSection title="Arquivados" count={allArchived.length} chipCls="bg-slate-100 text-slate-500">
-            {allArchived.length === 0 ? (
-              <p className="text-sm text-gray-400 py-3">Sem inscritos arquivados.</p>
-            ) : (
-              <div className="space-y-6">
-                {arquivadosByMonth.map(({ label, leads }) => (
-                  <div key={label}>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 capitalize">{label}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {leads.map((lead) => (
-                        <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
-                      ))}
+            <CollapsibleSection title="Arquivados" count={allArchived.length} chipCls="bg-slate-100 text-slate-500">
+              {allArchived.length === 0 ? (
+                <p className="text-sm text-gray-400 py-3">Sem inscritos arquivados.</p>
+              ) : (
+                <div className="space-y-6">
+                  {arquivadosByMonth.map(({ label, leads }) => (
+                    <div key={label}>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 capitalize">{label}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {leads.map(lead => (
+                          <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
-        </div>
-      )}
+                  ))}
+                </div>
+              )}
+            </CollapsibleSection>
+          </div>
+        </>
+      ) : null}
 
       {/* Universal Move Dialog */}
       <AnimatePresence>

@@ -282,6 +282,8 @@ export interface Lead {
   visitaDate?: string
   observacoes?: string
   tags?: string[]
+  planoInteresse?: string
+  followUpDate?: string
   inscritoEm?: string
   createdAt: string
   updatedAt: string
