@@ -8,8 +8,9 @@ import {
   ArrowLeft, ChevronDown, Plus, Loader2, AlertTriangle,
   CalendarDays, Activity, Package, ClipboardList, History,
   Scale, Ruler, Percent, Dumbbell, CheckCircle2, Clock,
-  Heart, Edit2, X, Save,
+  Heart, Edit2, X, Save, Zap, ShieldAlert, CheckCheck, Ban,
 } from 'lucide-react'
+import { gerarProtocolos, SEVERIDADE_CONFIG } from '@/lib/clinical-protocols'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -96,6 +97,110 @@ const DOENCAS_OPTIONS = [
   { key: 'OSTEOPOROSE', label: 'Osteoporose' }, { key: 'ASMA', label: 'Asma' },
   { key: 'COLUNA', label: 'Problema de coluna' }, { key: 'OBESIDADE', label: 'Obesidade' },
 ]
+
+// ── Protocolo Clínico Tab ─────────────────────────────────────────────────────
+function ProtocoloClinicoTab({ aluno }: { aluno: MockAluno }) {
+  const protocolos = gerarProtocolos({
+    doencas: aluno.doencas,
+    doencasOutras: aluno.doencasOutras,
+    cirurgias: aluno.cirurgias,
+    limitacoesFisicas: aluno.limitacoesFisicas,
+  })
+
+  if (protocolos.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <ShieldAlert className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-gray-500 font-medium">Sem restrições registadas</p>
+        <p className="text-sm text-gray-400 mt-1">
+          Preenche a anamnese com doenças e limitações para gerar o protocolo clínico automático.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+        <Zap className="w-4 h-4 shrink-0" />
+        <span>Protocolo gerado automaticamente com base na anamnese. Serve como guia — o PT deve adaptar ao aluno.</span>
+      </div>
+
+      {protocolos.map(({ protocolo, origem, textoOrigem }) => {
+        const cfg = SEVERIDADE_CONFIG[protocolo.severidade]
+        return (
+          <motion.div
+            key={protocolo.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-xl border ${cfg.bg} ${cfg.border} overflow-hidden`}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-black/5">
+              <div className="flex items-center gap-2.5">
+                <ShieldAlert className="w-4 h-4 text-gray-600" />
+                <span className="font-semibold text-sm text-gray-900">{protocolo.condicao}</span>
+                {textoOrigem && (
+                  <span className="text-xs text-gray-400 italic">"{textoOrigem}"</span>
+                )}
+              </div>
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${cfg.badge}`}>
+                {cfg.label}
+              </span>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-black/5">
+              {/* Recomendados */}
+              <div className="p-5">
+                <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5" /> Exercícios recomendados
+                </p>
+                <div className="space-y-2.5">
+                  {protocolo.recomendados.map((ex, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-gray-800">{ex.nome}
+                          {ex.parametros && (
+                            <span className="ml-1.5 text-xs font-normal text-gray-400">· {ex.parametros}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">{ex.descricao}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Evitar */}
+              <div className="p-5">
+                <p className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Ban className="w-3.5 h-3.5" /> Evitar
+                </p>
+                <div className="space-y-2">
+                  {protocolo.evitar.map((ev, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <X className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                      <p className="text-xs text-gray-700">{ev}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Observações clínicas */}
+            <div className="px-5 py-3 border-t border-black/5 bg-black/[0.02]">
+              <p className="text-xs text-gray-600 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                {protocolo.observacoes}
+              </p>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
 
 function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void }) {
   const [editing, setEditing] = useState(false)
@@ -747,6 +852,9 @@ export default function AlunoPerfilPage() {
           <TabsTrigger value="anamnese" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Heart className="w-3.5 h-3.5" /> Anamnese
           </TabsTrigger>
+          <TabsTrigger value="protocolo" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
+            <Zap className="w-3.5 h-3.5" /> Protocolo Clínico
+          </TabsTrigger>
           <TabsTrigger value="avaliacoes" className="gap-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0">
             <Scale className="w-3.5 h-3.5" /> Avaliações
           </TabsTrigger>
@@ -857,7 +965,12 @@ export default function AlunoPerfilPage() {
           <AnamneseTab aluno={aluno} onSaved={() => { qc.invalidateQueries({ queryKey: ['aluno', id] }) }} />
         </TabsContent>
 
-        {/* ── TAB 3: Avaliações ──────────────────────────────────────────── */}
+        {/* ── TAB 3: Protocolo Clínico ───────────────────────────────────── */}
+        <TabsContent value="protocolo" className="mt-4">
+          <ProtocoloClinicoTab aluno={aluno} />
+        </TabsContent>
+
+        {/* ── TAB 4: Avaliações ──────────────────────────────────────────── */}
         <TabsContent value="avaliacoes" className="mt-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-gray-900">Avaliações Físicas</h3>

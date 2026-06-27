@@ -3,13 +3,14 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Ban } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DatePicker } from '@/components/ui/date-picker'
 import { workoutApi } from '@/lib/api'
 import { getInitials, avatarColor } from '@/lib/utils'
 import { db, uid } from '@/lib/mock-db'
+import { gerarProtocolos, SEVERIDADE_CONFIG } from '@/lib/clinical-protocols'
 import type { WorkoutPlan, Exercise } from '@/types'
 
 const MUSCLE_GROUPS = [
@@ -208,6 +209,13 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
     } catch { toast.error('Erro ao apagar plano') }
   }
 
+  const protocolos = gerarProtocolos({
+    doencas: aluno.doencas,
+    doencasOutras: aluno.doencasOutras,
+    cirurgias: aluno.cirurgias,
+    limitacoesFisicas: aluno.limitacoesFisicas,
+  })
+
   return (
     <div className="p-5 lg:p-7 max-w-2xl mx-auto space-y-5">
       {/* Header */}
@@ -229,6 +237,36 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
           <p className="text-xs text-gray-400">{aluno.personalTrainerName}</p>
         </div>
       </div>
+
+      {/* ── Alertas clínicos ──────────────────────────────────────────────── */}
+      {protocolos.length > 0 && (
+        <div className="space-y-2">
+          {protocolos.map(({ protocolo }) => {
+            const cfg = SEVERIDADE_CONFIG[protocolo.severidade]
+            return (
+              <div key={protocolo.id} className={`rounded-xl border ${cfg.bg} ${cfg.border} p-3.5 flex items-start gap-3`}>
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-gray-600" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-gray-800">{protocolo.condicao}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                    {protocolo.evitar.slice(0, 3).map((ev, i) => (
+                      <span key={i} className="flex items-center gap-1 text-xs text-red-700">
+                        <Ban className="w-3 h-3 shrink-0" /> {ev}
+                      </span>
+                    ))}
+                    {protocolo.evitar.length > 3 && (
+                      <span className="text-xs text-gray-400">+{protocolo.evitar.length - 3} mais</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
