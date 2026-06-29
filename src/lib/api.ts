@@ -142,6 +142,12 @@ export const dashboardApi = {
       upcomingCount: upcoming.length,
       completedCount: myBookings.filter(b => b.status === 'COMPLETED').length,
       ptName: aluno.personalTrainerName,
+      inscricaoDate: aluno.inscricaoDate,
+      pack: (() => {
+        const p = db.packs.find(pk => pk.alunoId === aluno.id && pk.status === 'ACTIVE')
+        if (!p) return undefined
+        return { total: p.total, used: p.used, remaining: p.total - p.used, sessionDuration: p.sessionDuration, expiresAt: p.expiresAt }
+      })(),
       recentSessions: myBookings
         .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
         .slice(0, 5)
@@ -283,14 +289,20 @@ export const availabilityApi = {
       for (const time of times) {
         const release = db.ptReleases.find(r => r.ptId === pt.id && r.date === date && r.slotTime === time)
         const { start: s, end: e } = slotKeyToISO(date, time)
+        const myCount = getPTSlotCount(pt.id, date, time)
+        const slotKey = `${date}-${time}`
+        const alunoNames = myCount > 0
+          ? db.bookings.filter(b => b.slotKey === slotKey && b.personalTrainerId === pt.id && b.status === 'CONFIRMED').map(b => b.alunoName)
+          : []
         result.push({
           date, slotTime: time,
           startTime: s, endTime: e,
           released: !!release,
           releaseId: release?.id,
           studioCount: getStudioSlotCount(date, time),
-          myBookings: getPTSlotCount(pt.id, date, time),
+          myBookings: myCount,
           studioMax: STUDIO_MAX_SPOTS,
+          alunoNames,
         })
       }
     }

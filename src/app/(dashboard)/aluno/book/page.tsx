@@ -87,7 +87,7 @@ export default function MinhasSessionsPage() {
       qc.invalidateQueries({ queryKey: ['aluno-dashboard'] })
       toast.success('Falta marcada — o teu PT foi notificado')
     },
-    onError: (e: Error) => toast.error(e.message || 'Cancela com pelo menos 24h de antecedência'),
+    onError: (e: Error) => toast.error(e.message || 'Cancela com pelo menos 24h de antecedência. Contacta o teu PT se precisares de ajuda.'),
   })
 
   async function handleConfirm(availId: string) {
@@ -136,7 +136,7 @@ export default function MinhasSessionsPage() {
           <span>{slots[0].packRemaining > 0 ? '✅' : '⚠️'}</span>
           <span>
             {slots[0].packRemaining > 0
-              ? <><strong>{slots[0].packRemaining}</strong> sessões no teu pack · Duração: <strong>{slots[0].sessionDuration} min</strong></>
+              ? <><strong>{slots[0].packRemaining}</strong> sessões disponíveis para agendar · Duração: <strong>{slots[0].sessionDuration} min</strong></>
               : 'Sem sessões no pack — fala com o teu PT para carregar mais'
             }
           </span>
@@ -170,12 +170,12 @@ export default function MinhasSessionsPage() {
       {/* Week toggle + confirmed badge */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-          {['Esta semana', 'Próxima semana'].map((label, idx) => (
+          {['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'].map((label, idx) => (
             <button
               key={label}
               onClick={() => setWeekOffset(idx)}
               className={cn(
-                'px-4 py-2 text-xs font-semibold rounded-md transition-all min-h-[36px]',
+                'px-3 py-2 text-xs font-semibold rounded-md transition-all min-h-[36px]',
                 weekOffset === idx ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               )}
             >
@@ -235,11 +235,9 @@ export default function MinhasSessionsPage() {
 
                     return (
                       <div key={slot.id} className="flex items-center px-4 py-3.5 gap-3">
-                        <div className="flex-shrink-0 w-24 sm:w-28">
+                        <div className="flex-shrink-0 w-16 sm:w-20">
                           <p className="text-sm font-black text-gray-900 tabular-nums">
                             {formatTime(slot.startTime)}
-                            <span className="text-gray-300 font-normal mx-0.5">–</span>
-                            {formatTime(slot.endTime)}
                           </p>
                         </div>
 
@@ -306,7 +304,7 @@ export default function MinhasSessionsPage() {
                               >
                                 {isLoadingThis
                                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  : <><CheckCircle2 className="w-3.5 h-3.5" /><span>Confirmar</span></>
+                                  : <><CheckCircle2 className="w-3.5 h-3.5" /><span>Agendar</span></>
                                 }
                               </motion.button>
                             )}

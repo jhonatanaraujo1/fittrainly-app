@@ -2,12 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Calendar, CheckCircle2, CalendarPlus } from 'lucide-react'
+import { Calendar, CheckCircle2, CalendarPlus, Package, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { StatCard } from '@/components/ui/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { dashboardApi } from '@/lib/api'
-import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor } from '@/lib/utils'
+import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import type { AlunoDashboard } from '@/types'
 
@@ -71,6 +71,53 @@ export default function AlunoDashboardPage() {
           <StatCard title="Sessões Agendadas" value={data?.upcomingCount ?? 0} icon={Calendar} iconColor="#C9A84C" delay={0.1} />
           <StatCard title="Sessões Realizadas" value={data?.completedCount ?? 0} icon={CheckCircle2} iconColor="#C9A84C" delay={0.15} />
         </div>
+      )}
+
+      {/* Pack / Contract summary */}
+      {!isLoading && data?.pack && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
+              <Package className="w-4 h-4 text-gray-400" />
+              <h2 className="text-sm font-semibold text-gray-900">O meu pack</h2>
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-gray-50">
+              <div className="px-4 py-4 text-center">
+                <p className="text-2xl font-black text-gray-900">{data.pack.remaining}</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Restantes</p>
+                <p className="text-[10px] text-gray-300 mt-0.5">de {data.pack.total}</p>
+              </div>
+              <div className="px-4 py-4 text-center">
+                <p className="text-2xl font-black text-gray-900">{data.pack.sessionDuration}<span className="text-sm font-medium text-gray-400">min</span></p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Por sessão</p>
+              </div>
+              <div className="px-4 py-4 text-center">
+                {data.pack.expiresAt ? (
+                  <>
+                    <p className="text-sm font-black text-gray-900 leading-tight">
+                      {new Date(data.pack.expiresAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </p>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Validade</p>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-400">—</p>
+                )}
+              </div>
+            </div>
+            {/* progress bar */}
+            <div className="px-5 pb-4">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all', data.pack.remaining <= 2 ? 'bg-orange-400' : 'bg-emerald-500')}
+                  style={{ width: `${Math.round((data.pack.remaining / data.pack.total) * 100)}%` }}
+                />
+              </div>
+              {data.pack.remaining <= 3 && (
+                <p className="text-[10px] text-orange-600 font-medium mt-1.5">Pack a acabar — fala com o teu PT para renovar</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
       )}
 
       {/* Recent sessions */}

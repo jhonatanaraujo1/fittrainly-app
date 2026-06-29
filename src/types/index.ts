@@ -97,6 +97,7 @@ export interface StudioSlot {
   studioCount: number
   myBookings: number
   studioMax: number
+  alunoNames?: string[]
 }
 
 // PT release record
@@ -197,12 +198,22 @@ export interface RecentSession {
   ptName: string
 }
 
+export interface PackSummary {
+  total: number
+  used: number
+  remaining: number
+  sessionDuration: 30 | 60
+  expiresAt?: string
+}
+
 export interface AlunoDashboard {
   nextSession?: NextSession
   upcomingCount: number
   completedCount: number
   ptName: string
   recentSessions: RecentSession[]
+  pack?: PackSummary
+  inscricaoDate?: string
 }
 
 export interface Exercise {

@@ -114,15 +114,14 @@ function WeekCalendar() {
                           'h-8 rounded-md flex items-center justify-center px-1',
                           slot.myBookings > 0
                             ? 'bg-[#1F3864] text-white'
-                            : slot.studioCount > 0
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-emerald-100 text-emerald-700',
+                            : 'bg-emerald-100 text-emerald-700',
                         )}
                       >
                         {slot.myBookings > 0 ? (
-                          <span className="text-[9px] font-bold">{slot.myBookings}✓</span>
-                        ) : slot.studioCount > 0 ? (
-                          <span className="text-[9px]">{slot.studioCount}/{slot.studioMax}</span>
+                          <span className="text-[9px] font-bold leading-none truncate max-w-full px-0.5">
+                            {slot.alunoNames?.[0]?.split(' ')[0] ?? `${slot.myBookings}✓`}
+                            {(slot.alunoNames?.length ?? 0) > 1 && <span className="opacity-70"> +{(slot.alunoNames?.length ?? 1) - 1}</span>}
+                          </span>
                         ) : (
                           <span className="text-[9px] opacity-50">livre</span>
                         )}
@@ -136,8 +135,7 @@ function WeekCalendar() {
             {/* Legend */}
             <div className="flex gap-4 mt-2 px-1">
               {[
-                { color: 'bg-[#1F3864]', label: 'Os meus alunos' },
-                { color: 'bg-blue-100', label: 'Outro PT' },
+                { color: 'bg-[#1F3864]', label: 'Com aluno' },
                 { color: 'bg-emerald-100', label: 'Livre' },
               ].map(({ color, label }) => (
                 <span key={label} className="flex items-center gap-1 text-[9px] text-gray-400">
