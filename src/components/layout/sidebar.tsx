@@ -104,8 +104,8 @@ export function Sidebar() {
       </nav>
 
       {/* User footer */}
-      <div className="px-3 py-4 border-t border-white/[0.07]">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-white/[0.05] transition-colors group">
+      <div className="px-3 py-3 border-t border-white/[0.07] space-y-1">
+        <div className="flex items-center gap-3 px-2 py-2 rounded-md">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
             style={{ background: 'rgba(201,168,76,0.2)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.3)' }}
@@ -116,14 +116,14 @@ export function Sidebar() {
             <p className="text-white text-xs font-medium truncate">{user.name}</p>
             <p className="text-white/35 text-[11px] truncate">{user.email}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-1.5 rounded-md text-white/25 hover:text-white/70 hover:bg-white/[0.08] transition-colors opacity-0 group-hover:opacity-100"
-            title="Sair"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
         </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-white/40 hover:text-white hover:bg-white/[0.07] transition-all text-xs font-medium"
+        >
+          <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+          Sair
+        </button>
       </div>
     </aside>
   )
