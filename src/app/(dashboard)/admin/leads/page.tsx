@@ -118,6 +118,17 @@ function matchesSearch(lead: MockLead, q: string): boolean {
   )
 }
 
+function matchesPeriod(lead: MockLead, period: string): boolean {
+  if (period === 'all') return true
+  const d = parseISO(lead.createdAt)
+  const now = new Date()
+  if (period === '30d')  return differenceInDays(now, d) <= 30
+  if (period === '90d')  return differenceInDays(now, d) <= 90
+  if (period === '6m')   return differenceInDays(now, d) <= 180
+  if (period === '1y')   return differenceInDays(now, d) <= 365
+  return format(d, 'yyyy') === period
+}
+
 // ── Universal Move Dialog ─────────────────────────────────────────────────────
 
 function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
@@ -769,6 +780,7 @@ export default function LeadsPage() {
   const [mobileTab, setMobileTab]       = useState<LeadStatus>('NOVO')
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
   const [search, setSearch]             = useState('')
+  const [periodFilter, setPeriodFilter] = useState('all')
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
     queryKey: ['leads'],
@@ -802,8 +814,8 @@ export default function LeadsPage() {
   // ── Filter + group ────────────────────────────────────────────────────────
 
   const filteredLeads = useMemo(
-    () => search ? allLeads.filter(l => matchesSearch(l, search)) : allLeads,
-    [allLeads, search],
+    () => allLeads.filter(l => matchesSearch(l, search) && matchesPeriod(l, periodFilter)),
+    [allLeads, search, periodFilter],
   )
 
   const byStatus = useMemo(() => {
@@ -848,23 +860,40 @@ export default function LeadsPage() {
         <NewLeadSheet onCreated={handleCreated} />
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Pesquisar por nome, telefone, email ou responsável..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
-        />
-        {search && (
-          <button onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+      {/* Search + Period filter */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Pesquisar por nome, telefone, email ou responsável..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
+          />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <select
+          value={periodFilter}
+          onChange={e => setPeriodFilter(e.target.value)}
+          className="flex-shrink-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
+        >
+          <option value="all">Todos os períodos</option>
+          <option value="30d">Últimos 30 dias</option>
+          <option value="90d">Últimos 3 meses</option>
+          <option value="6m">Últimos 6 meses</option>
+          <option value="1y">Último ano</option>
+          <option disabled>──────</option>
+          {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map(y => (
+            <option key={y} value={String(y)}>{y}</option>
+          ))}
+        </select>
       </div>
 
       {/* Quick stats */}
@@ -888,12 +917,12 @@ export default function LeadsPage() {
         ))}
       </div>
 
-      {/* Search empty state */}
-      {search && filteredLeads.length === 0 && (
+      {/* Search/filter empty state */}
+      {(search || periodFilter !== 'all') && filteredLeads.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Search className="w-8 h-8 text-gray-200" />
-          <p className="text-sm text-gray-400">Nenhum lead encontrado para &ldquo;{search}&rdquo;</p>
-          <button onClick={() => setSearch('')} className="text-sm text-gray-600 underline">Limpar pesquisa</button>
+          <p className="text-sm text-gray-400">Nenhum lead encontrado com os filtros aplicados</p>
+          <button onClick={() => { setSearch(''); setPeriodFilter('all') }} className="text-sm text-gray-600 underline">Limpar filtros</button>
         </div>
       )}
 
@@ -915,7 +944,7 @@ export default function LeadsPage() {
             ))}
           </div>
         </>
-      ) : !search || filteredLeads.length > 0 ? (
+      ) : (!search && periodFilter === 'all') || filteredLeads.length > 0 ? (
         <>
           {/* Mobile tab bar */}
           <div className="lg:hidden">
