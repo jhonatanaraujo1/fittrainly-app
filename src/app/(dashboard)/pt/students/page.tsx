@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Users, UserPlus, X } from 'lucide-react'
+import { Users, UserPlus, X, Dumbbell, ChevronRight } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { alunoApi } from '@/lib/api'
 import { getInitials, avatarColor, formatDate, formatTime } from '@/lib/utils'
@@ -118,6 +119,7 @@ function NewStudentDialog({ onClose }: { onClose: () => void }) {
 }
 
 export default function PTStudentsPage() {
+  const router = useRouter()
   const [showNew, setShowNew] = useState(false)
 
   const { data: students = [], isLoading } = useQuery<(Aluno & { activePack?: unknown })[]>({
@@ -197,6 +199,17 @@ export default function PTStudentsPage() {
                   <p className="text-gray-400 italic truncate">"{s.objetivo}"</p>
                 )}
               </div>
+
+              <button
+                onClick={() => router.push(`/pt/treinos/${s.id}`)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#1F3864] hover:text-white text-gray-600 text-xs font-semibold transition-colors group min-h-[40px]"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Dumbbell className="w-3.5 h-3.5 flex-shrink-0" />
+                  Ver Plano de Treino
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover:text-white transition-colors" />
+              </button>
             </motion.div>
           ))}
         </div>

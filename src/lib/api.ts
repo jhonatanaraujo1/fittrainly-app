@@ -777,6 +777,28 @@ export const leadApi = {
     const idx = db.leads.findIndex(l => l.id === id)
     if (idx !== -1) db.leads.splice(idx, 1)
   },
+  convertToAluno: async (leadId: string, personalTrainerId: string) => {
+    await delay(400)
+    const lead = db.leads.find(l => l.id === leadId)
+    if (!lead) throw new Error('Lead não encontrado')
+    const pt = db.pts.find(p => p.id === personalTrainerId) ?? db.pts[0]
+    const newUserId = 'u-' + uid()
+    const newAlunoId = 'al-' + uid()
+    db.users.push({ id: newUserId, email: lead.email ?? `${newAlunoId}@fittrainly.com`, password: 'aluno123', name: lead.name, role: 'ALUNO' })
+    const aluno = {
+      id: newAlunoId, userId: newUserId, name: lead.name,
+      email: lead.email ?? '', phone: lead.phone ?? undefined,
+      personalTrainerId: pt.id, personalTrainerName: pt.name,
+      status: 'ATIVO' as const, inscricaoDate: new Date().toISOString().slice(0, 10),
+      completedSessions: 0, objetivo: lead.interesse ?? undefined,
+    }
+    db.alunos.push(aluno)
+    pt.alunoCount = db.alunos.filter(a => a.personalTrainerId === pt.id).length
+    lead.status = 'INSCRITO'
+    lead.inscritoEm = new Date().toISOString()
+    lead.updatedAt = new Date().toISOString()
+    return aluno
+  },
 }
 
 // ── Notificações ──────────────────────────────────────────────────────────────

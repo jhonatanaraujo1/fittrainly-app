@@ -24,7 +24,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { leadApi } from '@/lib/api'
+import { leadApi, ptApi } from '@/lib/api'
 import type { MockLead } from '@/lib/mock-db'
 import type { LeadStatus } from '@/types'
 
@@ -297,12 +297,93 @@ function MoveDialog({ lead, targetStatus, onClose, onConfirm }: {
   )
 }
 
+// ── Convert to Aluno Dialog ───────────────────────────────────────────────────
+
+function ConvertDialog({ lead, onClose, onConverted }: {
+  lead: MockLead
+  onClose: () => void
+  onConverted: () => void
+}) {
+  const [selectedPT, setSelectedPT] = useState('')
+  const [isPending, setIsPending] = useState(false)
+  const { data: pts = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['pts-list'],
+    queryFn: () => ptApi.list().then((list: { id: string; name: string }[]) => list),
+  })
+
+  async function handleConvert() {
+    if (!selectedPT) { toast.error('Seleciona um Personal Trainer'); return }
+    setIsPending(true)
+    try {
+      await leadApi.convertToAluno(lead.id, selectedPT)
+      toast.success(`${lead.name} convertido em aluno com sucesso!`)
+      onConverted()
+      onClose()
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao converter')
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.22 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+      >
+        <div className="px-6 pt-6 pb-4 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700">Inscrito → Aluno</span>
+            </div>
+            <h3 className="text-base font-black text-gray-900">{lead.name}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Vai criar acesso na plataforma com senha <strong>aluno123</strong></p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center ml-2">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 pb-6 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700">Atribuir ao Personal Trainer</label>
+            <Select value={selectedPT} onValueChange={v => setSelectedPT(v ?? '')}>
+              <SelectTrigger className="min-h-[44px] text-sm">
+                <SelectValue placeholder="Selecionar PT..." />
+              </SelectTrigger>
+              <SelectContent>
+                {pts.map((pt: { id: string; name: string }) => (
+                  <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">
+              Cancelar
+            </button>
+            <button onClick={handleConvert} disabled={isPending || !selectedPT}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 transition-colors min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40">
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Converter em Aluno'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 // ── Status Picker Menu ─────────────────────────────────────────────────────────
 
-function StatusPickerMenu({ lead, onMoveTo, onClose }: {
+function StatusPickerMenu({ lead, onMoveTo, onClose, onConvert }: {
   lead: MockLead
   onMoveTo: (status: LeadStatus) => void
   onClose: () => void
+  onConvert: () => void
 }) {
   return (
     <>
@@ -346,7 +427,7 @@ function StatusPickerMenu({ lead, onMoveTo, onClose }: {
           <>
             <div className="h-px bg-gray-100 my-1.5 mx-3" />
             <div className="px-1">
-              <button onClick={onClose}
+              <button onClick={() => { onClose(); onConvert() }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-green-700 hover:bg-green-50 transition-colors rounded-lg min-h-[40px]">
                 <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="text-xs font-semibold">Converter em aluno</span>
@@ -361,10 +442,11 @@ function StatusPickerMenu({ lead, onMoveTo, onClose }: {
 
 // ── Lead Card ─────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, onOpenDialog, isAdvancing }: {
+function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert }: {
   lead: MockLead
   onOpenDialog: (lead: MockLead, targetStatus: LeadStatus) => void
   isAdvancing: boolean
+  onConvert: (lead: MockLead) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const SourceIcon = lead.source ? (SOURCE_ICON[lead.source] ?? Globe) : Globe
@@ -455,6 +537,7 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
                   lead={lead}
                   onMoveTo={status => { setMenuOpen(false); onOpenDialog(lead, status) }}
                   onClose={() => setMenuOpen(false)}
+                  onConvert={() => { setMenuOpen(false); onConvert(lead) }}
                 />
               )}
             </AnimatePresence>
@@ -588,12 +671,13 @@ function LeadCard({ lead, onOpenDialog, isAdvancing }: {
 
 // ── Kanban Column ─────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge }: {
+function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge, onConvert }: {
   status: LeadStatus
   leads: MockLead[]
   onOpenDialog: (lead: MockLead, targetStatus: LeadStatus) => void
   advancingId: string | null
   badge?: string
+  onConvert: (lead: MockLead) => void
 }) {
   const meta = COLUMN_META[status]
   return (
@@ -608,7 +692,7 @@ function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge }: {
       <div className="flex flex-col gap-3 min-h-[100px]">
         <AnimatePresence initial={false}>
           {leads.map(lead => (
-            <LeadCard key={lead.id} lead={lead} onOpenDialog={onOpenDialog} isAdvancing={advancingId === lead.id} />
+            <LeadCard key={lead.id} lead={lead} onOpenDialog={onOpenDialog} isAdvancing={advancingId === lead.id} onConvert={onConvert} />
           ))}
         </AnimatePresence>
         {leads.length === 0 && (
@@ -776,11 +860,12 @@ type ActiveDialog = { lead: MockLead; targetStatus: LeadStatus } | null
 
 export default function LeadsPage() {
   const qc = useQueryClient()
-  const [advancingId, setAdvancingId]   = useState<string | null>(null)
-  const [mobileTab, setMobileTab]       = useState<LeadStatus>('NOVO')
-  const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
-  const [search, setSearch]             = useState('')
-  const [periodFilter, setPeriodFilter] = useState('all')
+  const [advancingId, setAdvancingId]     = useState<string | null>(null)
+  const [mobileTab, setMobileTab]         = useState<LeadStatus>('NOVO')
+  const [activeDialog, setActiveDialog]   = useState<ActiveDialog>(null)
+  const [convertLead, setConvertLead]     = useState<MockLead | null>(null)
+  const [search, setSearch]               = useState('')
+  const [periodFilter, setPeriodFilter]   = useState('all')
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
     queryKey: ['leads'],
@@ -809,6 +894,14 @@ export default function LeadsPage() {
 
   function handleCreated(lead: MockLead) {
     qc.setQueryData<MockLead[]>(['leads'], prev => prev ? [lead, ...prev] : [lead])
+  }
+
+  function handleConvertLead(lead: MockLead) {
+    setConvertLead(lead)
+  }
+
+  function handleConverted() {
+    qc.invalidateQueries({ queryKey: ['leads'] })
   }
 
   // ── Filter + group ────────────────────────────────────────────────────────
@@ -969,7 +1062,7 @@ export default function LeadsPage() {
             <div className="flex flex-col gap-3 mt-3">
               <AnimatePresence initial={false}>
                 {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).map(lead => (
-                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
                 ))}
               </AnimatePresence>
               {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).length === 0 && (
@@ -991,6 +1084,7 @@ export default function LeadsPage() {
                   onOpenDialog={handleOpenDialog}
                   advancingId={advancingId}
                   badge={status === 'INSCRITO' && byStatus.INSCRITO.length > inscritoThisMonth.length ? 'este mês' : undefined}
+                  onConvert={handleConvertLead}
                 />
               ))}
             </div>
@@ -1004,7 +1098,7 @@ export default function LeadsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {byStatus.NAO_DEU_FEEDBACK.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
                   ))}
                 </div>
               )}
@@ -1016,7 +1110,7 @@ export default function LeadsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {byStatus.PERDIDO.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
                   ))}
                 </div>
               )}
@@ -1032,7 +1126,7 @@ export default function LeadsPage() {
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 capitalize">{label}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {leads.map(lead => (
-                          <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} />
+                          <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
                         ))}
                       </div>
                     </div>
@@ -1052,6 +1146,17 @@ export default function LeadsPage() {
             targetStatus={activeDialog.targetStatus}
             onClose={() => setActiveDialog(null)}
             onConfirm={handleDialogConfirm}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Convert to Aluno Dialog */}
+      <AnimatePresence>
+        {convertLead && (
+          <ConvertDialog
+            lead={convertLead}
+            onClose={() => setConvertLead(null)}
+            onConverted={handleConverted}
           />
         )}
       </AnimatePresence>
