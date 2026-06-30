@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dumbbell, Loader2, Shield, Lock, Eye, EyeOff, CheckCircle2, Star, HelpCircle, KeyRound, ArrowLeft } from 'lucide-react'
+import { Dumbbell, Loader2, Shield, Eye, EyeOff, CheckCircle2, Star, HelpCircle, KeyRound, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,12 +46,12 @@ const ROLE_HOME: Record<string, string> = {
   ALUNO: '/aluno',
 }
 
-// Trust badges for left panel
+// Trust signals for left panel
 const TRUST = [
-  { label: 'Dados encriptados AES-256', icon: '🔐' },
-  { label: 'Autenticação JWT + bcrypt', icon: '🛡️' },
-  { label: 'RGPD & LGPD Compliant', icon: '✅' },
-  { label: 'Pagamentos via Stripe (TLS 1.3)', icon: '💳' },
+  { label: 'RGPD & LGPD Compliant' },
+  { label: 'Pagamentos seguros via Stripe' },
+  { label: 'Parceiro Nike Strength' },
+  { label: 'Suporte dedicado 7 dias' },
 ]
 
 // Stats to make the product look live
@@ -180,13 +180,12 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Trust badges */}
-          <div className="space-y-2.5">
-            <p className="text-white/25 text-[10px] font-bold tracking-[0.2em] uppercase mb-3">Segurança & Conformidade</p>
-            {TRUST.map(({ label, icon }) => (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-sm w-5">{icon}</span>
-                <span className="text-white/45 text-[13px] font-medium">{label}</span>
+          {/* Trust signals */}
+          <div className="space-y-2">
+            {TRUST.map(({ label }) => (
+              <div key={label} className="flex items-center gap-2.5">
+                <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#C9A84C' }} />
+                <span className="text-white/40 text-[13px] font-medium">{label}</span>
               </div>
             ))}
           </div>
@@ -217,9 +216,9 @@ export default function LoginPage() {
             </div>
             <span className="font-black text-base tracking-tight" style={{ color: '#111111' }}>fitTrainly</span>
           </div>
-          <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-            <Lock className="w-2.5 h-2.5" /> SSL
-          </div>
+          <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+            RGPD Compliant
+          </span>
         </div>
 
         {/* Form area */}
@@ -485,24 +484,19 @@ export default function LoginPage() {
               <p className="text-center text-[10px] text-gray-300 mt-2.5">1 clique → login automático</p>
             </div>
 
-            {/* Security badges */}
+            {/* Conformidade */}
             <div className="pt-2 border-t border-gray-50">
-              <p className="text-center text-[10px] text-gray-300 mb-3 font-medium uppercase tracking-wider">Segurança & Conformidade</p>
-              <div className="flex items-center justify-center flex-wrap gap-2">
+              <div className="flex items-center justify-center gap-2 flex-wrap">
                 {[
-                  { label: 'SSL 256-bit', color: '#16a34a' },
-                  { label: 'bcrypt SHA-256', color: '#1d4ed8' },
-                  { label: 'JWT Auth', color: '#7c3aed' },
-                  { label: 'RGPD', color: '#0369a1' },
-                  { label: 'LGPD', color: '#0369a1' },
-                  { label: 'Stripe Ready', color: '#6772e5' },
+                  { label: 'RGPD Compliant', color: '#0369a1' },
+                  { label: 'LGPD Compliant', color: '#0369a1' },
                 ].map(({ label, color }) => (
                   <span
                     key={label}
-                    className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border"
-                    style={{ color, background: `${color}0f`, borderColor: `${color}20` }}
+                    className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full border"
+                    style={{ color, background: `${color}0c`, borderColor: `${color}22` }}
                   >
-                    <Lock className="w-2.5 h-2.5" />
+                    <Shield className="w-2.5 h-2.5" />
                     {label}
                   </span>
                 ))}

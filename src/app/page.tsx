@@ -347,8 +347,8 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: 0.4, ease }}
                 className="text-lg leading-relaxed mb-8 max-w-md"
                 style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Gestão completa para estúdios boutique de personal training.
-                Agenda, PTs, alunos e faturação — num só lugar.
+                Chega de gerir horários em WhatsApp e pagamentos em Excel.
+                Agenda, PTs, alunos e faturação — tudo controlado, tudo automático.
               </motion.p>
 
               {/* CTAs */}
@@ -360,10 +360,10 @@ export default function LandingPage() {
                 <Link href="/login"
                   className="group flex items-center gap-2.5 px-7 font-black text-[12px] tracking-[0.15em] uppercase rounded-xl transition-all hover:scale-105 active:scale-95 hover:shadow-[0_0_40px_rgba(201,168,76,0.3)]"
                   style={{ height: 52, background: '#C9A84C', color: '#111111' }}>
-                  Ver Demo Grátis
+                  Ver Demonstração
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                 </Link>
-                <a href="#features"
+                <a href="#how"
                   className="flex items-center gap-2 px-7 font-semibold text-sm rounded-xl transition-all hover:bg-white/[0.06]"
                   style={{ height: 52, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   Como funciona
@@ -377,9 +377,9 @@ export default function LandingPage() {
                 transition={{ delay: 0.8, duration: 0.5 }}
                 className="flex flex-wrap items-center gap-6">
                 {[
-                  { icon: Check, text: 'Sem cartão de crédito' },
                   { icon: Check, text: 'Setup em 5 minutos' },
-                  { icon: Check, text: 'RGPD Compliant' },
+                  { icon: Check, text: 'RGPD & LGPD Compliant' },
+                  { icon: Check, text: 'Suporte em Português' },
                 ].map(({ icon: Icon, text }) => (
                   <div key={text} className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
@@ -441,13 +441,13 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <p className="text-center text-[11px] font-semibold tracking-[0.15em] uppercase mb-8"
             style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Estúdios de Lisboa, Almada e Porto já usam
+            O que muda quando o estúdio funciona com sistema
           </p>
           <div className="grid grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: <Counter target={120} suffix="+" />, l: 'Estúdios geridos' },
-              { n: <Counter target={4800} suffix="+" />, l: 'Sessões agendadas' },
-              { n: <Counter target={98} suffix="%" />, l: 'Taxa de satisfação' },
+              { n: <Counter target={8} suffix="h" />, l: 'Gestão semanal recuperada' },
+              { n: <Counter target={100} suffix="%" />, l: 'Faturação automatizada' },
+              { n: <Counter target={3} suffix=" perfis" />, l: 'Admin · PT · Aluno' },
             ].map((m, i) => (
               <div key={i} className="py-8 px-6 text-center" style={{ background: '#111111' }}>
                 <p className="font-black mb-1" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#C9A84C' }}>
@@ -594,7 +594,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-base mb-12" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            Experimenta grátis. Sem cartão. Sem compromisso.
+            Acede à demonstração completa. Sem preencher formulários.
           </motion.p>
 
           <motion.div
@@ -608,7 +608,7 @@ export default function LandingPage() {
               style={{ height: 56, background: '#C9A84C', color: '#111111' }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 50px rgba(201,168,76,0.3)')}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
-              🏢 Ver Demo — Admin
+              Aceder à Demonstração
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link href="/login"
@@ -622,7 +622,7 @@ export default function LandingPage() {
                 e.currentTarget.style.background = 'transparent'
                 e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
               }}>
-              💪 Ver como PT
+              Ver como Personal Trainer
             </Link>
           </motion.div>
 
