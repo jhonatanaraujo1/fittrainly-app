@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
+import { db } from '@/lib/mock-db'
 
 const DEMO = [
   {
@@ -75,6 +76,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'reset'>('login')
   const [resetEmail, setResetEmail] = useState('')
   const [resetSent, setResetSent] = useState(false)
+  const [contactHint, setContactHint] = useState<'pt' | 'admin' | 'fittrainly' | null>(null)
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
@@ -103,6 +105,10 @@ export default function LoginPage() {
       router.push(ROLE_HOME[data.user.role] ?? '/login')
     } catch {
       setError('Email ou password incorrectos. Verifique e tente novamente.')
+      const found = db.users.find(u => u.email.toLowerCase() === finalEmail.toLowerCase())
+      if (found?.role === 'ALUNO') setContactHint('pt')
+      else if (found?.role === 'PERSONAL_TRAINER') setContactHint('admin')
+      else setContactHint('fittrainly')
       if (!e) setLoading(false)
     } finally {
       if (!e) setLoading(false)
@@ -346,7 +352,7 @@ export default function LoginPage() {
                     inputMode="email"
                     placeholder="admin@mgstudio.com"
                     value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    onChange={e => { setEmail(e.target.value); setContactHint(null) }}
                     onBlur={() => setTouched(t => ({ ...t, email: true }))}
                     className={`h-12 text-sm pl-4 transition-all ${
                       emailError
@@ -525,18 +531,46 @@ export default function LoginPage() {
             </div>
             </>}
 
-            {/* Help section for alunos */}
+            {/* Help section — contextual after login failure */}
             <div className="pt-3 border-t border-gray-50 flex items-center justify-center gap-1.5">
               <HelpCircle className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
               <p className="text-[11px] text-gray-400 text-center">
-                Está com problemas?{' '}
-                <button
-                  type="button"
-                  onClick={() => toast.info('Contacte o seu Personal Trainer para obter ajuda com o acesso à plataforma.', { duration: 5000 })}
-                  className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2"
-                >
-                  Contacte o seu PT
-                </button>
+                {contactHint === 'pt' && (
+                  <>Está com problemas?{' '}
+                    <button type="button"
+                      onClick={() => toast.info('Contacte o seu Personal Trainer para obter ajuda com o acesso à plataforma.', { duration: 5000 })}
+                      className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
+                      Contacte o seu Personal Trainer
+                    </button>
+                  </>
+                )}
+                {contactHint === 'admin' && (
+                  <>Está com problemas?{' '}
+                    <button type="button"
+                      onClick={() => toast.info('Contacte o administrador do seu estúdio para obter ajuda com o acesso.', { duration: 5000 })}
+                      className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
+                      Contacte o seu Administrador
+                    </button>
+                  </>
+                )}
+                {contactHint === 'fittrainly' && (
+                  <>Está com problemas?{' '}
+                    <button type="button"
+                      onClick={() => toast.info('Entre em contacto com o suporte do fitTrainly para obter ajuda.', { duration: 5000 })}
+                      className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
+                      Entre em contacto com o fitTrainly
+                    </button>
+                  </>
+                )}
+                {contactHint === null && (
+                  <>Está com problemas?{' '}
+                    <button type="button"
+                      onClick={() => toast.info('Contacte o suporte para obter ajuda com o acesso à plataforma.', { duration: 5000 })}
+                      className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
+                      Obtenha ajuda
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </div>
