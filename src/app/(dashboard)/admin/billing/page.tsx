@@ -71,7 +71,7 @@ export default function BillingPage() {
     <div className="p-5 lg:p-7 space-y-5 max-w-4xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Faturação</h1>
+          <h1 className="text-xl font-black text-gray-900">Faturação</h1>
           <p className="text-sm text-gray-400 mt-0.5">Valores calculados por plano de aluguel</p>
         </div>
         <div className="flex items-center gap-2">
@@ -94,7 +94,7 @@ export default function BillingPage() {
             <Download className="w-3.5 h-3.5" /> Exportar CSV
           </Button>
           <a
-            href="/relatorio/faturacao"
+            href={`/relatorio/faturacao?month=${selectedMonth}`}
             target="_blank"
             rel="noopener"
           >

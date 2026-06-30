@@ -181,7 +181,7 @@ function slotISO(date: string, time: string): { start: string; end: string } {
 function genPTReleases(
   ptId: string, ptName: string,
   filter: (dow: number, time: string) => boolean,
-  weeksAhead = 3,
+  weeksAhead = 4,
 ): MockPTRelease[] {
   const releases: MockPTRelease[] = []
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -519,6 +519,8 @@ function createDB() {
     { id: 'pack-04', alunoId: AL.helena, alunoName: 'Helena Martins',  total: 10, used: 7,  sessionDuration: 60, expiresAt: '2026-07-20', status: 'ACTIVE',   createdAt: '2026-01-20T00:00:00Z' },
     { id: 'pack-05', alunoId: AL.tiago,  alunoName: 'Tiago Ferreira',  total: 10, used: 4,  sessionDuration: 60, expiresAt: '2026-08-28', status: 'ACTIVE',   createdAt: '2026-02-28T00:00:00Z' },
     { id: 'pack-06', alunoId: AL.rui,    alunoName: 'Rui Oliveira',    total: 10, used: 10, sessionDuration: 60, expiresAt: '2026-05-01', status: 'DEPLETED', createdAt: '2025-12-01T00:00:00Z' },
+    { id: 'pack-07', alunoId: AL.paula,  alunoName: 'Paula Lima',      total: 10, used: 2,  sessionDuration: 60, expiresAt: '2026-09-10', status: 'ACTIVE',   createdAt: '2026-05-10T00:00:00Z' },
+    { id: 'pack-08', alunoId: AL.miguel, alunoName: 'Miguel Sousa',    total: 10, used: 1,  sessionDuration: 60, expiresAt: '2026-09-20', status: 'ACTIVE',   createdAt: '2026-05-20T00:00:00Z' },
   ]
 
   const leads: MockLead[] = [

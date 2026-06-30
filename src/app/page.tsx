@@ -443,7 +443,7 @@ export default function LandingPage() {
             style={{ color: 'rgba(255,255,255,0.2)' }}>
             O que muda quando o estúdio funciona com sistema
           </p>
-          <div className="grid grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
               { n: <Counter target={8} suffix="h" />, l: 'Gestão semanal recuperada' },
               { n: <Counter target={100} suffix="%" />, l: 'Faturação automatizada' },
@@ -550,7 +550,7 @@ export default function LandingPage() {
                   MG Estúdio Boutique · Almada, Portugal 🇵🇹
                 </p>
               </div>
-              <div className="ml-auto hidden sm:flex items-center gap-1">
+              <div className="ml-auto flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
                   <motion.svg key={i} className="w-4 h-4" fill="#C9A84C" viewBox="0 0 20 20"
                     initial={{ opacity: 0, scale: 0 }}

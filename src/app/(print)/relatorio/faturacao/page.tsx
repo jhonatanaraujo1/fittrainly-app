@@ -14,17 +14,23 @@ interface BillingEntry {
   valorCalculado: number
 }
 
-function calcValor(pt: MockPT, plan?: MockPlan): number {
+function calcValor(plan: MockPlan | undefined, sessionsCount: number): number {
   if (!plan) return 0
   if (plan.type === 'MONTHLY') return plan.priceMonthly ?? 0
   if (plan.type === 'WEEKLY') return (plan.priceWeekly ?? 0) * 4
-  if (plan.type === 'HOURLY') return (plan.priceHourly ?? 0) * pt.hoursThisMonth
+  if (plan.type === 'HOURLY') return (plan.priceHourly ?? 0) * sessionsCount
   return 0
 }
 
 export default function RelatorioFaturacaoPage() {
   const [data, setData] = useState<BillingEntry[] | null>(null)
-  const [month] = useState(() => new Date())
+  const [month] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const m = new URLSearchParams(window.location.search).get('month')
+      if (m) return new Date(m + '-01')
+    }
+    return new Date()
+  })
 
   useEffect(() => {
     const monthStart = startOfMonth(month)
@@ -40,7 +46,7 @@ export default function RelatorioFaturacaoPage() {
             (b.status === 'CONFIRMED' || b.status === 'COMPLETED') &&
             d >= monthStart && d <= monthEnd
         }).length
-        return { pt, plan, sessionsCount, valorCalculado: calcValor(pt, plan) }
+        return { pt, plan, sessionsCount, valorCalculado: calcValor(plan, sessionsCount) }
       })
       .sort((a, b) => b.valorCalculado - a.valorCalculado)
 

@@ -354,7 +354,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={e => { setEmail(e.target.value); setContactHint(null) }}
                     onBlur={() => setTouched(t => ({ ...t, email: true }))}
-                    className={`h-12 text-sm pl-4 transition-all ${
+                    className={`h-12 text-base pl-4 transition-all ${
                       emailError
                         ? 'border-red-300 focus:border-red-400 focus:ring-red-100 bg-red-50/30'
                         : email && !emailError

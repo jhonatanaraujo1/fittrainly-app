@@ -855,7 +855,13 @@ export const billingApi = {
         if (plan.type === 'WEEKLY') value = (plan.priceWeekly ?? 0) * 4
         if (plan.type === 'HOURLY') value = (plan.priceHourly ?? 0) * pt.hoursThisMonth
       }
-      return { ptId: pt.id, ptName: pt.name, planName: plan?.name ?? '—', planType: plan?.type ?? '—', sessionsCount: pt.hoursThisMonth, value }
+      const sessionsCount = db.bookings.filter(b =>
+        b.personalTrainerId === pt.id &&
+        (b.status === 'CONFIRMED' || b.status === 'COMPLETED') &&
+        b.startTime.slice(0, 7) === currentMonth
+      ).length
+      if (plan?.type === 'HOURLY') value = (plan.priceHourly ?? 0) * sessionsCount
+      return { ptId: pt.id, ptName: pt.name, planName: plan?.name ?? '—', planType: plan?.type ?? '—', sessionsCount, value }
     })
     return { entries, total: entries.reduce((s, e) => s + e.value, 0), month: currentMonth }
   },

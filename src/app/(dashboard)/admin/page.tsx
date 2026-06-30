@@ -1,8 +1,9 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Users, UserCheck, Calendar, Clock, ArrowRight } from 'lucide-react'
+import { Users, UserCheck, Calendar, Clock, ArrowRight, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -32,6 +33,7 @@ const DAY_LABELS: Record<string, string> = {
 }
 
 export default function AdminDashboardPage() {
+  const router = useRouter()
   const { user } = useAuthStore()
   const { data, isLoading } = useQuery<AdminDashboard>({
     queryKey: ['admin-dashboard'],
@@ -72,7 +74,7 @@ export default function AdminDashboardPage() {
           className="rounded-lg px-5 py-3.5 flex items-center gap-3"
           style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <span style={{ color: '#C9A84C', fontSize: '1rem' }}>↑</span>
+          <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: '#C9A84C' }} />
           <p className="text-sm text-white/80">
             {occupation > 70
               ? `Estúdio com alta procura esta semana — ${Math.round(occupation)}% de ocupação`
@@ -180,7 +182,7 @@ export default function AdminDashboardPage() {
               <tbody className="divide-y divide-gray-50">
                 {(pts ?? []).map((pt: PersonalTrainer) => (
                   <tr key={pt.id} className="hover:bg-gray-50 transition-colors group cursor-pointer"
-                    onClick={() => window.location.href = `/admin/personal-trainers`}>
+                    onClick={() => router.push(`/admin/personal-trainers/${pt.id}`)}>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full ${avatarColor(pt.name)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
