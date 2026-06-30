@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, CalendarPlus, History,
   Dumbbell, LogOut, Layers, ClipboardList,
-  Bell, TrendingUp, Users2, X, ClipboardCheck,
+  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -22,6 +22,7 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/admin/modalidades',       label: 'Modalidades',       icon: Layers },
     { href: '/admin/plans',             label: 'Planos de Aluguel', icon: CreditCard },
     { href: '/admin/billing',           label: 'Faturação',         icon: Receipt },
+    { href: '/admin/relatorios',        label: 'Relatórios',        icon: BarChart3 },
     { href: '/admin/leads',             label: 'Leads',             icon: TrendingUp },
     { href: '/admin/notificacoes',      label: 'Notificações',      icon: Bell },
   ],
