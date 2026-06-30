@@ -132,6 +132,12 @@ function AlunoForm({ pts, onSuccess }: { pts: MockPT[]; onSuccess: () => void })
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['admin-alunos'] })
       toast.success(`${created.name} adicionado com sucesso! 🎉`)
+      setTimeout(() => {
+        toast.success(
+          `📧 Email de boas-vindas com dados de acesso enviado para ${created.email}`,
+          { duration: 5000, id: 'email-aluno-bv' }
+        )
+      }, 800)
       onSuccess()
     },
     onError: (err: Error) => toast.error(err.message ?? 'Erro ao criar aluno'),

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dumbbell, Loader2, Shield, Lock, Eye, EyeOff, CheckCircle2, Star } from 'lucide-react'
+import { Dumbbell, Loader2, Shield, Lock, Eye, EyeOff, CheckCircle2, Star, HelpCircle, KeyRound, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -72,6 +72,23 @@ export default function LoginPage() {
   const [loadingDemo, setLoadingDemo] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [touched, setTouched] = useState({ email: false, password: false })
+  const [mode, setMode] = useState<'login' | 'reset'>('login')
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetSent, setResetSent] = useState(false)
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) {
+      toast.error('Introduza um email válido')
+      return
+    }
+    await new Promise(r => setTimeout(r, 800))
+    toast.success(
+      `📧 Se o email existir na plataforma, receberá as instruções em breve.`,
+      { duration: 6000 }
+    )
+    setResetSent(true)
+  }
 
   async function doLogin(e?: string, p?: string) {
     const finalEmail = e ?? email
@@ -211,12 +228,32 @@ export default function LoginPage() {
 
             {/* Header */}
             <div>
-              <h2 className="text-[1.6rem] font-black text-gray-900 tracking-tight leading-tight">
-                Bem-vindo de volta
-              </h2>
-              <p className="text-[14px] text-gray-400 mt-1.5">
-                Acede à tua plataforma de gestão
-              </p>
+              {mode === 'reset' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setResetSent(false) }}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors mb-3"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao login
+                  </button>
+                  <h2 className="text-[1.6rem] font-black text-gray-900 tracking-tight leading-tight">
+                    Recuperar password
+                  </h2>
+                  <p className="text-[14px] text-gray-400 mt-1.5">
+                    Enviamos instruções para o teu email
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-[1.6rem] font-black text-gray-900 tracking-tight leading-tight">
+                    Bem-vindo de volta
+                  </h2>
+                  <p className="text-[14px] text-gray-400 mt-1.5">
+                    Acede à tua plataforma de gestão
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Security indicator (desktop only shown on right) */}
@@ -228,8 +265,71 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Form */}
-            <form
+            {/* Reset password mode */}
+            {mode === 'reset' && (
+              <form onSubmit={handleReset} className="space-y-4" noValidate>
+                {resetSent ? (
+                  <div className="flex flex-col items-center gap-4 py-6 text-center">
+                    <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
+                      <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 text-base">Instruções enviadas</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Verifique <strong>{resetEmail}</strong> e siga as instruções.
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Não recebeu? Contacte o seu PT.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setMode('login'); setResetSent(false) }}
+                      className="text-sm font-semibold text-gray-700 underline underline-offset-2 hover:text-gray-900 transition-colors"
+                    >
+                      Voltar ao login
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="reset-email" className="text-sm font-semibold text-gray-700">Email da conta</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        value={resetEmail}
+                        onChange={e => setResetEmail(e.target.value)}
+                        placeholder="o.teu@email.com"
+                        className="h-12 text-base rounded-xl border-gray-200 focus:border-gray-900 focus:ring-gray-900/10"
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!resetEmail}
+                      className="w-full h-12 rounded-xl font-bold text-[15px] tracking-wide transition-all disabled:opacity-40 active:scale-[0.98] flex items-center justify-center gap-2"
+                      style={{ background: '#111111', color: '#ffffff' }}
+                    >
+                      <KeyRound className="w-4 h-4" />
+                      Enviar instruções
+                    </button>
+                    <p className="text-center text-xs text-gray-400">
+                      Não tem acesso ao email?{' '}
+                      <button
+                        type="button"
+                        onClick={() => toast.info('Contacte o seu Personal Trainer para obter ajuda com o acesso.', { duration: 5000 })}
+                        className="font-semibold text-gray-600 hover:text-gray-900 underline underline-offset-2 transition-colors"
+                      >
+                        Contacte o seu PT
+                      </button>
+                    </p>
+                  </>
+                )}
+              </form>
+            )}
+
+            {/* Login Form */}
+            {mode === 'login' && <form
               onSubmit={e => { e.preventDefault(); doLogin() }}
               className="space-y-4"
               noValidate
@@ -337,9 +437,21 @@ export default function LoginPage() {
                   'Entrar na plataforma'
                 )}
               </button>
-            </form>
 
-            {/* Demo quick access */}
+              {/* Forgot password link */}
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => { setMode('reset'); setResetSent(false); setResetEmail('') }}
+                  className="text-xs text-gray-400 hover:text-gray-700 transition-colors underline underline-offset-2"
+                >
+                  Esqueceu a password?
+                </button>
+              </div>
+            </form>}
+
+            {/* Demo quick access — hidden in reset mode */}
+            {mode === 'login' && <>
             <div>
               <div className="relative flex items-center gap-3 mb-4">
                 <div className="flex-1 h-px bg-gray-100" />
@@ -415,6 +527,22 @@ export default function LoginPage() {
               </div>
               <p className="text-center text-[10px] text-gray-300 mt-2">
                 Pagamentos geridos dentro da plataforma · Dados nunca armazenados no servidor
+              </p>
+            </div>
+            </>}
+
+            {/* Help section for alunos */}
+            <div className="pt-3 border-t border-gray-50 flex items-center justify-center gap-1.5">
+              <HelpCircle className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+              <p className="text-[11px] text-gray-400 text-center">
+                Está com problemas?{' '}
+                <button
+                  type="button"
+                  onClick={() => toast.info('Contacte o seu Personal Trainer para obter ajuda com o acesso à plataforma.', { duration: 5000 })}
+                  className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2"
+                >
+                  Contacte o seu PT
+                </button>
               </p>
             </div>
           </div>

@@ -196,7 +196,7 @@ export default function RelatoriosPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-fit">
+      <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 overflow-x-auto max-w-full">
         {TABS.map(t => (
           <button
             key={t.key}
@@ -240,8 +240,8 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead>
                 <tr className="border-b border-gray-100" style={{ background: '#f9fafb' }}>
                   {['Personal Trainer', 'Esta Semana', 'Semana Passada', 'Variação', 'Status'].map(h => (
@@ -324,8 +324,8 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-gray-100" style={{ background: '#f9fafb' }}>
                   {['Personal Trainer', 'Este Mês', 'Mês Passado', 'Variação', 'Receita Gerada', 'Plano'].map(h => (

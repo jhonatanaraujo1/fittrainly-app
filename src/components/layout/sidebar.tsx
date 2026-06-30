@@ -137,7 +137,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-white/40 hover:text-white hover:bg-white/[0.07] transition-all text-xs font-medium"
+          className="w-full flex items-center gap-2.5 px-2 py-2.5 rounded-md text-white/40 hover:text-white hover:bg-white/[0.07] transition-all text-xs font-medium min-h-[44px]"
         >
           <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
           Sair

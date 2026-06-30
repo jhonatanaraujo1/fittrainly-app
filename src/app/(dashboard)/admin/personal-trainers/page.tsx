@@ -361,6 +361,12 @@ export default function PersonalTrainersPage() {
       qc.invalidateQueries({ queryKey: ['admin-pts'] })
       qc.invalidateQueries({ queryKey: ['admin-dashboard'] })
       toast.success(`${created.name ?? 'PT'} adicionado com sucesso! 🎉`)
+      setTimeout(() => {
+        toast.success(
+          `📧 Email de boas-vindas com instruções de uso da plataforma enviado para ${created.email}`,
+          { duration: 5000, id: 'email-pt-bv' }
+        )
+      }, 800)
       setOpen(false)
     },
     onError: () => toast.error('Erro ao criar Personal Trainer. Verifica os dados e tente novamente.'),
@@ -440,7 +446,7 @@ export default function PersonalTrainersPage() {
       {/* Tabs + Sort */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {/* Filter tabs */}
-        <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+        <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 overflow-x-auto max-w-full flex-shrink-0">
           {TABS.map(tab => (
             <button key={tab.key} onClick={() => setFilter(tab.key)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${

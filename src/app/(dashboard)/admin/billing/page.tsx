@@ -110,7 +110,7 @@ export default function BillingPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto"
       >
         {isLoading ? (
           <div className="p-5 space-y-3">
@@ -121,7 +121,7 @@ export default function BillingPage() {
             Sem dados de faturação para este período
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[340px]">
             <thead>
               <tr className="text-xs text-gray-400 bg-gray-50">
                 <th className="text-left px-5 py-3 font-medium">Personal Trainer</th>

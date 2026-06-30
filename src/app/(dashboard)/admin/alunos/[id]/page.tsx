@@ -936,7 +936,7 @@ export default function AlunoPerfilPage() {
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all bg-emerald-500"
-                        style={{ width: `${((activePack.total - activePack.used) / activePack.total) * 100}%` }}
+                        style={{ width: `${((activePack.total - activePack.used) / Math.max(1, activePack.total)) * 100}%` }}
                       />
                     </div>
                     {activePack.expiresAt && (
@@ -1326,7 +1326,7 @@ export default function AlunoPerfilPage() {
             <div className="space-y-3">
               {packs.map((pack, i) => {
                 const remaining = pack.total - pack.used
-                const pct = (remaining / pack.total) * 100
+                const pct = (remaining / Math.max(1, pack.total)) * 100
                 const isLast = remaining === 1
                 return (
                   <motion.div
