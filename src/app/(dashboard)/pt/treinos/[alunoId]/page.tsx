@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Ban } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Ban, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -232,10 +232,19 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
         >
           {getInitials(aluno.name)}
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-gray-900">Treino de {aluno.name}</h1>
           <p className="text-xs text-gray-400">{aluno.personalTrainerName}</p>
         </div>
+        <a
+          href={`/relatorio/treino/${alunoId}`}
+          target="_blank"
+          rel="noopener"
+          className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0 min-h-[44px]"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          PDF
+        </a>
       </div>
 
       {/* ── Alertas clínicos ──────────────────────────────────────────────── */}

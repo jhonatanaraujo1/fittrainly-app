@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Download, CheckCircle2 } from 'lucide-react'
+import { Download, CheckCircle2, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -93,6 +93,15 @@ export default function BillingPage() {
           >
             <Download className="w-3.5 h-3.5" /> Exportar CSV
           </Button>
+          <a
+            href="/relatorio/faturacao"
+            target="_blank"
+            rel="noopener"
+          >
+            <Button variant="outline" className="h-9 text-sm gap-1.5" disabled={isLoading || entries.length === 0}>
+              <Printer className="w-3.5 h-3.5" /> Relatório PDF
+            </Button>
+          </a>
         </div>
       </div>
 

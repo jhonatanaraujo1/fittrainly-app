@@ -8,7 +8,7 @@ import {
   ArrowLeft, ChevronDown, Plus, Loader2, AlertTriangle,
   CalendarDays, Activity, Package, ClipboardList, History,
   Scale, Ruler, Percent, Dumbbell, CheckCircle2, Clock,
-  Heart, Edit2, X, Save, Zap, ShieldAlert, CheckCheck, Ban,
+  Heart, Edit2, X, Save, Zap, ShieldAlert, CheckCheck, Ban, Printer,
 } from 'lucide-react'
 import { gerarProtocolos, SEVERIDADE_CONFIG } from '@/lib/clinical-protocols'
 import { toast } from 'sonner'
@@ -266,7 +266,14 @@ function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-900">Ficha de Anamnese</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-gray-900">Ficha de Anamnese</h3>
+            {aluno.anamneseAssinadaEm && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                ✓ Assinada pelo aluno
+              </span>
+            )}
+          </div>
           <button onClick={() => setEditing(true)}
             className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">
             <Edit2 className="w-3.5 h-3.5" /> Editar
@@ -757,6 +764,17 @@ export default function AlunoPerfilPage() {
 
           {/* Quick actions */}
           <div className="flex flex-wrap gap-2">
+            {/* Relatório PDF */}
+            <a
+              href={`/relatorio/aluno/${aluno.id}`}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-gray-200 text-sm font-medium bg-white hover:bg-gray-50 min-h-[44px] transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Relatório PDF
+            </a>
+
             {/* Editar status */}
             <DropdownMenu>
               <DropdownMenuTrigger

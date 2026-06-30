@@ -221,6 +221,15 @@ export const alunoApi = {
     return db.alunos.find(a => a.userId === user?.id) ?? db.alunos[0]
   },
 
+  assinarAnamnese: async (nome: string) => {
+    await delay(300)
+    const user = getCurrentUser()
+    const aluno = db.alunos.find(a => a.userId === user?.id) ?? db.alunos[0]
+    aluno.anamneseAssinadaEm = new Date().toISOString()
+    aluno.anamneseAssinadaNome = nome
+    return { ...aluno }
+  },
+
   myStudents: async () => {
     await delay(250)
     const user = getCurrentUser()

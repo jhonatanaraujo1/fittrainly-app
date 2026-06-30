@@ -86,6 +86,10 @@ export interface MockAluno {
   prazoObjetivo?: string
   disponibilidadeSemanal?: number
   observacoesGerais?: string
+
+  // Assinatura digital da anamnese
+  anamneseAssinadaEm?: string    // ISO datetime
+  anamneseAssinadaNome?: string  // Nome confirmado pelo aluno
 }
 
 // PT releases a studio slot for their alunos to book
