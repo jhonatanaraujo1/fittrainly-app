@@ -281,6 +281,7 @@ export const availabilityApi = {
       date: string; slotTime: string; startTime: string; endTime: string
       released: boolean; releaseId?: string
       studioCount: number; myBookings: number; studioMax: number
+      alunoNames?: string[]
     }> = []
 
     for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
