@@ -65,12 +65,12 @@ export const modalidadeApi = {
 }
 
 // ── Personal Trainers ─────────────────────────────────────────────────────────
-// NOTA: backend não confirma se retorna `sessionsThisMonth` no list — usar
-// fallback 0 até validar o DTO exato (PTResponse) contra o Swagger/OpenAPI.
+// PTResponse real usa `hoursThisMonth` (confirmado lendo PTDtos.kt), não
+// `sessionsThisMonth` como o mock — mapeado explicitamente abaixo.
 export const ptApi = {
   list: async () =>
     apiFetch<Array<Record<string, unknown>>>('/api/v1/personal-trainers')
-      .then(list => list.map(pt => ({ sessionsThisMonth: 0, ...pt }))),
+      .then(list => list.map(pt => ({ sessionsThisMonth: pt.hoursThisMonth ?? 0, ...pt }))),
   me: async () => apiFetch('/api/v1/personal-trainers/me'),
   create: async (data: { name: string; email: string; password: string; phone?: string; specialty?: string; bio?: string; planId?: string }) =>
     apiFetch('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(data) }),
@@ -84,4 +84,51 @@ export const billingApi = {
     const qs = month ? `?month=${encodeURIComponent(month)}` : ''
     return apiFetch<{ entries: unknown[]; total: number; month: string }>(`/api/v1/billing${qs}`)
   },
+}
+
+// ── Leads CRM ─────────────────────────────────────────────────────────────────
+// Testado ao vivo contra o backend real em 01/jul (curl manual) — contrato
+// confirmado, não é só leitura de código. Ver com.fittrainly.lead.*
+export const leadApi = {
+  list: async () => apiFetch<Array<Record<string, unknown>>>('/api/v1/leads'),
+  // Backend não tem filtro por status no GET (lista tudo e filtra no
+  // frontend) — mantém paridade de comportamento com o mock.
+  byStatus: async (status: string) =>
+    leadApi.list().then((all) => all.filter(l => l.status === status)),
+  create: async (data: { name: string; email?: string; phone?: string; interesse?: string; source?: string; responsavel?: string; planoInteresse?: string; observacoes?: string }) =>
+    apiFetch('/api/v1/leads', { method: 'POST', body: JSON.stringify(data) }),
+  updateStatus: async (id: string, status: string, data?: object) =>
+    apiFetch(`/api/v1/leads/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, ...data }) }),
+  delete: async (id: string) => apiFetch(`/api/v1/leads/${id}`, { method: 'DELETE' }),
+  convertToAluno: async (leadId: string, personalTrainerId: string) =>
+    apiFetch(`/api/v1/leads/${leadId}/convert-to-aluno`, {
+      method: 'POST', body: JSON.stringify({ personalTrainerId }),
+    }),
+}
+
+// ── Session Packs (créditos) ──────────────────────────────────────────────────
+export const packApi = {
+  byAluno: async (alunoId: string) => apiFetch(`/api/v1/session-packs?alunoId=${alunoId}`),
+  // GET /session-packs sem alunoId (todos os ativos do tenant) não existe no
+  // backend ainda — a UI que usa isto (allActive) precisa de endpoint novo
+  // antes de ligar esta flag.
+  allActive: async (): Promise<unknown[]> => {
+    throw new Error('packApi.allActive: endpoint ainda não existe no backend real')
+  },
+  create: async (data: { alunoId: string; total: number; sessionDuration: 30 | 60; expiresAt?: string }) =>
+    apiFetch('/api/v1/session-packs', { method: 'POST', body: JSON.stringify(data) }),
+  // Débito acontece automaticamente dentro de POST /bookings no backend real
+  // (ver BookingService.create) — nunca é uma chamada isolada do frontend.
+  debitSession: async (packId: string): Promise<unknown> => {
+    throw new Error('packApi.debitSession: no backend real o débito é efeito colateral da reserva, não um endpoint próprio')
+  },
+}
+
+// ── Avaliações Físicas ────────────────────────────────────────────────────────
+export const avaliacaoApi = {
+  byAluno: async (alunoId: string) => apiFetch(`/api/v1/avaliacoes?alunoId=${alunoId}`),
+  create: async (data: { alunoId: string; tipo: string; data: string; frequenciaSemanal?: number; peso?: number; altura?: number; percentualGordura?: number; massaMuscular?: number; objetivo?: string; observacoes?: string; proximaAvaliacao?: string }) =>
+    apiFetch('/api/v1/avaliacoes', { method: 'POST', body: JSON.stringify(data) }),
+  update: async (id: string, data: object) =>
+    apiFetch(`/api/v1/avaliacoes/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 }

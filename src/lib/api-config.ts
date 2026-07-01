@@ -18,10 +18,17 @@ export const USE_REAL = {
   modalidades: process.env.NEXT_PUBLIC_REAL_MODALIDADES === 'true',
   personalTrainers: process.env.NEXT_PUBLIC_REAL_PERSONAL_TRAINERS === 'true',
   billing: process.env.NEXT_PUBLIC_REAL_BILLING === 'true',
+  // Backend já cobre estes domínios (auditoria de 01/jul), mas continuam
+  // desligados por defeito — produção não tem backend plugado ainda.
+  // Ligar exige NEXT_PUBLIC_API_URL apontado + a env var correspondente
+  // "true" NUM DEPLOYMENT SEPARADO, nunca na produção atual.
+  leads: process.env.NEXT_PUBLIC_REAL_LEADS === 'true',
+  packs: process.env.NEXT_PUBLIC_REAL_PACKS === 'true',
+  avaliacoes: process.env.NEXT_PUBLIC_REAL_AVALIACOES === 'true',
 } as const
 
 // Domínios que o backend ainda não implementa (ver auditoria):
-// leads/CRM, packs, avaliações físicas, workout plans, notificações,
-// anamnese completa do aluno, disponibilidade/agendamento, dashboards
-// combinados. Continuam SEMPRE em mock até existir contrato real —
-// não têm flag porque não há para onde apontar ainda.
+// workout plans, notificações reais (disparo de email), disponibilidade/
+// agendamento (grid de slots), dashboards combinados. Continuam SEMPRE em
+// mock até existir contrato real — não têm flag porque não há para onde
+// apontar ainda.
