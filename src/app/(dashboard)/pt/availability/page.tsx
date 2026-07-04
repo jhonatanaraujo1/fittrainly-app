@@ -4,11 +4,12 @@ import { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Sunrise, Sunset, Trash2, Users, CheckCircle2, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
 import { availabilityApi } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import { cn, formatTime } from '@/lib/utils'
 import type { StudioSlot } from '@/types'
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5] // Mon–Sat
@@ -110,14 +111,24 @@ export default function PTAvailabilityPage() {
   const toggle = useMutation({
     mutationFn: async (slot: StudioSlot) => {
       if (slot.released && slot.releaseId) {
-        return availabilityApi.delete(slot.releaseId)
+        await availabilityApi.delete(slot.releaseId)
+        return { action: 'removed' as const, slot }
       } else {
-        return availabilityApi.create({ date: slot.date, slotTime: slot.slotTime })
+        await availabilityApi.create({ date: slot.date, slotTime: slot.slotTime })
+        return { action: 'created' as const, slot }
       }
     },
     onMutate: (slot) => {
       setPendingKeys(p => new Set([...p, `${slot.date}-${slot.slotTime}`]))
     },
+    onSuccess: ({ action, slot }) => {
+      toast.success(
+        action === 'created'
+          ? `Horário das ${formatTime(slot.startTime)} ativado ✓`
+          : `Horário das ${formatTime(slot.startTime)} removido`
+      )
+    },
+    onError: (e: Error) => toast.error(e.message || 'Erro ao atualizar disponibilidade'),
     onSettled: (_d, _e, slot) => {
       setPendingKeys(p => { const n = new Set(p); n.delete(`${slot.date}-${slot.slotTime}`); return n })
       invalidate()
@@ -126,19 +137,27 @@ export default function PTAvailabilityPage() {
 
   const bulkCreate = useMutation({
     mutationFn: async (slots: StudioSlot[]) => {
+      let count = 0
       for (const s of slots) {
-        if (!s.released) await availabilityApi.create({ date: s.date, slotTime: s.slotTime })
+        if (!s.released) { await availabilityApi.create({ date: s.date, slotTime: s.slotTime }); count++ }
       }
+      return count
     },
+    onSuccess: (count) => toast.success(count > 0 ? `${count} horário${count !== 1 ? 's' : ''} ativado${count !== 1 ? 's' : ''} ✓` : 'Nada para ativar — já estava tudo ativo'),
+    onError: () => toast.error('Erro ao ativar horários'),
     onSettled: invalidate,
   })
 
   const bulkDelete = useMutation({
     mutationFn: async (slots: StudioSlot[]) => {
+      let count = 0
       for (const s of slots) {
-        if (s.released && !s.myBookings && s.releaseId) await availabilityApi.delete(s.releaseId)
+        if (s.released && !s.myBookings && s.releaseId) { await availabilityApi.delete(s.releaseId); count++ }
       }
+      return count
     },
+    onSuccess: (count) => toast.success(count > 0 ? `${count} horário${count !== 1 ? 's' : ''} removido${count !== 1 ? 's' : ''}` : 'Nada para remover'),
+    onError: () => toast.error('Erro ao limpar semana'),
     onSettled: invalidate,
   })
 
