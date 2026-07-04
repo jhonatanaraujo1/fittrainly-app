@@ -27,11 +27,21 @@ export interface Modalidade {
 export interface RentalPlan {
   id: string
   name: string
-  type: 'HOURLY' | 'WEEKLY' | 'MONTHLY'
+  type: 'HOURLY' | 'WEEKLY' | 'MONTHLY' | 'TIERED_HOURLY'
   priceHourly?: number
   priceWeekly?: number
   priceMonthly?: number
   description?: string
+}
+
+export interface PlanHourTier {
+  id: string
+  planId: string
+  tierOrder: number
+  hoursFrom: number
+  hoursTo: number | null
+  pricePerHour: number
+  bonus: number
 }
 
 export interface PlanSummary {
@@ -118,6 +128,9 @@ export interface AdminScheduleSlot {
   studioCount: number
   studioMax: number
   releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+  blocked: boolean
+  blockReason?: string
+  blockId?: string
 }
 
 export type BookingStatus = 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'
@@ -211,6 +224,7 @@ export interface AlunoDashboard {
   upcomingCount: number
   completedCount: number
   ptName: string
+  ptBillingCycleDay?: number
   recentSessions: RecentSession[]
   pack?: PackSummary
   inscricaoDate?: string

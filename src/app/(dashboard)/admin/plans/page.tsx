@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Plus, Clock, Calendar, CalendarDays, Loader2, Pencil } from 'lucide-react'
+import { Plus, Clock, Calendar, CalendarDays, Layers, Loader2, Pencil, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,11 +15,78 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { planApi } from '@/lib/api'
+import { planApi, planTierApi } from '@/lib/api'
 import { formatCurrency, planTypeLabel, planTypeBadge } from '@/lib/utils'
-import type { RentalPlan } from '@/types'
+import type { RentalPlan, PlanHourTier } from '@/types'
 
-const PLAN_ICONS = { HOURLY: Clock, WEEKLY: Calendar, MONTHLY: CalendarDays }
+const PLAN_ICONS = { HOURLY: Clock, WEEKLY: Calendar, MONTHLY: CalendarDays, TIERED_HOURLY: Layers }
+
+type TierDraft = { hoursFrom: string; hoursTo: string; pricePerHour: string; bonus: string }
+
+function TierEditor({ planId }: { planId: string }) {
+  const qc = useQueryClient()
+  const { data: tiers = [] } = useQuery<PlanHourTier[]>({
+    queryKey: ['plan-tiers', planId],
+    queryFn: () => planTierApi.listTiers(planId),
+  })
+  const [draft, setDraft] = useState<TierDraft[]>([])
+
+  useEffect(() => {
+    if (tiers.length > 0) {
+      setDraft(tiers.map(t => ({
+        hoursFrom: String(t.hoursFrom), hoursTo: t.hoursTo === null ? '' : String(t.hoursTo),
+        pricePerHour: String(t.pricePerHour), bonus: String(t.bonus),
+      })))
+    }
+  }, [tiers])
+
+  const save = useMutation({
+    mutationFn: () => planTierApi.saveTiers(planId, draft.map((d, i) => ({
+      tierOrder: i + 1,
+      hoursFrom: parseInt(d.hoursFrom) || 0,
+      hoursTo: d.hoursTo.trim() === '' ? null : parseInt(d.hoursTo),
+      pricePerHour: parseFloat(d.pricePerHour) || 0,
+      bonus: parseFloat(d.bonus) || 0,
+    }))),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['plan-tiers', planId] })
+      toast.success('Faixas atualizadas')
+    },
+    onError: () => toast.error('Erro ao guardar faixas'),
+  })
+
+  const set = (i: number, k: keyof TierDraft, v: string) =>
+    setDraft(d => d.map((row, idx) => idx === i ? { ...row, [k]: v } : row))
+
+  const addRow = () => setDraft(d => [...d, { hoursFrom: '', hoursTo: '', pricePerHour: '', bonus: '0' }])
+  const removeRow = (i: number) => setDraft(d => d.filter((_, idx) => idx !== i))
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-50 space-y-2">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Faixas de horas (progressivo)</p>
+      <div className="space-y-1.5">
+        {draft.map((row, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <Input placeholder="De" value={row.hoursFrom} onChange={e => set(i, 'hoursFrom', e.target.value)} className="h-8 text-xs w-14" type="number" />
+            <span className="text-gray-300 text-xs">–</span>
+            <Input placeholder="Até (vazio=∞)" value={row.hoursTo} onChange={e => set(i, 'hoursTo', e.target.value)} className="h-8 text-xs w-20" type="number" />
+            <Input placeholder="€/h" value={row.pricePerHour} onChange={e => set(i, 'pricePerHour', e.target.value)} className="h-8 text-xs w-16" type="number" step="0.01" />
+            <Input placeholder="Bónus €" value={row.bonus} onChange={e => set(i, 'bonus', e.target.value)} className="h-8 text-xs w-16" type="number" step="0.01" />
+            <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 transition-colors p-1">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addRow}>+ Faixa</Button>
+        <Button type="button" size="sm" className="h-7 text-xs bg-[#1F3864] hover:bg-[#162c52] text-white" disabled={save.isPending} onClick={() => save.mutate()}>
+          {save.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Guardar faixas'}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function PlansPage() {
   const qc = useQueryClient()
@@ -77,6 +144,7 @@ export default function PlansPage() {
     if (p.type === 'HOURLY' && p.priceHourly) return `${formatCurrency(p.priceHourly)} / hora`
     if (p.type === 'WEEKLY' && p.priceWeekly) return `${formatCurrency(p.priceWeekly)} / semana`
     if (p.type === 'MONTHLY' && p.priceMonthly) return `${formatCurrency(p.priceMonthly)} / mês`
+    if (p.type === 'TIERED_HOURLY') return 'Por faixas'
     return '—'
   }
 
@@ -134,6 +202,7 @@ export default function PlansPage() {
                     {planTypeLabel(plan.type)}
                   </span>
                 </div>
+                {plan.type === 'TIERED_HOURLY' && <TierEditor planId={plan.id} />}
               </motion.div>
             )
           })}
@@ -157,6 +226,7 @@ export default function PlansPage() {
                   <SelectItem value="MONTHLY">Mensal</SelectItem>
                   <SelectItem value="WEEKLY">Semanal</SelectItem>
                   <SelectItem value="HOURLY">Por Hora</SelectItem>
+                  <SelectItem value="TIERED_HOURLY">Por Hora (Faixas progressivas)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

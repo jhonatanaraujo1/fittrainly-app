@@ -3,16 +3,84 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Download, CheckCircle2, Printer } from 'lucide-react'
+import { Download, CheckCircle2, Printer, Layers, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { billingApi } from '@/lib/api'
-import { formatCurrency, getInitials, avatarColor, planTypeLabel } from '@/lib/utils'
+import { billingApi, ptPaymentApi } from '@/lib/api'
+import { formatCurrency, formatDate, getInitials, avatarColor, planTypeLabel, cn } from '@/lib/utils'
 import type { BillingEntry } from '@/types'
+
+interface WeekRow {
+  weekStart: string; weekEnd: string; hoursThisWeek: number; cumulativeHours: number
+  isClosingWeek: boolean; amountAdvanced: number; retroactiveAdjustment?: number; bonus?: number
+}
+
+function WeeklyScheduleCard({ ptId, ptName, month }: { ptId: string; ptName: string; month: string }) {
+  const [open, setOpen] = useState(false)
+  const { data, isLoading } = useQuery<{ weeks: WeekRow[]; totalHours: number }>({
+    queryKey: ['pt-weekly-schedule', ptId, month],
+    queryFn: () => ptPaymentApi.weeklySchedule(ptId, month),
+    enabled: open,
+  })
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-full ${avatarColor(ptName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+            {getInitials(ptName)}
+          </div>
+          <span className="font-medium text-gray-900 text-sm">{ptName}</span>
+        </div>
+        <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-50 px-5 py-4">
+          {isLoading || !data ? (
+            <Skeleton className="h-20 rounded-lg" />
+          ) : (
+            <div className="space-y-2">
+              {data.weeks.map((w, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'rounded-lg border px-3 py-2.5 text-xs',
+                    w.isClosingWeek ? 'bg-violet-50 border-violet-200' : 'bg-gray-50 border-gray-100',
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">
+                      {formatDate(w.weekStart)} – {formatDate(w.weekEnd)}
+                      {w.isClosingWeek && <span className="ml-2 text-violet-600 font-bold">Semana de fecho</span>}
+                    </span>
+                    <span className="text-gray-500">{w.hoursThisWeek}h esta semana · {w.cumulativeHours}h no mês</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-gray-500">Adiantado: <strong className="text-gray-800">{formatCurrency(w.amountAdvanced)}</strong></span>
+                    {w.isClosingWeek && w.retroactiveAdjustment !== undefined && (
+                      <span className={w.retroactiveAdjustment < 0 ? 'text-emerald-700 font-bold' : 'text-gray-700 font-bold'}>
+                        Acerto: {w.retroactiveAdjustment < 0 ? '−' : '+'}{formatCurrency(Math.abs(w.retroactiveAdjustment))}
+                        {w.bonus ? ` · Bónus €${w.bonus}` : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function exportCSV(entries: BillingEntry[], total: number, month: string) {
   const [year, m] = month.split('-')
@@ -158,6 +226,21 @@ export default function BillingPage() {
           </table>
         )}
       </motion.div>
+
+      {/* Weekly cycle — TIERED_HOURLY plans only */}
+      {!isLoading && entries.some(e => e.planType === 'TIERED_HOURLY') && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-violet-500" />
+            <h2 className="text-sm font-bold text-gray-900">Ciclo Semanal (Planos por Faixas)</h2>
+          </div>
+          <div className="space-y-2">
+            {entries.filter(e => e.planType === 'TIERED_HOURLY').map(e => (
+              <WeeklyScheduleCard key={e.ptId} ptId={e.ptId} ptName={e.ptName} month={selectedMonth} />
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Total */}
       {!isLoading && entries.length > 0 && (

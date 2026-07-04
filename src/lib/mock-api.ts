@@ -10,10 +10,11 @@ import {
   db, delay, uid, getCurrentUser,
   getPlanById, getPTById,
   getStudioSlotCount, getPTSlotCount,
-  getSlotTimesForDay, addMinutesToTime,
+  getSlotTimesForDay, getBookableSlotTimesForDay, addMinutesToTime,
   sessionsThisWeek, estimatedRevenue, getOccupationByDay,
-  STUDIO_MAX_SPOTS,
+  STUDIO_MAX_SPOTS, isSlotBlocked, studioSchedule, studioBlocks,
 } from './mock-db'
+import type { MockPlanHourTier } from './mock-db'
 import { addDays, startOfWeek } from 'date-fns'
 
 function localDate(d: Date): string {
@@ -136,6 +137,7 @@ export const dashboardApi = {
     const myBookings = db.bookings.filter(b => b.alunoId === aluno.id)
     const upcoming = myBookings.filter(b => b.status === 'CONFIRMED' && new Date(b.startTime) > now)
     const nextBooking = upcoming.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0]
+    const pt = db.pts.find(p => p.id === aluno.personalTrainerId)
 
     return {
       nextSession: nextBooking ? {
@@ -148,6 +150,7 @@ export const dashboardApi = {
       upcomingCount: upcoming.length,
       completedCount: myBookings.filter(b => b.status === 'COMPLETED').length,
       ptName: aluno.personalTrainerName,
+      ptBillingCycleDay: pt?.billingCycleAnchorDay,
       inscricaoDate: aluno.inscricaoDate,
       pack: (() => {
         const p = db.packs.find(pk => pk.alunoId === aluno.id && pk.status === 'ACTIVE')
@@ -194,7 +197,7 @@ export const ptApi = {
   create: async (data: { name: string; email: string; password: string; phone?: string; specialty?: string; bio?: string; planId?: string }) => {
     await delay(500)
     const newUser = { id: 'u-' + uid(), email: data.email, password: data.password, name: data.name, role: 'PERSONAL_TRAINER' as const }
-    const newPT = { id: 'pt-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone, specialty: data.specialty, bio: data.bio, active: true, inadimplente: false, planId: data.planId, alunoCount: 0, hoursThisMonth: 0 }
+    const newPT = { id: 'pt-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone, specialty: data.specialty, bio: data.bio, active: true, inadimplente: false, planId: data.planId, alunoCount: 0, hoursThisMonth: 0, billingCycleAnchorDay: new Date().getDate() }
     db.users.push(newUser)
     db.pts.push(newPT)
     return { ...newPT, plan: getPlanById(data.planId) ?? null }
@@ -301,7 +304,7 @@ export const availabilityApi = {
 
     for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
       const date = localDate(d)
-      const times = getSlotTimesForDay(d)
+      const times = getBookableSlotTimesForDay(d)
       for (const time of times) {
         const release = db.ptReleases.find(r => r.ptId === pt.id && r.date === date && r.slotTime === time)
         const { start: s, end: e } = slotKeyToISO(date, time)
@@ -395,6 +398,9 @@ export const availabilityApi = {
   // PT releases a slot (creates MockPTRelease)
   create: async (data: { date: string; slotTime: string }) => {
     await delay(300)
+    if (isSlotBlocked(data.date, data.slotTime)) {
+      throw new Error('Este horário está bloqueado pelo estúdio (feriado ou fecho)')
+    }
     const user = getCurrentUser()
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
     const existing = db.ptReleases.find(r => r.ptId === pt.id && r.date === data.date && r.slotTime === data.slotTime)
@@ -407,6 +413,9 @@ export const availabilityApi = {
   // Admin creates a release on behalf of a PT
   createForPT: async (data: { ptId: string; date: string; slotTime: string }) => {
     await delay(300)
+    if (isSlotBlocked(data.date, data.slotTime)) {
+      throw new Error('Este horário está bloqueado pelo estúdio (feriado ou fecho)')
+    }
     const pt = getPTById(data.ptId)
     if (!pt) throw new Error('PT não encontrado')
     const existing = db.ptReleases.find(r => r.ptId === data.ptId && r.date === data.date && r.slotTime === data.slotTime)
@@ -435,7 +444,7 @@ export const availabilityApi = {
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
     return db.bookings
       .filter(b => b.slotKey === slotKey && b.personalTrainerId === pt.id && b.status === 'CONFIRMED')
-      .map(b => ({ alunoId: b.alunoId, alunoName: b.alunoName, status: b.status }))
+      .map(b => ({ bookingId: b.id, alunoId: b.alunoId, alunoName: b.alunoName, status: b.status }))
   },
 }
 
@@ -450,6 +459,7 @@ export const adminScheduleApi = {
       date: string; slotTime: string; startTime: string; endTime: string
       studioCount: number; studioMax: number
       releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+      blocked: boolean; blockReason?: string; blockId?: string
     }> = []
 
     for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
@@ -460,12 +470,23 @@ export const adminScheduleApi = {
         const releases = db.ptReleases
           .filter(r => r.date === date && r.slotTime === time)
           .map(r => ({ releaseId: r.id, ptId: r.ptId, ptName: r.ptName, confirmedCount: getPTSlotCount(r.ptId, date, time) }))
+        const block = studioBlocks.find(b => {
+          if (b.date !== date) return false
+          const [bh, bm] = b.startTime.split(':').map(Number)
+          const [eh, em] = b.endTime.split(':').map(Number)
+          const [th, tm] = time.split(':').map(Number)
+          const slotStart = th * 60 + tm
+          return slotStart >= bh * 60 + bm && slotStart < eh * 60 + em
+        })
         result.push({
           date, slotTime: time,
           startTime: s, endTime: e,
           studioCount: getStudioSlotCount(date, time),
           studioMax: STUDIO_MAX_SPOTS,
           releases,
+          blocked: !!block,
+          blockReason: block?.reason,
+          blockId: block?.id,
         })
       }
     }
@@ -480,6 +501,67 @@ export const adminScheduleApi = {
     await delay(280)
     const idx = db.ptReleases.findIndex(r => r.id === releaseId)
     if (idx !== -1) db.ptReleases.splice(idx, 1)
+  },
+
+  // Admin sees attendees for any PT's slot (not scoped to the current user) —
+  // includes contact info so admin can reach the student directly from the modal.
+  attendees: async (ptId: string, slotKey: string) => {
+    await delay(200)
+    return db.bookings
+      .filter(b => b.slotKey === slotKey && b.personalTrainerId === ptId && b.status === 'CONFIRMED')
+      .map(b => {
+        const aluno = db.alunos.find(a => a.id === b.alunoId)
+        return {
+          bookingId: b.id, alunoId: b.alunoId, alunoName: b.alunoName, status: b.status,
+          email: aluno?.email, phone: aluno?.phone,
+        }
+      })
+  },
+}
+
+// ── Studio Schedule (weekly hours + one-off blocks) ───────────────────────────
+export const studioScheduleApi = {
+  getWeeklyHours: async () => { await delay(150); return [...studioSchedule] },
+
+  updateWeeklyHours: async (dayOfWeek: number, openTime: string | null, closeTime: string | null) => {
+    await delay(250)
+    const day = studioSchedule.find(d => d.dayOfWeek === dayOfWeek)
+    if (!day) throw new Error('Dia inválido')
+    day.openTime = openTime
+    day.closeTime = closeTime
+    return day
+  },
+
+  listBlocks: async (startDate: string, endDate: string) => {
+    await delay(200)
+    return studioBlocks
+      .filter(b => b.date >= startDate && b.date <= endDate)
+      .sort((a, b) => a.date === b.date ? a.startTime.localeCompare(b.startTime) : a.date.localeCompare(b.date))
+  },
+
+  createBlock: async (data: { date: string; startTime: string; endTime: string; reason: string }) => {
+    await delay(300)
+    const hasBookings = db.bookings.some(b => {
+      if (b.status !== 'CONFIRMED' || !b.slotKey.startsWith(data.date)) return false
+      const slotTime = b.slotKey.slice(11)
+      const [th, tm] = slotTime.split(':').map(Number)
+      const [sh, sm] = data.startTime.split(':').map(Number)
+      const [eh, em] = data.endTime.split(':').map(Number)
+      const slotStart = th * 60 + tm
+      return slotStart >= sh * 60 + sm && slotStart < eh * 60 + em
+    })
+    if (hasBookings) {
+      throw new Error('Já existem alunos confirmados neste horário — cancela as reservas primeiro')
+    }
+    const block = { id: 'block-' + uid(), ...data }
+    studioBlocks.push(block)
+    return block
+  },
+
+  deleteBlock: async (id: string) => {
+    await delay(250)
+    const idx = studioBlocks.findIndex(b => b.id === id)
+    if (idx !== -1) studioBlocks.splice(idx, 1)
   },
 }
 
@@ -507,6 +589,16 @@ export const bookingApi = {
     // Check PT released this slot (any PT — aluno is linked to specific PT)
     const ptRelease = db.ptReleases.find(r => r.ptId === aluno.personalTrainerId && r.date === date && r.slotTime === slotTime)
     if (!ptRelease) throw new Error('O teu PT não tem disponibilidade neste horário')
+
+    // Defense in depth — a block added after the PT released this slot
+    // should still make it unbookable.
+    if (isSlotBlocked(date, slotTime)) throw new Error('Este horário está bloqueado pelo estúdio')
+
+    // Sessions are 1-on-1 — a PT can only have one student per slot, never a group
+    const ptAlreadyBooked = db.bookings.some(b =>
+      b.slotKey === slotKey && b.personalTrainerId === aluno.personalTrainerId && b.status === 'CONFIRMED'
+    )
+    if (ptAlreadyBooked) throw new Error('O teu PT já tem uma sessão marcada neste horário — escolhe outro horário')
 
     // Check studio max (4 across all PTs)
     const studioCount = getStudioSlotCount(date, slotTime)
@@ -556,7 +648,7 @@ export const bookingApi = {
     const hoursUntil = (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60)
 
     if (role === 'ALUNO' && hoursUntil < 24) {
-      throw new Error('Só podes cancelar com pelo menos 24h de antecedência')
+      throw new Error('Só é possível cancelar com mais de 24h de antecedência. Para casos excecionais dentro desse prazo, contacta o estúdio diretamente.')
     }
     if (role === 'PERSONAL_TRAINER' && hoursUntil < 12) {
       throw new Error('Só podes cancelar com pelo menos 12h de antecedência')
@@ -703,6 +795,44 @@ export const planApi = {
     if (idx === -1) throw new Error('Plano não encontrado')
     db.plans[idx] = { ...db.plans[idx], ...data }
     return db.plans[idx]
+  },
+}
+
+// ── Tiered hourly pricing (per plan, admin-configurable) ──────────────────────
+// Progressive bracket calculation — like a tax bracket, each bracket of hours
+// is charged its own rate, not "whichever bracket the total falls into
+// applies to everything". Pure function, easy to unit-test in isolation.
+export function computeTieredAmount(hoursWorked: number, tiers: MockPlanHourTier[]) {
+  const sorted = [...tiers].sort((a, b) => a.tierOrder - b.tierOrder)
+  let amount = 0
+  let bonus = 0
+  const bracketsReached: number[] = []
+  for (const tier of sorted) {
+    const hoursInTier = tier.hoursTo === null
+      ? Math.max(0, hoursWorked - tier.hoursFrom + 1)
+      : Math.max(0, Math.min(hoursWorked, tier.hoursTo) - tier.hoursFrom + 1)
+    if (hoursInTier > 0) {
+      amount += hoursInTier * tier.pricePerHour
+      bonus += tier.bonus
+      bracketsReached.push(tier.tierOrder)
+    }
+  }
+  return { amount, bonus, bracketsReached }
+}
+
+export const planTierApi = {
+  listTiers: async (planId: string) => {
+    await delay(150)
+    return db.planHourTiers.filter(t => t.planId === planId).sort((a, b) => a.tierOrder - b.tierOrder)
+  },
+  // Replaces all tiers for a plan — simpler than per-row CRUD for an admin editor
+  saveTiers: async (planId: string, tiers: Omit<MockPlanHourTier, 'id' | 'planId'>[]) => {
+    await delay(300)
+    const kept = db.planHourTiers.filter(t => t.planId !== planId)
+    const next = tiers.map((t, i) => ({ id: 'tier-' + uid(), planId, ...t, tierOrder: i + 1 }))
+    db.planHourTiers.length = 0
+    db.planHourTiers.push(...kept, ...next)
+    return next
   },
 }
 
@@ -889,8 +1019,79 @@ export const billingApi = {
         b.startTime.slice(0, 7) === currentMonth
       ).length
       if (plan?.type === 'HOURLY') value = (plan.priceHourly ?? 0) * sessionsCount
+      if (plan?.type === 'TIERED_HOURLY') {
+        const tiers = db.planHourTiers.filter(t => t.planId === plan.id)
+        value = computeTieredAmount(sessionsCount, tiers).amount
+      }
       return { ptId: pt.id, ptName: pt.name, planName: plan?.name ?? '—', planType: plan?.type ?? '—', sessionsCount, value }
     })
     return { entries, total: entries.reduce((s, e) => s + e.value, 0), month: currentMonth }
+  },
+}
+
+// ── PT weekly payment cycle (TIERED_HOURLY plans only) ────────────────────────
+// Rental model: the PT pays the studio, not the other way around. Every
+// Monday except the last one of the month, the PT is advanced the week's
+// hours at the tier-1 (highest) rate, since the month total isn't known yet.
+// On the last Monday, the whole month is recalculated progressively across
+// brackets and reconciled against what was already advanced — always a
+// credit back to the PT, since more hours only ever make the marginal rate
+// cheaper, never more expensive.
+export const ptPaymentApi = {
+  weeklySchedule: async (ptId: string, month: string) => {
+    await delay(250)
+    const pt = db.pts.find(p => p.id === ptId)
+    if (!pt) throw new Error('PT não encontrado')
+    const plan = getPlanById(pt.planId)
+    if (!plan || plan.type !== 'TIERED_HOURLY') throw new Error('Este PT não está num plano por faixas')
+    const tiers = db.planHourTiers.filter(t => t.planId === plan.id).sort((a, b) => a.tierOrder - b.tierOrder)
+    const tier1Rate = tiers[0]?.pricePerHour ?? 0
+
+    const [year, m] = month.split('-').map(Number)
+    const monthStart = new Date(year, m - 1, 1)
+    const monthEnd = new Date(year, m, 0)
+
+    const cursor = new Date(monthStart)
+    const dow = cursor.getDay()
+    cursor.setDate(cursor.getDate() + (dow === 0 ? -6 : 1 - dow))
+
+    const weeks: Array<{
+      weekStart: string; weekEnd: string; hoursThisWeek: number; cumulativeHours: number
+      isClosingWeek: boolean; amountAdvanced: number; retroactiveAdjustment?: number; bonus?: number
+    }> = []
+
+    let cumulativeHours = 0
+    while (cursor <= monthEnd) {
+      const weekStart = cursor < monthStart ? monthStart : new Date(cursor)
+      const weekEndRaw = new Date(cursor); weekEndRaw.setDate(weekEndRaw.getDate() + 6)
+      const weekEnd = weekEndRaw > monthEnd ? monthEnd : weekEndRaw
+      const nextMonday = new Date(cursor); nextMonday.setDate(nextMonday.getDate() + 7)
+      const isClosingWeek = nextMonday > monthEnd
+
+      const hoursThisWeek = db.bookings.filter(b => {
+        if (b.personalTrainerId !== ptId) return false
+        if (b.status !== 'CONFIRMED' && b.status !== 'COMPLETED') return false
+        const d = new Date(b.startTime)
+        return d >= weekStart && d <= weekEnd
+      }).length
+
+      cumulativeHours += hoursThisWeek
+      const week: typeof weeks[0] = {
+        weekStart: localDate(weekStart), weekEnd: localDate(weekEnd),
+        hoursThisWeek, cumulativeHours, isClosingWeek,
+        amountAdvanced: hoursThisWeek * tier1Rate,
+      }
+
+      if (isClosingWeek) {
+        const settlement = computeTieredAmount(cumulativeHours, tiers)
+        week.retroactiveAdjustment = settlement.amount - (cumulativeHours * tier1Rate)
+        week.bonus = settlement.bonus
+      }
+
+      weeks.push(week)
+      cursor.setDate(cursor.getDate() + 7)
+    }
+
+    return { ptId, ptName: pt.name, planName: plan.name, tiers, weeks, totalHours: cumulativeHours }
   },
 }

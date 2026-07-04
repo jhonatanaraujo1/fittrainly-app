@@ -1,21 +1,43 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Calendar, CheckCircle2, CalendarPlus, Package, CreditCard } from 'lucide-react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { StatCard } from '@/components/ui/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { dashboardApi } from '@/lib/api'
+import { CancelBookingDialog } from '@/components/cancel-booking-dialog'
+import { dashboardApi, bookingApi } from '@/lib/api'
 import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
-import type { AlunoDashboard } from '@/types'
+import type { AlunoDashboard, RecentSession } from '@/types'
+
+function hoursUntil(startTime: string): number {
+  return (new Date(startTime).getTime() - Date.now()) / (1000 * 60 * 60)
+}
 
 export default function AlunoDashboardPage() {
   const { user } = useAuthStore()
+  const qc = useQueryClient()
+  const [confirmCancel, setConfirmCancel] = useState<RecentSession | null>(null)
+
   const { data, isLoading } = useQuery<AlunoDashboard>({
     queryKey: ['aluno-dashboard'],
     queryFn: dashboardApi.aluno,
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: bookingApi.cancel,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['aluno-dashboard'] })
+      qc.invalidateQueries({ queryKey: ['my-bookings'] })
+      qc.invalidateQueries({ queryKey: ['aluno-slots'] })
+      toast.success('Sessão cancelada')
+      setConfirmCancel(null)
+    },
+    onError: (e: Error) => toast.error(e.message || 'Não foi possível cancelar esta sessão'),
   })
 
   return (
@@ -25,6 +47,11 @@ export default function AlunoDashboardPage() {
         <h1 className="text-2xl font-black text-gray-900 tracking-tight">Olá, {user?.name?.split(' ')[0]} 👋</h1>
         {data?.ptName && (
           <p className="text-sm text-gray-400 mt-0.5">O teu Personal Trainer: <span className="font-medium text-gray-600">{data.ptName}</span></p>
+        )}
+        {data?.ptBillingCycleDay && (
+          <p className="text-xs text-gray-300 mt-1">
+            Ciclo de pagamento do teu PT com o estúdio fecha todo dia <strong className="text-gray-400">{data.ptBillingCycleDay}</strong> — não afeta as tuas sessões
+          </p>
         )}
       </motion.div>
 
@@ -130,22 +157,44 @@ export default function AlunoDashboardPage() {
         >
           <h2 className="text-sm font-semibold text-gray-900 px-5 py-4 border-b border-gray-50">Últimas Sessões</h2>
           <div className="divide-y divide-gray-50">
-            {data!.recentSessions.map((s, i) => (
-              <div key={s.bookingId ?? i} className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <p className="text-sm text-gray-900">{formatDate(s.startTime)}</p>
-                  <p className="text-xs text-gray-400">{formatTime(s.startTime)} — {formatTime(s.endTime)}</p>
+            {data!.recentSessions.map((s, i) => {
+              const cancellable = s.status === 'CONFIRMED' && hoursUntil(s.startTime) > 0
+              return (
+                <div
+                  key={s.bookingId ?? i}
+                  onClick={() => cancellable && setConfirmCancel(s)}
+                  className={cn(
+                    'flex items-center justify-between px-5 py-3.5',
+                    cancellable && 'cursor-pointer hover:bg-gray-50 transition-colors'
+                  )}
+                >
+                  <div>
+                    <p className="text-sm text-gray-900">{formatDate(s.startTime)}</p>
+                    <p className="text-xs text-gray-400">{formatTime(s.startTime)} — {formatTime(s.endTime)}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${bookingStatusColor(s.status)}`}>
+                    {bookingStatusLabel(s.status)}
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${bookingStatusColor(s.status)}`}>
-                  {bookingStatusLabel(s.status)}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="px-5 py-3 border-t border-gray-50">
             <Link href="/aluno/history" className="text-xs font-medium hover:underline" style={{ color: '#C9A84C' }}>Ver histórico completo →</Link>
           </div>
         </motion.div>
+      )}
+
+      {confirmCancel && (
+        <CancelBookingDialog
+          open={!!confirmCancel}
+          onOpenChange={(o) => !o && setConfirmCancel(null)}
+          startTime={confirmCancel.startTime}
+          endTime={confirmCancel.endTime}
+          ptName={confirmCancel.ptName}
+          isPending={cancelMutation.isPending}
+          onConfirm={() => cancelMutation.mutate(confirmCancel.bookingId)}
+        />
       )}
     </div>
   )

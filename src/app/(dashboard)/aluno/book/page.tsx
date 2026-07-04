@@ -8,16 +8,14 @@ import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CancelBookingDialog } from '@/components/cancel-booking-dialog'
 import { alunoApi, availabilityApi, bookingApi, ptApi } from '@/lib/api'
 import { formatTime, cn, getInitials, avatarColor } from '@/lib/utils'
 import type { Availability, Booking, Aluno, PersonalTrainer } from '@/types'
 
-/* ── vacancy helpers ──────────────────────────────────────────────── */
+/* ── vacancy helpers — paleta unificada: verde=disponível, cinza=ocupado, azul=confirmado ── */
 function vacancyDot(spots: number) {
-  if (spots === 0) return 'bg-gray-300'
-  if (spots === 1) return 'bg-orange-400'
-  if (spots === 2) return 'bg-amber-400'
-  return 'bg-emerald-500'
+  return spots === 0 ? 'bg-gray-300' : 'bg-emerald-500'
 }
 function vacancyText(spots: number) {
   if (spots === 0) return 'Lotado'
@@ -25,10 +23,7 @@ function vacancyText(spots: number) {
   return `${spots} vagas`
 }
 function vacancyColor(spots: number) {
-  if (spots === 0) return 'text-gray-400'
-  if (spots === 1) return 'text-orange-600'
-  if (spots === 2) return 'text-amber-600'
-  return 'text-emerald-700'
+  return spots === 0 ? 'text-gray-400' : 'text-emerald-700'
 }
 
 export default function MinhasSessionsPage() {
@@ -36,6 +31,7 @@ export default function MinhasSessionsPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState<{ bookingId: string; availId: string; startTime: string; endTime: string } | null>(null)
 
   const monday = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
   const startDate = format(monday, "yyyy-MM-dd'T'00:00:00'Z'")
@@ -102,7 +98,10 @@ export default function MinhasSessionsPage() {
 
   async function handleMarkAbsent(bookingId: string, availId: string) {
     setCancellingId(availId)
-    try { await markAbsent.mutateAsync(bookingId) } finally { setCancellingId(null) }
+    try {
+      await markAbsent.mutateAsync(bookingId)
+      setConfirmCancel(null)
+    } finally { setCancellingId(null) }
   }
 
   const now = new Date()
@@ -244,8 +243,8 @@ export default function MinhasSessionsPage() {
                         <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                           {confirmed ? (
                             <div className="flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                              <span className="text-xs font-semibold text-emerald-700">Confirmado</span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                              <span className="text-xs font-semibold text-blue-700">Confirmado</span>
                             </div>
                           ) : full ? (
                             <div className="flex items-center gap-1.5">
@@ -280,7 +279,7 @@ export default function MinhasSessionsPage() {
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
-                                onClick={() => bookingId && handleMarkAbsent(bookingId, slot.id)}
+                                onClick={() => bookingId && setConfirmCancel({ bookingId, availId: slot.id, startTime: slot.startTime, endTime: slot.endTime })}
                                 disabled={isLoadingThis}
                                 className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 hover:bg-red-50 rounded-lg px-3 min-h-[44px] transition-all disabled:opacity-50"
                                 title="Marcar falta"
@@ -318,6 +317,18 @@ export default function MinhasSessionsPage() {
             )
           })}
         </div>
+      )}
+
+      {confirmCancel && (
+        <CancelBookingDialog
+          open={!!confirmCancel}
+          onOpenChange={(o) => !o && setConfirmCancel(null)}
+          startTime={confirmCancel.startTime}
+          endTime={confirmCancel.endTime}
+          ptName={myPt?.name}
+          isPending={cancellingId === confirmCancel.availId}
+          onConfirm={() => handleMarkAbsent(confirmCancel.bookingId, confirmCancel.availId)}
+        />
       )}
     </div>
   )

@@ -1,13 +1,15 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Users, Calendar, Clock, Receipt, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { useState, useMemo } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/ui/stat-card'
-import { dashboardApi, availabilityApi } from '@/lib/api'
+import { SessionDetailDialog } from '@/components/session-detail-dialog'
+import { dashboardApi, availabilityApi, bookingApi } from '@/lib/api'
 import { formatCurrency, formatTime, formatDate, getInitials, avatarColor } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
@@ -22,7 +24,9 @@ function localDate(d: Date) {
 const WEEKDAYS = [0, 1, 2, 3, 4, 5]
 
 function WeekCalendar() {
+  const qc = useQueryClient()
   const [weekOffset, setWeekOffset] = useState(0)
+  const [selectedSlot, setSelectedSlot] = useState<StudioSlot | null>(null)
   const monday = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
   const saturday = addDays(monday, 5)
 
@@ -45,6 +49,23 @@ function WeekCalendar() {
   }, [grid])
 
   const releasedWithBookings = grid.filter(s => s.released && s.myBookings > 0)
+
+  const slotKey = selectedSlot ? `${selectedSlot.date}-${selectedSlot.slotTime}` : null
+  const { data: attendees = [] } = useQuery({
+    queryKey: ['slot-attendees', slotKey],
+    queryFn: () => availabilityApi.attendees(slotKey!),
+    enabled: !!slotKey,
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: bookingApi.cancel,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['studio-grid'] })
+      qc.invalidateQueries({ queryKey: ['slot-attendees'] })
+      toast.success('Sessão cancelada')
+    },
+    onError: (e: Error) => toast.error(e.message || 'Não foi possível cancelar'),
+  })
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -110,10 +131,11 @@ function WeekCalendar() {
                     return (
                       <div
                         key={d}
+                        onClick={() => slot.myBookings > 0 && setSelectedSlot(slot)}
                         className={cn(
                           'h-8 rounded-md flex items-center justify-center px-1',
                           slot.myBookings > 0
-                            ? 'bg-[#1F3864] text-white'
+                            ? 'bg-[#1F3864] text-white cursor-pointer hover:opacity-80 transition-opacity'
                             : 'bg-emerald-100 text-emerald-700',
                         )}
                       >
@@ -146,6 +168,18 @@ function WeekCalendar() {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedSlot && (
+        <SessionDetailDialog
+          open={!!selectedSlot}
+          onOpenChange={(o) => !o && setSelectedSlot(null)}
+          startTime={selectedSlot.startTime}
+          endTime={selectedSlot.endTime}
+          students={attendees.map(a => ({ bookingId: a.bookingId, name: a.alunoName }))}
+          onCancelBooking={(bookingId) => cancelMutation.mutate(bookingId)}
+          cancellingId={cancelMutation.isPending ? cancelMutation.variables ?? null : null}
+        />
       )}
     </div>
   )

@@ -1,7 +1,7 @@
 import { addDays, addWeeks, startOfWeek } from 'date-fns'
 
 // ── Stable IDs ──────────────────────────────────────────────────────────────
-const P = { monthly: 'plan-01', hourly: 'plan-02', weekly: 'plan-03' }
+const P = { monthly: 'plan-01', hourly: 'plan-02', weekly: 'plan-03', tiered: 'plan-04' }
 const U = {
   admin: 'u-admin', joao: 'u-joao', ana: 'u-ana', pedro: 'u-pedro',
   carlos: 'u-carlos', maria: 'u-maria', sofia: 'u-sofia', rui: 'u-rui',
@@ -14,29 +14,85 @@ const AL = {
 }
 
 // ── Studio Slot Configuration ─────────────────────────────────────────────────
-// Fixed 40-min intervals. Mon-Fri: 7:00–19:40 (20 slots). Sat: 9:00–12:20 (6 slots). Sun: closed.
-export const STUDIO_SLOTS_WEEKDAY: string[] = [
-  '07:00','07:40','08:20','09:00','09:40','10:20',
-  '11:00','11:40','12:20','13:00','13:40','14:20',
-  '15:00','15:40','16:20','17:00','17:40','18:20',
-  '19:00','19:40',
-]
-export const STUDIO_SLOTS_SAT: string[] = [
-  '09:00','09:40','10:20','11:00','11:40','12:20',
-]
+// Fixed 40-min intervals, generated from the studio's weekly operating hours
+// (studioSchedule, admin-configurable) minus any one-off blocks (holidays,
+// closures). Defaults below match the old hardcoded ranges: Mon-Fri
+// 7:00–20:20 (20 slots), Sat 9:00–13:00 (6 slots), Sun closed.
 export const STUDIO_MAX_SPOTS = 4
+export const SLOT_MINUTES = 40
 
-export function getSlotTimesForDay(date: Date): string[] {
-  const dow = date.getDay()
-  if (dow === 0) return []
-  if (dow === 6) return [...STUDIO_SLOTS_SAT]
-  return [...STUDIO_SLOTS_WEEKDAY]
+export interface MockStudioScheduleDay {
+  dayOfWeek: number // 0=Sun .. 6=Sat
+  openTime: string | null  // "HH:mm", null = closed
+  closeTime: string | null
 }
+
+export const studioSchedule: MockStudioScheduleDay[] = [
+  { dayOfWeek: 0, openTime: null,    closeTime: null },
+  { dayOfWeek: 1, openTime: '07:00', closeTime: '20:20' },
+  { dayOfWeek: 2, openTime: '07:00', closeTime: '20:20' },
+  { dayOfWeek: 3, openTime: '07:00', closeTime: '20:20' },
+  { dayOfWeek: 4, openTime: '07:00', closeTime: '20:20' },
+  { dayOfWeek: 5, openTime: '07:00', closeTime: '20:20' },
+  { dayOfWeek: 6, openTime: '09:00', closeTime: '13:00' },
+]
+
+export interface MockStudioBlock {
+  id: string
+  date: string      // "YYYY-MM-DD"
+  startTime: string // "HH:mm"
+  endTime: string   // "HH:mm"
+  reason: string
+}
+
+export const studioBlocks: MockStudioBlock[] = []
 
 export function addMinutesToTime(time: string, mins: number): string {
   const [h, m] = time.split(':').map(Number)
   const total = h * 60 + m + mins
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
+
+// Slot overlaps a block if [slotStart, slotStart+40) intersects [blockStart, blockEnd)
+export function isSlotBlocked(date: string, time: string): boolean {
+  const slotStart = timeToMinutes(time)
+  const slotEnd = slotStart + SLOT_MINUTES
+  return studioBlocks.some(b => {
+    if (b.date !== date) return false
+    const bStart = timeToMinutes(b.startTime)
+    const bEnd = timeToMinutes(b.endTime)
+    return slotStart < bEnd && bStart < slotEnd
+  })
+}
+
+export function getSlotTimesForDay(date: Date): string[] {
+  const dow = date.getDay()
+  const day = studioSchedule.find(d => d.dayOfWeek === dow)
+  if (!day || !day.openTime || !day.closeTime) return []
+
+  const times: string[] = []
+  for (let t = timeToMinutes(day.openTime); t + SLOT_MINUTES <= timeToMinutes(day.closeTime); t += SLOT_MINUTES) {
+    times.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`)
+  }
+  return times
+}
+
+// Same as getSlotTimesForDay but excludes slots blocked for that specific date
+// — used everywhere a slot must actually be bookable (PT release, admin
+// allocation), while getSlotTimesForDay alone stays useful for admin's own
+// schedule view, which still needs to show blocked rows to unblock them.
+export function getBookableSlotTimesForDay(date: Date): string[] {
+  const dateStr = localDateISO(date)
+  return getSlotTimesForDay(date).filter(t => !isSlotBlocked(dateStr, t))
+}
+
+function localDateISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // ── Interfaces ──────────────────────────────────────────────────────────────
@@ -45,14 +101,29 @@ export interface MockUser {
   role: 'ADMIN' | 'PERSONAL_TRAINER' | 'ALUNO'
 }
 export interface MockPlan {
-  id: string; name: string; type: 'MONTHLY' | 'WEEKLY' | 'HOURLY'
+  id: string; name: string; type: 'MONTHLY' | 'WEEKLY' | 'HOURLY' | 'TIERED_HOURLY'
   priceMonthly?: number; priceWeekly?: number; priceHourly?: number
   description?: string
+}
+
+// Progressive hour-bracket pricing for a TIERED_HOURLY plan — configurable per
+// studio, not hardcoded. Each bracket is charged its own rate (like a tax
+// bracket), and a fixed bonus is awarded once the bracket is reached in the
+// calendar month.
+export interface MockPlanHourTier {
+  id: string; planId: string; tierOrder: number
+  hoursFrom: number; hoursTo: number | null // null = unbounded top tier
+  pricePerHour: number; bonus: number
 }
 export interface MockPT {
   id: string; userId: string; name: string; email: string; phone?: string
   specialty?: string; bio?: string; active: boolean; inadimplente: boolean
   planId?: string; alunoCount: number; hoursThisMonth: number
+  // Day of the month the PT's own billing cycle with the studio closes (e.g.
+  // 15 = "started on the 15th, closes on the 15th"). Purely informational for
+  // students — they have no billing relationship with the studio themselves,
+  // it's the PT who manages that with their own students.
+  billingCycleAnchorDay: number
 }
 export interface MockAluno {
   id: string; userId: string; name: string; email: string; phone?: string
@@ -226,6 +297,14 @@ function createDB() {
     { id: P.monthly, name: 'Plano Mensal',   type: 'MONTHLY', priceMonthly: 200, description: 'Acesso ilimitado ao espaço durante o mês' },
     { id: P.hourly,  name: 'Plano Por Hora', type: 'HOURLY',  priceHourly: 8,   description: 'Pague apenas as horas que usar — sem compromisso' },
     { id: P.weekly,  name: 'Plano Semanal',  type: 'WEEKLY',  priceWeekly: 55,  description: 'Pacote semanal com 10% de desconto' },
+    { id: P.tiered,  name: 'Plano Por Hora (Faixas)', type: 'TIERED_HOURLY', description: 'Preço por hora decrescente por faixa, com acerto retroativo na última segunda do mês' },
+  ]
+
+  const planHourTiers: MockPlanHourTier[] = [
+    { id: 'tier-01', planId: P.tiered, tierOrder: 1, hoursFrom: 1,  hoursTo: 20,   pricePerHour: 20.00, bonus: 0 },
+    { id: 'tier-02', planId: P.tiered, tierOrder: 2, hoursFrom: 21, hoursTo: 30,   pricePerHour: 19.50, bonus: 25 },
+    { id: 'tier-03', planId: P.tiered, tierOrder: 3, hoursFrom: 31, hoursTo: 40,   pricePerHour: 19.00, bonus: 50 },
+    { id: 'tier-04', planId: P.tiered, tierOrder: 4, hoursFrom: 41, hoursTo: null, pricePerHour: 18.50, bonus: 75 },
   ]
 
   const users: MockUser[] = [
@@ -244,9 +323,9 @@ function createDB() {
   ]
 
   const pts: MockPT[] = [
-    { id: PT.joao, userId: U.joao, name: 'João Silva', email: 'joao@fittrainly.com', phone: '+351 912 345 678', specialty: 'Musculação e Força', bio: 'Especialista em hipertrofia com 8 anos de experiência. Certificado pela NSCA.', active: true, inadimplente: false, planId: P.monthly, alunoCount: 4, hoursThisMonth: 22 },
-    { id: PT.ana,  userId: U.ana,  name: 'Ana Costa',  email: 'ana@fittrainly.com',  phone: '+351 913 456 789', specialty: 'Funcional e Mobilidade', bio: 'Certificada pela NSCA, foco em longevidade e qualidade de movimento.', active: true, inadimplente: false, planId: P.hourly, alunoCount: 2, hoursThisMonth: 14 },
-    { id: PT.pedro,userId: U.pedro,name: 'Pedro Santos',email:'pedro@fittrainly.com',phone: '+351 914 567 890', specialty: 'Emagrecimento e Saúde', bio: 'Nutricionista e personal trainer, abordagem holística do emagrecimento.', active: true, inadimplente: true, planId: P.weekly, alunoCount: 2, hoursThisMonth: 8 },
+    { id: PT.joao, userId: U.joao, name: 'João Silva', email: 'joao@fittrainly.com', phone: '+351 912 345 678', specialty: 'Musculação e Força', bio: 'Especialista em hipertrofia com 8 anos de experiência. Certificado pela NSCA.', active: true, inadimplente: false, planId: P.monthly, alunoCount: 4, hoursThisMonth: 22, billingCycleAnchorDay: 15 },
+    { id: PT.ana,  userId: U.ana,  name: 'Ana Costa',  email: 'ana@fittrainly.com',  phone: '+351 913 456 789', specialty: 'Funcional e Mobilidade', bio: 'Certificada pela NSCA, foco em longevidade e qualidade de movimento.', active: true, inadimplente: false, planId: P.hourly, alunoCount: 2, hoursThisMonth: 14, billingCycleAnchorDay: 10 },
+    { id: PT.pedro,userId: U.pedro,name: 'Pedro Santos',email:'pedro@fittrainly.com',phone: '+351 914 567 890', specialty: 'Emagrecimento e Saúde', bio: 'Nutricionista e personal trainer, abordagem holística do emagrecimento.', active: true, inadimplente: true, planId: P.weekly, alunoCount: 2, hoursThisMonth: 8, billingCycleAnchorDay: 5 },
   ]
 
   const alunos: MockAluno[] = [
@@ -380,16 +459,16 @@ function createDB() {
   const nextMonday = addWeeks(startOfWeek(now, { weekStartsOn: 1 }), 1)
   const lastMonday = addWeeks(startOfWeek(now, { weekStartsOn: 1 }), -1)
 
-  // Next week CONFIRMED — João's alunos at 09:00
+  // Next week CONFIRMED — João's alunos, one per slot (sessions are 1-on-1, never group)
   for (let d = 0; d < 4; d++) {
     const day = addDays(nextMonday, d)
     const date = localDate(day)
     ;[
-      { id: AL.carlos, name: 'Carlos Mendes' },
-      { id: AL.maria,  name: 'Maria Fernandes' },
-      { id: AL.sofia,  name: 'Sofia Rodrigues' },
+      { id: AL.carlos, name: 'Carlos Mendes', time: '09:00' },
+      { id: AL.maria,  name: 'Maria Fernandes', time: '09:40' },
+      { id: AL.sofia,  name: 'Sofia Rodrigues', time: '10:20' },
     ].forEach(a => {
-      bookings.push(makeBooking(`bk-${a.id}-${date}-09:00`, date, '09:00', PT.joao, 'João Silva', a.id, a.name, 'CONFIRMED', 60))
+      bookings.push(makeBooking(`bk-${a.id}-${date}-${a.time}`, date, a.time, PT.joao, 'João Silva', a.id, a.name, 'CONFIRMED', 60))
     })
     // Rui at 18:20 (first 2 days)
     if (d < 2) {
@@ -397,15 +476,15 @@ function createDB() {
     }
   }
 
-  // Ana's alunos at 10:20 on Tue + Thu next week
+  // Ana's alunos on Tue + Thu next week — one per slot (sessions are 1-on-1)
   for (const dOff of [1, 3]) {
     const day = addDays(nextMonday, dOff)
     const date = localDate(day)
     ;[
-      { id: AL.helena, name: 'Helena Martins' },
-      { id: AL.tiago,  name: 'Tiago Ferreira' },
+      { id: AL.helena, name: 'Helena Martins', time: '09:40' },
+      { id: AL.tiago,  name: 'Tiago Ferreira', time: '10:20' },
     ].forEach(a => {
-      bookings.push(makeBooking(`bk-${a.id}-${date}-10:20`, date, '10:20', PT.ana, 'Ana Costa', a.id, a.name, 'CONFIRMED', 60))
+      bookings.push(makeBooking(`bk-${a.id}-${date}-${a.time}`, date, a.time, PT.ana, 'Ana Costa', a.id, a.name, 'CONFIRMED', 60))
     })
   }
 
@@ -561,7 +640,7 @@ function createDB() {
     { id: 'nc-12', type: 'EVAL_AFTER',           label: 'Questionário pós-avaliação',   description: 'Enquête de satisfação enviada no dia seguinte à avaliação',    enabled: false, triggerLabel: '1 dia após a avaliação' },
   ]
 
-  return { users, plans, pts, alunos, ptReleases, bookings, modalidades, workoutPlans, avaliacoes, packs, leads, notificationConfigs }
+  return { users, plans, planHourTiers, pts, alunos, ptReleases, bookings, modalidades, workoutPlans, avaliacoes, packs, leads, notificationConfigs }
 }
 
 // ── Module-level mutable state ──────────────────────────────────────────────

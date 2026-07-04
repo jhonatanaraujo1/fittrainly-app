@@ -3,12 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Plus, X, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Search, Lock, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
-import { adminScheduleApi, ptApi } from '@/lib/api'
+import { SessionDetailDialog } from '@/components/session-detail-dialog'
+import { adminScheduleApi, ptApi, bookingApi, studioScheduleApi } from '@/lib/api'
 import { cn, getInitials } from '@/lib/utils'
 import type { AdminScheduleSlot, PersonalTrainer } from '@/types'
 
@@ -27,6 +28,8 @@ export default function AdminSchedulePage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [popover, setPopover] = useState<PopoverPos | null>(null)
   const [ptSearch, setPtSearch] = useState('')
+  const [selectedSession, setSelectedSession] = useState<{ ptId: string; ptName: string; slotKey: string; startTime: string; endTime: string } | null>(null)
+  const [blockMode, setBlockMode] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -69,6 +72,40 @@ export default function AdminSchedulePage() {
     onError: () => toast.error('Erro ao remover'),
   })
 
+  const { data: sessionAttendees = [] } = useQuery({
+    queryKey: ['session-attendees', selectedSession?.ptId, selectedSession?.slotKey],
+    queryFn: () => adminScheduleApi.attendees(selectedSession!.ptId, selectedSession!.slotKey),
+    enabled: !!selectedSession,
+  })
+
+  const cancelBooking = useMutation({
+    mutationFn: bookingApi.cancel,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-schedule'] })
+      qc.invalidateQueries({ queryKey: ['session-attendees'] })
+      toast.success('Sessão cancelada')
+    },
+    onError: (e: Error) => toast.error(e.message || 'Erro ao cancelar sessão'),
+  })
+
+  const createBlock = useMutation({
+    mutationFn: studioScheduleApi.createBlock,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-schedule', weekOffset] })
+      toast.success('Horário bloqueado')
+    },
+    onError: (e: Error) => toast.error(e.message || 'Erro ao bloquear horário'),
+  })
+
+  const deleteBlock = useMutation({
+    mutationFn: (block: { blockId: string }) => studioScheduleApi.deleteBlock(block.blockId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-schedule', weekOffset] })
+      toast.success('Bloqueio removido')
+    },
+    onError: () => toast.error('Erro ao remover bloqueio'),
+  })
+
   // Map for O(1) lookup: "YYYY-MM-DD-HH:MM" → AdminScheduleSlot
   const slotMap = useMemo(() => {
     const m: Record<string, AdminScheduleSlot> = {}
@@ -104,18 +141,37 @@ export default function AdminSchedulePage() {
             Slots de 40 min fixos · Capacidade máx. <strong>4</strong> em simultâneo
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
-          <button onClick={() => setWeekOffset(w => w - 1)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
-            <ChevronLeft className="w-4 h-4 text-gray-600" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setBlockMode(b => !b)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-colors min-h-[44px]',
+              blockMode ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
+            )}
+          >
+            {blockMode ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            {blockMode ? 'A bloquear horários' : 'Bloquear horários'}
           </button>
-          <span className="text-xs sm:text-sm font-semibold text-gray-700 px-2 min-w-[110px] sm:min-w-[130px] text-center">
-            {weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próx. semana' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem.`}
-          </span>
-          <button onClick={() => setWeekOffset(w => w + 1)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
-            <ChevronRight className="w-4 h-4 text-gray-600" />
-          </button>
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+            <button onClick={() => setWeekOffset(w => w - 1)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+            <span className="text-xs sm:text-sm font-semibold text-gray-700 px-2 min-w-[110px] sm:min-w-[130px] text-center">
+              {weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próx. semana' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem.`}
+            </span>
+            <button onClick={() => setWeekOffset(w => w + 1)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
         </div>
       </div>
+
+      {blockMode && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 text-xs text-red-700">
+          <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+          Clica num horário vazio para bloqueá-lo (feriado, estúdio fechado). Clica num horário já bloqueado para desbloquear.
+        </div>
+      )}
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -197,37 +253,83 @@ export default function AdminSchedulePage() {
                       const studioFull = slot.studioCount >= slot.studioMax
                       const releaseFull = slot.releases.length >= slot.studioMax
 
+                      const handleCellClick = () => {
+                        if (!blockMode) return
+                        if (slot.blocked && slot.blockId) {
+                          deleteBlock.mutate({ blockId: slot.blockId })
+                        } else if (!slot.blocked && slot.releases.length === 0) {
+                          createBlock.mutate({
+                            date: dateStr, startTime: time, endTime: slot.endTime.slice(11, 16), reason: 'Bloqueado pelo estúdio',
+                          })
+                        } else if (slot.releases.length > 0) {
+                          toast.error('Remove os PTs alocados neste horário antes de bloquear')
+                        }
+                      }
+
+                      if (slot.blocked) {
+                        return (
+                          <td key={d} className="p-0.5">
+                            <div
+                              onClick={handleCellClick}
+                              title={slot.blockReason}
+                              className={cn(
+                                'min-h-[48px] rounded-md border p-1.5 flex flex-col items-center justify-center gap-0.5 bg-red-50 border-red-200',
+                                blockMode && 'cursor-pointer hover:bg-red-100 transition-colors',
+                              )}
+                            >
+                              <Lock className="w-3 h-3 text-red-400" />
+                              <span className="text-[8px] font-semibold text-red-500 text-center leading-none">Bloqueado</span>
+                            </div>
+                          </td>
+                        )
+                      }
+
                       return (
                         <td key={d} className="p-0.5">
                           <div className="relative">
-                            <div className={cn(
-                              'min-h-[48px] rounded-md border p-1 flex flex-col gap-0.5 transition-colors',
-                              slot.releases.length === 0 ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
-                              studioFull && 'bg-[#1F3864]/5 border-[#1F3864]/20',
-                            )}>
+                            <div
+                              onClick={blockMode ? handleCellClick : undefined}
+                              className={cn(
+                                'min-h-[48px] rounded-md border p-1 flex flex-col gap-1 transition-colors',
+                                slot.releases.length === 0 ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
+                                studioFull && 'bg-[#1F3864]/5 border-[#1F3864]/20',
+                                blockMode && 'cursor-pointer hover:bg-red-50 hover:border-red-200',
+                              )}>
                               {/* PT release chips */}
-                              {slot.releases.map(rel => (
-                                <div key={rel.releaseId}
-                                  className={cn('flex items-center justify-between rounded px-1.5 py-0.5 text-white text-[9px] font-semibold group', ptColor(rel.ptId))}>
-                                  <span className="truncate">{activePts.find(p => p.id === rel.ptId)?.name.split(' ')[0] ?? 'PT'}</span>
-                                  {rel.confirmedCount === 0 ? (
-                                    <button
-                                      onClick={() => removeRelease.mutate(rel.releaseId)}
-                                      disabled={removeRelease.isPending}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:bg-white/20 rounded p-0.5 flex-shrink-0"
-                                    >
-                                      <X className="w-2.5 h-2.5" />
-                                    </button>
-                                  ) : (
-                                    <span className="ml-1 opacity-70 flex-shrink-0">{rel.confirmedCount}✓</span>
-                                  )}
-                                </div>
-                              ))}
+                              {slot.releases.map(rel => {
+                                const ptName = activePts.find(p => p.id === rel.ptId)?.name ?? 'PT'
+                                return (
+                                  <div key={rel.releaseId}
+                                    onClick={() => rel.confirmedCount > 0 && setSelectedSession({
+                                      ptId: rel.ptId, ptName, slotKey: `${dateStr}-${time}`,
+                                      startTime: slot.startTime, endTime: slot.endTime,
+                                    })}
+                                    className={cn(
+                                      'flex items-center justify-between rounded px-1.5 py-1 min-h-[20px] text-white text-[9px] font-semibold group',
+                                      ptColor(rel.ptId),
+                                      rel.confirmedCount > 0 && 'cursor-pointer hover:opacity-80 transition-opacity',
+                                    )}>
+                                    <span className="truncate">{ptName.split(' ')[0]}</span>
+                                    {rel.confirmedCount === 0 ? (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); removeRelease.mutate(rel.releaseId) }}
+                                        disabled={removeRelease.isPending}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:bg-white/20 rounded p-0.5 flex-shrink-0"
+                                      >
+                                        <X className="w-2.5 h-2.5" />
+                                      </button>
+                                    ) : (
+                                      <span className="ml-1 opacity-70 flex-shrink-0">{rel.confirmedCount}✓</span>
+                                    )}
+                                  </div>
+                                )
+                              })}
 
                               {/* Add button */}
-                              {!releaseFull && (
+                              {!releaseFull && !blockMode && (
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     if (isOpen) { setPopover(null); setPtSearch('') }
                                     else { setPopover({ date: dateStr, slotTime: time }); setPtSearch('') }
                                   }}
@@ -313,10 +415,24 @@ export default function AdminSchedulePage() {
 
       <div className="flex flex-wrap gap-3 text-[11px] text-gray-400">
         <span>• Clica em <strong>+ PT</strong> para alocar um PT ao slot</span>
+        <span>• Clica num chip com alunos confirmados para ver detalhes</span>
         <span>• Hover no chip → ✕ remove (sem reservas)</span>
         <span>• <strong>X/4</strong> = alunos confirmados no estúdio</span>
         <span>• Slots de <strong>40 minutos</strong> fixos</span>
       </div>
+
+      {selectedSession && (
+        <SessionDetailDialog
+          open={!!selectedSession}
+          onOpenChange={(o) => !o && setSelectedSession(null)}
+          startTime={selectedSession.startTime}
+          endTime={selectedSession.endTime}
+          ptName={selectedSession.ptName}
+          students={sessionAttendees.map(a => ({ bookingId: a.bookingId, name: a.alunoName, email: a.email, phone: a.phone }))}
+          onCancelBooking={(bookingId) => cancelBooking.mutate(bookingId)}
+          cancellingId={cancelBooking.isPending ? cancelBooking.variables ?? null : null}
+        />
+      )}
     </div>
   )
 }

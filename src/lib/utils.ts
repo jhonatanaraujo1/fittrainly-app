@@ -54,7 +54,7 @@ export function avatarColor(name: string): string {
 }
 
 export function planTypeLabel(type: string): string {
-  return ({ HOURLY: 'Por Hora', WEEKLY: 'Semanal', MONTHLY: 'Mensal' } as Record<string, string>)[type] ?? type
+  return ({ HOURLY: 'Por Hora', WEEKLY: 'Semanal', MONTHLY: 'Mensal', TIERED_HOURLY: 'Por Hora (Faixas)' } as Record<string, string>)[type] ?? type
 }
 
 export function planTypeBadge(type: string): string {
@@ -62,6 +62,7 @@ export function planTypeBadge(type: string): string {
     HOURLY: 'bg-green-100 text-green-700 border-green-200',
     WEEKLY: 'bg-orange-100 text-orange-700 border-orange-200',
     MONTHLY: 'bg-blue-100 text-blue-700 border-blue-200',
+    TIERED_HOURLY: 'bg-violet-100 text-violet-700 border-violet-200',
   } as Record<string, string>)[type] ?? 'bg-gray-100 text-gray-600'
 }
 

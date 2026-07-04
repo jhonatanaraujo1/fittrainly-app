@@ -171,7 +171,8 @@ export default function PTStudentsPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: i * 0.04 }}
-              className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3"
+              onClick={() => router.push(`/pt/students/${s.id}`)}
+              className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer hover:border-gray-200 hover:shadow-md transition-all"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full ${avatarColor(s.name)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
@@ -201,7 +202,7 @@ export default function PTStudentsPage() {
               </div>
 
               <button
-                onClick={() => router.push(`/pt/treinos/${s.id}`)}
+                onClick={(e) => { e.stopPropagation(); router.push(`/pt/treinos/${s.id}`) }}
                 className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#1F3864] hover:text-white text-gray-600 text-xs font-semibold transition-colors group min-h-[40px]"
               >
                 <span className="flex items-center gap-1.5">
