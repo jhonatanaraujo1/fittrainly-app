@@ -8,6 +8,10 @@ import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { availabilityApi } from '@/lib/api'
 import { cn, formatTime } from '@/lib/utils'
 import type { StudioSlot } from '@/types'
@@ -91,6 +95,8 @@ function SlotCell({
 export default function PTAvailabilityPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set())
+  const [confirmSlot, setConfirmSlot] = useState<StudioSlot | null>(null)
+  const [confirmClearWeek, setConfirmClearWeek] = useState(false)
   const qc = useQueryClient()
 
   const monday = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
@@ -192,9 +198,11 @@ export default function PTAvailabilityPage() {
     const afternoon = grid.filter(s => s.slotTime >= '15:00')
     bulkCreate.mutate(afternoon)
   }
-  const handleClearWeek = () => {
+  const handleClearWeek = () => setConfirmClearWeek(true)
+  const confirmHandleClearWeek = () => {
     const clearable = grid.filter(s => s.released && s.myBookings === 0)
     bulkDelete.mutate(clearable)
+    setConfirmClearWeek(false)
   }
 
   const busy = toggle.isPending || bulkCreate.isPending || bulkDelete.isPending
@@ -342,7 +350,7 @@ export default function PTAvailabilityPage() {
                         key={d}
                         slot={slot}
                         toggling={pendingKeys.has(key) || busy}
-                        onToggle={() => toggle.mutate(slot)}
+                        onToggle={() => setConfirmSlot(slot)}
                       />
                     )
                   })}
@@ -357,6 +365,62 @@ export default function PTAvailabilityPage() {
       <div className="bg-[#1F3864]/5 border border-[#1F3864]/10 rounded-xl px-4 py-3 text-xs text-[#1F3864]/70 leading-relaxed">
         Slots com 🔒 têm alunos confirmados — cancela as reservas antes de remover. O estúdio tem <strong>4 vagas simultâneas</strong> partilhadas entre todos os PTs.
       </div>
+
+      {/* Confirm single-slot toggle */}
+      <Dialog open={!!confirmSlot} onOpenChange={(o) => !o && setConfirmSlot(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmSlot?.released ? 'Remover este horário?' : 'Ativar este horário?'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmSlot && (
+                <>
+                  {format(new Date(confirmSlot.startTime), "EEEE, d 'de' MMMM", { locale: ptBR })} às {confirmSlot.slotTime}.
+                  {confirmSlot.released
+                    ? ' Os teus alunos deixam de conseguir agendar aqui.'
+                    : ' Os teus alunos vão poder agendar aqui.'}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmSlot(null)} disabled={toggle.isPending}>
+              Voltar
+            </Button>
+            <Button
+              variant={confirmSlot?.released ? 'destructive' : 'default'}
+              disabled={toggle.isPending}
+              onClick={() => {
+                if (confirmSlot) toggle.mutate(confirmSlot)
+                setConfirmSlot(null)
+              }}
+            >
+              {confirmSlot?.released ? 'Sim, remover' : 'Sim, ativar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm clear week */}
+      <Dialog open={confirmClearWeek} onOpenChange={setConfirmClearWeek}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Limpar a semana?</DialogTitle>
+            <DialogDescription>
+              Remove todos os horários ativos sem reservas nesta semana. Horários com alunos confirmados não são afetados.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmClearWeek(false)} disabled={bulkDelete.isPending}>
+              Voltar
+            </Button>
+            <Button variant="destructive" disabled={bulkDelete.isPending} onClick={confirmHandleClearWeek}>
+              Sim, limpar semana
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
