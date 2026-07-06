@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   LayoutDashboard, Users, Users2,
-  Calendar, UserCheck, CalendarPlus, History, LogOut, Dumbbell,
+  Calendar, UserCheck, History, LogOut, Dumbbell,
   TrendingUp, ClipboardList, CreditCard, Receipt, Layers,
   Bell, MoreHorizontal, X,
 } from 'lucide-react'
@@ -31,8 +31,7 @@ const PRIMARY: Record<UserRole, NavItem[]> = {
     { href: '/pt/treinos',      label: 'Treinos', icon: ClipboardList },
   ],
   ALUNO: [
-    { href: '/aluno',          label: 'Início',    icon: LayoutDashboard },
-    { href: '/aluno/book',     label: 'Sessões',   icon: CalendarPlus },
+    { href: '/aluno',          label: 'Agenda',    icon: LayoutDashboard },
     { href: '/aluno/treino',   label: 'Treino',    icon: Dumbbell },
     { href: '/aluno/history',  label: 'Histórico', icon: History },
   ],

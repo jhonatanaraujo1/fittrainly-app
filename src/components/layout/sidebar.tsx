@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, CreditCard, Receipt,
-  Calendar, UserCheck, CalendarPlus, History,
+  Calendar, UserCheck, History,
   Dumbbell, LogOut, Layers, ClipboardList,
   Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3,
 } from 'lucide-react'
@@ -33,8 +33,7 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/pt/treinos',      label: 'Treinos',     icon: ClipboardList },
   ],
   ALUNO: [
-    { href: '/aluno',           label: 'Dashboard',      icon: LayoutDashboard },
-    { href: '/aluno/book',      label: 'Minhas Sessões', icon: CalendarPlus },
+    { href: '/aluno',           label: 'Agenda',         icon: LayoutDashboard },
     { href: '/aluno/treino',    label: 'Meu Treino',     icon: Dumbbell },
     { href: '/aluno/history',   label: 'Histórico',      icon: History },
     { href: '/aluno/anamnese',  label: 'Minha Anamnese', icon: ClipboardCheck },
