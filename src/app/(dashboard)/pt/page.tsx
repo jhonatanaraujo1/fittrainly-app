@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Users, Calendar, Clock, Receipt } from 'lucide-react'
 import { StatCard } from '@/components/ui/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PTAgendaViewer } from '@/components/pt-agenda-viewer'
+import { PTAgendaViewer, PTTodaySummary } from '@/components/pt-agenda-viewer'
 import { dashboardApi } from '@/lib/api'
 import { formatCurrency, withIVA } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -48,6 +48,11 @@ export default function PTDashboardPage() {
           />
         </div>
       )}
+
+      {/* Resumo do dia — sempre visível, sem precisar trocar pra Lista */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+        <PTTodaySummary />
+      </motion.div>
 
       {/* Same agenda widget as "Minha Agenda" — marcações + horários disponíveis */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>

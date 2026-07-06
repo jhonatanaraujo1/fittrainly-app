@@ -33,7 +33,7 @@ const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementTy
     { href: '/pt/treinos',      label: 'Treinos',     icon: ClipboardList },
   ],
   ALUNO: [
-    { href: '/aluno',           label: 'Agenda',         icon: LayoutDashboard },
+    { href: '/aluno',           label: 'Meus Agendamentos', icon: LayoutDashboard },
     { href: '/aluno/treino',    label: 'Meu Treino',     icon: Dumbbell },
     { href: '/aluno/history',   label: 'Histórico',      icon: History },
     { href: '/aluno/anamnese',  label: 'Minha Anamnese', icon: ClipboardCheck },

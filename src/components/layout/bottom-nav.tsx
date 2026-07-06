@@ -31,7 +31,7 @@ const PRIMARY: Record<UserRole, NavItem[]> = {
     { href: '/pt/treinos',      label: 'Treinos', icon: ClipboardList },
   ],
   ALUNO: [
-    { href: '/aluno',          label: 'Agenda',    icon: LayoutDashboard },
+    { href: '/aluno',          label: 'Agendamentos', icon: LayoutDashboard },
     { href: '/aluno/treino',   label: 'Treino',    icon: Dumbbell },
     { href: '/aluno/history',  label: 'Histórico', icon: History },
   ],

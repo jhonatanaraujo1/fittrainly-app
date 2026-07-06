@@ -18,6 +18,59 @@ function localDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Always-visible "resumo da agenda do dia" for the Dashboard — client asked
+// for this to just appear, not require switching to Lista view. Uses the
+// exact same queryKey (['studio-grid', 0], current week) as PTAgendaViewer's
+// default view, so React Query serves both from the same cache entry — the
+// two can never show different data for "hoje" (same bug class as the aluno
+// list/grid mismatch fixed earlier).
+export function PTTodaySummary() {
+  const monday = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const saturday = addDays(monday, 5)
+
+  const { data: grid = [], isLoading } = useQuery<StudioSlot[]>({
+    queryKey: ['studio-grid', 0],
+    queryFn: () => availabilityApi.studioGrid(localDate(monday), localDate(saturday)),
+    staleTime: 30_000,
+  })
+
+  const todaysSessions = grid
+    .filter(s => s.released && s.myBookings > 0 && isToday(new Date(s.startTime)))
+    .sort((a, b) => a.slotTime.localeCompare(b.slotTime))
+
+  if (isLoading) {
+    return <Skeleton className="h-20 rounded-xl" />
+  }
+  if (todaysSessions.length === 0) return null
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-50">
+        <h2 className="text-sm font-semibold text-gray-900">Agenda de Hoje</h2>
+        <span className="text-xs text-gray-400">{todaysSessions.length} sessão{todaysSessions.length !== 1 ? 'ões' : ''}</span>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {todaysSessions.map((s) => (
+          <div key={`${s.date}-${s.slotTime}`} className="flex items-center gap-3 px-4 sm:px-5 py-2.5">
+            <span className="text-xs font-mono font-semibold text-gray-500 w-12 flex-shrink-0">{s.slotTime}</span>
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {(s.alunoNames ?? []).length > 0 ? (
+                s.alunoNames!.map(name => (
+                  <span key={name} className="text-xs font-medium text-gray-700 bg-gray-50 border border-gray-100 rounded-full px-2 py-0.5">
+                    {name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-gray-400">{s.myBookings} confirmado{s.myBookings !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Read-only agenda viewer — marcações + horários disponíveis, agenda/lista
 // toggle. Shared between the PT dashboard and "Minha Agenda" (availability
 // management page) — same widget, same functions, both places.
