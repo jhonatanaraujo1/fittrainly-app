@@ -12,7 +12,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CancelBookingDialog } from '@/components/cancel-booking-dialog'
 import { dashboardApi, bookingApi, alunoApi, availabilityApi, ptApi } from '@/lib/api'
-import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor, cn, getInitials, avatarColor } from '@/lib/utils'
+import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import type { AlunoDashboard, RecentSession, Availability, Booking, Aluno, PersonalTrainer } from '@/types'
 
@@ -145,47 +145,6 @@ function AgendaSection() {
 
   return (
     <div className="space-y-4">
-      {/* Pack banner */}
-      {slots[0]?.packRemaining !== undefined && (
-        <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${
-          slots[0].packRemaining > 0
-            ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
-            : 'bg-amber-50 border-amber-100 text-amber-800'
-        }`}>
-          <span>{slots[0].packRemaining > 0 ? '✅' : '⚠️'}</span>
-          <span>
-            {slots[0].packRemaining > 0
-              ? <><strong>{slots[0].packRemaining}</strong> sessões disponíveis para agendar · Duração: <strong>{slots[0].sessionDuration} min</strong></>
-              : 'Sem sessões no pack — fala com o teu PT para carregar mais'
-            }
-          </span>
-        </div>
-      )}
-
-      {/* PT info — read-only, no selector */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.12em] mb-3">O teu Personal Trainer</p>
-        {!myPt ? (
-          <Skeleton className="h-12 rounded-lg" />
-        ) : (
-          <div className="flex items-center gap-3">
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-              style={{ background: avatarColor(myPt.name) }}
-            >
-              {getInitials(myPt.name)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">{myPt.name}</p>
-              {myPt.specialty && <p className="text-xs text-gray-400 truncate">{myPt.specialty}</p>}
-            </div>
-            <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
-              Ativo
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* Week toggle + agenda/lista toggle + confirmed badge */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {/* Bidirectional week nav — pode voltar para ver aulas que teve */}
