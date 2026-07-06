@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Users2,
   Calendar, UserCheck, History, LogOut, Dumbbell,
   TrendingUp, ClipboardList, CreditCard, Receipt, Layers,
-  Bell, MoreHorizontal, X,
+  Bell, MoreHorizontal, X, Settings2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -45,6 +45,7 @@ const EXTRA: Record<UserRole, NavItem[]> = {
     { href: '/admin/plans',             label: 'Planos de Aluguel', icon: CreditCard },
     { href: '/admin/billing',           label: 'Faturação',         icon: Receipt },
     { href: '/admin/notificacoes',      label: 'Notificações',      icon: Bell },
+    { href: '/admin/configuracoes',     label: 'Configurações',     icon: Settings2 },
   ],
   PERSONAL_TRAINER: [],
   ALUNO: [],
