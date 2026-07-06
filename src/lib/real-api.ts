@@ -103,7 +103,12 @@ export const billingApi = {
 // from /convert-to-aluno (interesse/responsavel/planoInteresse/observacoes)
 // to /convert-to-student (interest/assignedTo/interestedPlan/notes).
 export const leadApi = {
-  list: async () => apiFetch<Array<Record<string, unknown>>>('/api/v1/leads'),
+  // Backend now paginates GET /leads (Page<LeadResponse>: content/totalElements/
+  // etc, not a bare array) — unwrap .content to keep the array shape the rest
+  // of this file (and the mock) expects.
+  list: async () =>
+    apiFetch<{ content: Array<Record<string, unknown>> }>('/api/v1/leads?size=200')
+      .then((page) => page.content),
   // Backend has no status filter on GET (lists everything and filters
   // client-side) — keeps behavior parity with the mock.
   byStatus: async (status: string) =>
