@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Plus, Clock, Calendar, CalendarDays, Layers, Loader2, Pencil, X } from 'lucide-react'
+import { Plus, Clock, Calendar, CalendarDays, Layers, Loader2, Pencil, X, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,10 +19,15 @@ import { planApi, planTierApi } from '@/lib/api'
 import { formatCurrency, planTypeLabel, planTypeBadge } from '@/lib/utils'
 import type { RentalPlan, PlanHourTier } from '@/types'
 
-const PLAN_ICONS = { HOURLY: Clock, WEEKLY: Calendar, MONTHLY: CalendarDays, TIERED_HOURLY: Layers }
+// TIERED_HOURLY is not selectable when creating a plan — it's a single
+// studio-wide billing configuration, not one plan among many.
+const PLAN_ICONS = { HOURLY: Clock, WEEKLY: Calendar, MONTHLY: CalendarDays }
 
 type TierDraft = { hoursFrom: string; hoursTo: string; pricePerHour: string; bonus: string }
 
+// Each tier is its own labeled 2x2 card — never a single dense row of
+// unlabeled inputs. Guarantees the values are always readable regardless of
+// screen width (the old flex-row-of-4-inputs layout truncated on mobile).
 function TierEditor({ planId }: { planId: string }) {
   const qc = useQueryClient()
   const { data: tiers = [] } = useQuery<PlanHourTier[]>({
@@ -62,26 +67,39 @@ function TierEditor({ planId }: { planId: string }) {
   const removeRow = (i: number) => setDraft(d => d.filter((_, idx) => idx !== i))
 
   return (
-    <div className="mt-3 pt-3 border-t border-gray-50 space-y-2">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Faixas de horas (progressivo)</p>
-      <div className="space-y-1.5">
-        {draft.map((row, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <Input placeholder="De" value={row.hoursFrom} onChange={e => set(i, 'hoursFrom', e.target.value)} className="h-8 text-xs w-14" type="number" />
-            <span className="text-gray-300 text-xs">–</span>
-            <Input placeholder="Até (vazio=∞)" value={row.hoursTo} onChange={e => set(i, 'hoursTo', e.target.value)} className="h-8 text-xs w-20" type="number" />
-            <Input placeholder="€/h" value={row.pricePerHour} onChange={e => set(i, 'pricePerHour', e.target.value)} className="h-8 text-xs w-16" type="number" step="0.01" />
-            <Input placeholder="Bónus €" value={row.bonus} onChange={e => set(i, 'bonus', e.target.value)} className="h-8 text-xs w-16" type="number" step="0.01" />
-            <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 transition-colors p-1">
+    <div className="space-y-3">
+      {draft.map((row, i) => (
+        <div key={i} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-500">Faixa {i + 1}</span>
+            <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 transition-colors p-1 -m-1">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        ))}
-      </div>
-      <div className="flex gap-2 pt-1">
-        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addRow}>+ Faixa</Button>
-        <Button type="button" size="sm" className="h-7 text-xs bg-[#1F3864] hover:bg-[#162c52] text-white" disabled={save.isPending} onClick={() => save.mutate()}>
-          {save.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Guardar faixas'}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-gray-400">De (horas)</Label>
+              <Input value={row.hoursFrom} onChange={e => set(i, 'hoursFrom', e.target.value)} className="h-9 text-sm" type="number" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-gray-400">Até (vazio = sem limite)</Label>
+              <Input value={row.hoursTo} onChange={e => set(i, 'hoursTo', e.target.value)} className="h-9 text-sm" type="number" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-gray-400">€ por hora</Label>
+              <Input value={row.pricePerHour} onChange={e => set(i, 'pricePerHour', e.target.value)} className="h-9 text-sm" type="number" step="0.01" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-gray-400">Bónus (€)</Label>
+              <Input value={row.bonus} onChange={e => set(i, 'bonus', e.target.value)} className="h-9 text-sm" type="number" step="0.01" />
+            </div>
+          </div>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={addRow}>+ Faixa</Button>
+        <Button type="button" size="sm" className="bg-[#1F3864] hover:bg-[#162c52] text-white" disabled={save.isPending} onClick={() => save.mutate()}>
+          {save.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Guardar faixas'}
         </Button>
       </div>
     </div>
@@ -144,12 +162,16 @@ export default function PlansPage() {
     if (p.type === 'HOURLY' && p.priceHourly) return `${formatCurrency(p.priceHourly)} / hora`
     if (p.type === 'WEEKLY' && p.priceWeekly) return `${formatCurrency(p.priceWeekly)} / semana`
     if (p.type === 'MONTHLY' && p.priceMonthly) return `${formatCurrency(p.priceMonthly)} / mês`
-    if (p.type === 'TIERED_HOURLY') return 'Por faixas'
     return '—'
   }
 
+  // TIERED_HOURLY is a single studio-wide config, not a plan the admin
+  // creates/duplicates/deletes — kept out of the plan cards grid entirely.
+  const rentalPlans = plans.filter(p => p.type !== 'TIERED_HOURLY')
+  const tieredConfig = plans.find(p => p.type === 'TIERED_HOURLY')
+
   return (
-    <div className="p-5 lg:p-7 space-y-5 max-w-4xl mx-auto">
+    <div className="p-5 lg:p-7 space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Planos de Aluguel</h1>
@@ -169,7 +191,7 @@ export default function PlansPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {plans.map((plan, i) => {
+          {rentalPlans.map((plan, i) => {
             const Icon = PLAN_ICONS[plan.type as keyof typeof PLAN_ICONS] ?? Calendar
             return (
               <motion.div
@@ -202,11 +224,36 @@ export default function PlansPage() {
                     {planTypeLabel(plan.type)}
                   </span>
                 </div>
-                {plan.type === 'TIERED_HOURLY' && <TierEditor planId={plan.id} />}
               </motion.div>
             )
           })}
         </div>
+      )}
+
+      {/* Configuração do estúdio — cobrança por hora progressiva. Não é um
+          plano: não se cria, não se duplica, não se atribui a um PT
+          específico — é uma única configuração válida para todo o estúdio. */}
+      {tieredConfig && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+          className="bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+        >
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-violet-50 text-violet-600 border border-violet-100 flex-shrink-0">
+              <Settings2 className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900">Cobrança por Hora (Progressiva)</p>
+              <p className="text-xs text-gray-400">Configuração do estúdio — vale para todos os PTs neste modelo</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2 mb-4 leading-relaxed">
+            {tieredConfig.description || 'Preço por hora decrescente por faixa, com acerto retroativo na última segunda do mês.'}
+          </p>
+          <TierEditor planId={tieredConfig.id} />
+        </motion.div>
       )}
 
       {/* Create dialog */}
@@ -226,7 +273,6 @@ export default function PlansPage() {
                   <SelectItem value="MONTHLY">Mensal</SelectItem>
                   <SelectItem value="WEEKLY">Semanal</SelectItem>
                   <SelectItem value="HOURLY">Por Hora</SelectItem>
-                  <SelectItem value="TIERED_HOURLY">Por Hora (Faixas progressivas)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
