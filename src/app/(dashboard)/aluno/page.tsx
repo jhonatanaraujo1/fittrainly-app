@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, CheckCircle2, Package, Loader2, X, Flame, Star, LayoutGrid, List } from 'lucide-react'
+import { Calendar, CheckCircle2, Package, Loader2, X, Flame, Star, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
@@ -73,6 +73,9 @@ function AgendaSection() {
   const bookedMap = new Map(
     myBookings.filter(b => b.status === 'CONFIRMED').map(b => [b.availabilityId, b.id])
   )
+  // Any status, keyed by slot — used to show past sessions (COMPLETED/
+  // CANCELLED) when browsing the agenda backwards.
+  const bookingBySlot = new Map(myBookings.map(b => [b.availabilityId, b]))
 
   const confirm = useMutation({
     mutationFn: bookingApi.create,
@@ -126,14 +129,16 @@ function AgendaSection() {
   }, {})
   const sortedDays = Object.keys(grouped).sort()
 
-  // Grid (Agenda view) — same future slots, indexed by date+time for a
-  // Mon–Sat x horário layout, mirroring the PT's own weekly calendar.
+  // Grid (Agenda view) — ALL slots for the week (past included), indexed by
+  // date+time for a Mon–Sat x horário layout, mirroring the PT's own weekly
+  // calendar. Unlike the list view (booking-only, future slots), the grid
+  // also lets the aluno browse back to see classes he already had.
   const slotMap: Record<string, Availability> = {}
-  for (const s of futureSlots) {
+  for (const s of slots) {
     const key = `${format(new Date(s.startTime), 'yyyy-MM-dd')}-${format(new Date(s.startTime), 'HH:mm')}`
     slotMap[key] = s
   }
-  const allTimes = [...new Set(futureSlots.map(s => format(new Date(s.startTime), 'HH:mm')))].sort()
+  const allTimes = [...new Set(slots.map(s => format(new Date(s.startTime), 'HH:mm')))].sort()
 
   const confirmedThisWeek = [...bookedMap.keys()].filter(id => slots.some(s => s.id === id)).length
   const isLoading = slotsLoading || !me
@@ -183,19 +188,17 @@ function AgendaSection() {
 
       {/* Week toggle + agenda/lista toggle + confirmed badge */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-          {['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'].map((label, idx) => (
-            <button
-              key={label}
-              onClick={() => setWeekOffset(idx)}
-              className={cn(
-                'px-3 py-2 text-xs font-semibold rounded-md transition-all min-h-[36px]',
-                weekOffset === idx ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Bidirectional week nav — pode voltar para ver aulas que teve */}
+        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+          <button onClick={() => setWeekOffset(w => w - 1)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          </button>
+          <span className="text-xs font-semibold text-gray-700 px-1 min-w-[110px] text-center">
+            {weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próx. semana' : weekOffset === -1 ? 'Semana passada' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. atrás` : `+${weekOffset} sem.`}
+          </span>
+          <button onClick={() => setWeekOffset(w => w + 1)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          </button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
@@ -231,10 +234,12 @@ function AgendaSection() {
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
-      ) : sortedDays.length === 0 ? (
+      ) : (view === 'agenda' ? slots.length === 0 : sortedDays.length === 0) ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-          <p className="text-gray-500 text-sm font-semibold">Sem sessões disponíveis</p>
-          <p className="text-gray-300 text-xs mt-1">{myPt?.name} ainda não tem horários para esta semana</p>
+          <p className="text-gray-500 text-sm font-semibold">Sem sessões {weekOffset < 0 ? 'nesta semana' : 'disponíveis'}</p>
+          <p className="text-gray-300 text-xs mt-1">
+            {weekOffset < 0 ? 'Nenhum registo para esta semana' : `${myPt?.name} ainda não tem horários para esta semana`}
+          </p>
         </div>
       ) : view === 'agenda' ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -264,6 +269,26 @@ function AgendaSection() {
                       const dateStr = format(date, 'yyyy-MM-dd')
                       const slot = slotMap[`${dateStr}-${time}`]
                       if (!slot) return <div key={d} className="h-9" />
+
+                      const isPast = new Date(slot.startTime) <= now
+                      const myBooking = bookingBySlot.get(slot.id)
+
+                      // Past — read-only, shows what actually happened (a
+                      // aula que teve), not what's bookable.
+                      if (isPast) {
+                        if (!myBooking) return <div key={d} className="h-9" />
+                        const pastStyle = myBooking.status === 'COMPLETED'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : myBooking.status === 'CANCELLED'
+                            ? 'bg-gray-200 text-gray-400 line-through'
+                            : 'bg-blue-100 text-blue-700'
+                        const pastLabel = myBooking.status === 'COMPLETED' ? 'Realizada' : myBooking.status === 'CANCELLED' ? 'Cancelada' : 'Confirmada'
+                        return (
+                          <div key={d} className={cn('h-9 rounded-md flex items-center justify-center px-1', pastStyle)}>
+                            <span className="text-[9px] font-bold leading-none">{pastLabel}</span>
+                          </div>
+                        )
+                      }
 
                       const confirmed = bookedMap.has(slot.id)
                       const bookingId = bookedMap.get(slot.id)
@@ -309,11 +334,13 @@ function AgendaSection() {
               </div>
 
               {/* Legend — paleta unificada: verde=disponível, cinza=ocupado, azul=confirmado */}
-              <div className="flex gap-4 mt-3 px-1">
+              <div className="flex gap-4 mt-3 px-1 flex-wrap">
                 {[
                   { color: 'bg-emerald-500', label: 'Disponível' },
                   { color: 'bg-blue-600', label: 'Confirmado' },
                   { color: 'bg-gray-300', label: 'Ocupado' },
+                  { color: 'bg-emerald-100', label: 'Realizada (passado)' },
+                  { color: 'bg-gray-200', label: 'Cancelada (passado)' },
                 ].map(({ color, label }) => (
                   <span key={label} className="flex items-center gap-1 text-[9px] text-gray-400">
                     <span className={cn('w-2 h-2 rounded-sm', color)} />

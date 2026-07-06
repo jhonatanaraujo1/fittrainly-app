@@ -253,10 +253,14 @@ function genPTReleases(
   ptId: string, ptName: string,
   filter: (dow: number, time: string) => boolean,
   weeksAhead = 4,
+  // Past weeks too — so browsing the agenda backwards shows the slots that
+  // back the aluno's history (COMPLETED/CANCELLED bookings seeded below go
+  // back 1 week; 2 weeks of margin here).
+  weeksBehind = 2,
 ): MockPTRelease[] {
   const releases: MockPTRelease[] = []
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 })
-  for (let w = 0; w < weeksAhead; w++) {
+  for (let w = -weeksBehind; w < weeksAhead; w++) {
     const wk = addWeeks(monday, w)
     for (let d = 0; d < 7; d++) {
       const day = addDays(wk, d)
