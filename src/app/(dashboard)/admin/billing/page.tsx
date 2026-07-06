@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { billingApi, ptPaymentApi } from '@/lib/api'
-import { formatCurrency, formatDate, getInitials, avatarColor, planTypeLabel, cn } from '@/lib/utils'
+import { formatCurrency, formatDate, getInitials, avatarColor, planTypeLabel, cn, withIVA, IVA_RATE } from '@/lib/utils'
 import type { BillingEntry } from '@/types'
 
 interface WeekRow {
@@ -64,10 +64,14 @@ function WeeklyScheduleCard({ ptId, ptName, month }: { ptId: string; ptName: str
                     <span className="text-gray-500">{w.hoursThisWeek}h esta semana · {w.cumulativeHours}h no mês</span>
                   </div>
                   <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-gray-500">Adiantado: <strong className="text-gray-800">{formatCurrency(w.amountAdvanced)}</strong></span>
+                    <span className="text-gray-500">
+                      Adiantado: <strong className="text-gray-800">{formatCurrency(w.amountAdvanced)}</strong>
+                      <span className="text-gray-400"> (c/ IVA: {formatCurrency(withIVA(w.amountAdvanced).total)})</span>
+                    </span>
                     {w.isClosingWeek && w.retroactiveAdjustment !== undefined && (
                       <span className={w.retroactiveAdjustment < 0 ? 'text-emerald-700 font-bold' : 'text-gray-700 font-bold'}>
                         Acerto: {w.retroactiveAdjustment < 0 ? '−' : '+'}{formatCurrency(Math.abs(w.retroactiveAdjustment))}
+                        <span className="font-normal text-gray-400"> (c/ IVA: {formatCurrency(withIVA(Math.abs(w.retroactiveAdjustment)).total)})</span>
                         {w.bonus ? ` · Bónus €${w.bonus}` : ''}
                       </span>
                     )}
@@ -88,16 +92,13 @@ function exportCSV(entries: BillingEntry[], total: number, month: string) {
     .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
 
   const rows = [
-    ['Personal Trainer', 'Plano', 'Tipo', 'Sessões', 'Valor (€)'],
-    ...entries.map(e => [
-      e.ptName,
-      e.planName,
-      planTypeLabel(e.planType),
-      String(e.sessionsCount ?? 0),
-      (e.value ?? 0).toFixed(2),
-    ]),
+    ['Personal Trainer', 'Plano', 'Tipo', 'Sessões', 'Valor s/ IVA (€)', 'IVA 23% (€)', 'Valor c/ IVA (€)'],
+    ...entries.map(e => {
+      const { base, iva, total: withTax } = withIVA(e.value ?? 0)
+      return [e.ptName, e.planName, planTypeLabel(e.planType), String(e.sessionsCount ?? 0), base.toFixed(2), iva.toFixed(2), withTax.toFixed(2)]
+    }),
     [],
-    ['', '', '', 'TOTAL', total.toFixed(2)],
+    ['', '', '', 'TOTAL', total.toFixed(2), withIVA(total).iva.toFixed(2), withIVA(total).total.toFixed(2)],
   ]
 
   const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n')
@@ -195,7 +196,7 @@ export default function BillingPage() {
                 <th className="text-left px-5 py-3 font-medium">Personal Trainer</th>
                 <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Plano</th>
                 <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Sessões</th>
-                <th className="text-right px-5 py-3 font-medium">Valor</th>
+                <th className="text-right px-5 py-3 font-medium">Valor (s/ IVA)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -219,6 +220,9 @@ export default function BillingPage() {
                     <span className={`font-bold text-sm ${e.value >= 100 ? 'text-emerald-700' : e.value >= 50 ? 'text-amber-700' : 'text-gray-700'}`}>
                       {formatCurrency(e.value ?? 0)}
                     </span>
+                    <div className="text-[10px] text-gray-400 mt-0.5">
+                      +IVA ({(IVA_RATE * 100).toFixed(0)}%): {formatCurrency(withIVA(e.value ?? 0).total)}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -251,7 +255,10 @@ export default function BillingPage() {
           className="bg-[#1F3864] rounded-xl px-5 py-4 flex items-center justify-between"
         >
           <span className="text-white/70 text-sm font-medium">Total do período</span>
-          <span className="text-white text-xl font-bold">{formatCurrency(total)}</span>
+          <div className="text-right">
+            <span className="text-white text-xl font-bold">{formatCurrency(total)}</span>
+            <p className="text-white/50 text-xs mt-0.5">c/ IVA (23%): {formatCurrency(withIVA(total).total)}</p>
+          </div>
         </motion.div>
       )}
     </div>

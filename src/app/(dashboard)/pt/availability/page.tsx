@@ -34,8 +34,10 @@ function SlotCell({
   const studioFull = slot.studioCount >= slot.studioMax
   const hasMyBookings = slot.myBookings > 0
 
-  let bg = 'bg-gray-50 border-gray-100 text-gray-300 hover:bg-gray-100 hover:border-gray-200 cursor-pointer'
-  let dot = 'bg-gray-200'
+  // Slots the PT hasn't released — shown in black, distinct from studio
+  // colors (green=available, blue=confirmed) confirmed with the client.
+  let bg = 'bg-gray-900 border-gray-800 text-gray-500 hover:bg-gray-800 hover:border-gray-700 cursor-pointer'
+  let dot = 'bg-gray-600'
   let label = ''
   let sublabel = ''
 
@@ -275,7 +277,7 @@ export default function PTAvailabilityPage() {
       {/* Legend */}
       <div className="flex flex-wrap gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-400">
         {[
-          { color: 'bg-gray-200', label: 'Inativo' },
+          { color: 'bg-gray-900', label: 'Bloqueado / não liberado' },
           { color: 'bg-emerald-500', label: 'Ativo · sem reservas' },
           { color: 'bg-blue-600', label: 'Com os meus alunos' },
           { color: 'bg-[#1F3864]', label: 'Estúdio lotado' },

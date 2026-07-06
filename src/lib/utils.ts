@@ -11,6 +11,18 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value ?? 0)
 }
 
+// Standard Portuguese VAT rate for services (taxa normal, Portugal
+// continental). Values calculated by the billing engine (aluguel do PT ao
+// estúdio) are net of IVA — this adds it on top for display only, never
+// changes what's stored or billed internally.
+export const IVA_RATE = 0.23
+
+export function withIVA(value: number): { base: number; iva: number; total: number } {
+  const base = value ?? 0
+  const iva = base * IVA_RATE
+  return { base, iva, total: base + iva }
+}
+
 function toDate(d: Date | string): Date {
   if (typeof d === 'string') {
     const parsed = parseISO(d)

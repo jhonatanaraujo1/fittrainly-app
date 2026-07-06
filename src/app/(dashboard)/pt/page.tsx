@@ -10,9 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/ui/stat-card'
 import { SessionDetailDialog } from '@/components/session-detail-dialog'
 import { dashboardApi, availabilityApi, bookingApi } from '@/lib/api'
-import { formatCurrency, formatTime, formatDate, getInitials, avatarColor } from '@/lib/utils'
+import { formatCurrency, formatTime, formatDate, getInitials, avatarColor, withIVA } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
-import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
+import { format, addDays, startOfWeek, addWeeks, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import type { PTDashboard, StudioSlot } from '@/types'
@@ -192,6 +192,8 @@ export default function PTDashboardPage() {
     queryFn: dashboardApi.pt,
   })
 
+  const todaysSessions = (data?.nextSessions ?? []).filter(s => isToday(new Date(s.startTime)))
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -212,8 +214,48 @@ export default function PTDashboardPage() {
           <StatCard title="Meus Alunos" value={data?.stats.totalAlunos ?? 0} icon={Users} iconColor="#C9A84C" delay={0.05} />
           <StatCard title="Sessões Esta Semana" value={data?.stats.sessionsThisWeek ?? 0} icon={Calendar} iconColor="#C9A84C" delay={0.1} />
           <StatCard title="Horas Este Mês" value={`${data?.stats.hoursThisMonth ?? 0}h`} icon={Clock} iconColor="#C9A84C" delay={0.15} />
-          <StatCard title="A Pagar" value={formatCurrency(data?.stats.amountDue ?? 0)} subtitle="Este mês" icon={Receipt} iconColor="#C9A84C" delay={0.2} />
+          <StatCard
+            title="A Pagar"
+            value={formatCurrency(data?.stats.amountDue ?? 0)}
+            subtitle={`s/ IVA · c/ IVA: ${formatCurrency(withIVA(data?.stats.amountDue ?? 0).total)}`}
+            icon={Receipt}
+            iconColor="#C9A84C"
+            delay={0.2}
+          />
         </div>
+      )}
+
+      {/* Today's schedule summary — quick "who am I seeing today" glance */}
+      {!isLoading && todaysSessions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-50">
+            <h2 className="text-sm font-semibold text-gray-900">Agenda de Hoje</h2>
+            <span className="text-xs text-gray-400">{todaysSessions.length} sessão{todaysSessions.length !== 1 ? 'ões' : ''}</span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {todaysSessions.map((s) => (
+              <div key={s.availabilityId} className="flex items-center gap-3 px-4 sm:px-5 py-2.5">
+                <span className="text-xs font-mono font-semibold text-gray-500 w-12 flex-shrink-0">{formatTime(s.startTime)}</span>
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  {(s.alunosBooked ?? []).length > 0 ? (
+                    s.alunosBooked!.map(name => (
+                      <span key={name} className="text-xs font-medium text-gray-700 bg-gray-50 border border-gray-100 rounded-full px-2 py-0.5">
+                        {name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">Sem confirmações ainda</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       )}
 
       {/* Next sessions */}
