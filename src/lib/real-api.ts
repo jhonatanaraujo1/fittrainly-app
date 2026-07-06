@@ -7,11 +7,12 @@
 // mock-api.ts.
 //
 // availability / bookings / admin-schedule / workout plans are intentionally
-// NOT implemented here yet: the mock models studio-wide shared capacity
-// (STUDIO_MAX_SPOTS across all PTs), while the real backend models per-PT
-// capacity (Availability.maxStudents, independent per trainer). Wiring those
-// domains needs a business decision on which model is correct, not just a
-// field rename — see the 01/jul audit notes.
+// NOT implemented here yet. The backend now matches the mock's shared
+// studio-wide capacity model (Tenant.studioCapacity, confirmed with the
+// product owner — see fittrainly-backend V10 migration), so wiring these
+// domains is no longer blocked on a business decision, just implementation
+// work: StudioSchedule/StudioBlock, TIERED_HOURLY billing, and the weekly
+// payment cycle still only exist in the mock (see backend tasks #12-#14).
 //
 // Never imported directly by pages — only through api.ts (facade), which
 // decides mock vs real per domain via the flags in api-config.ts.
