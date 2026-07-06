@@ -12,7 +12,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { PTAgendaViewer } from '@/components/pt-agenda-viewer'
 import { availabilityApi } from '@/lib/api'
 import { cn, formatTime } from '@/lib/utils'
 import type { StudioSlot } from '@/types'
@@ -212,9 +211,6 @@ export default function PTAvailabilityPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-5xl mx-auto">
-      {/* Agenda — marcações + horários disponíveis, agenda/lista toggle */}
-      <PTAgendaViewer />
-
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

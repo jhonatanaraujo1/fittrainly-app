@@ -369,7 +369,7 @@ export const availabilityApi = {
     const start = new Date(startDate).getTime()
     const end = new Date(endDate).getTime()
 
-    return db.ptReleases
+    const fromReleases = db.ptReleases
       .filter(r => {
         const t = new Date(`${r.date}T${r.slotTime}:00Z`).getTime()
         return r.ptId === ptId && t >= start && t <= end
@@ -392,6 +392,35 @@ export const availabilityApi = {
           packRemaining: pack ? pack.total - pack.used : 0,
         }
       })
+
+    const seenKeys = new Set(fromReleases.map(s => s.id))
+
+    // The list ("Últimas Sessões") reads straight from db.bookings, with no
+    // dependency on a release row existing. If the aluno has a booking whose
+    // slot isn't backed by a release (e.g. released, then later un-released
+    // by the PT, or a slot from before release history starts), the grid
+    // must still show it — same data as the list, always.
+    const fromMyBookings = db.bookings
+      .filter(b => {
+        if (b.alunoId !== aluno.id || b.personalTrainerId !== ptId) return false
+        if (seenKeys.has(b.slotKey)) return false
+        const t = new Date(b.startTime).getTime()
+        return t >= start && t <= end
+      })
+      .map(b => ({
+        id: b.slotKey,
+        personalTrainerId: ptId,
+        personalTrainerName: b.personalTrainerName,
+        startTime: b.startTime, endTime: b.endTime,
+        maxAlunos: STUDIO_MAX_SPOTS,
+        confirmedCount: getStudioSlotCount(b.slotKey.slice(0, 10), b.slotKey.slice(11)),
+        availableSlots: 0,
+        isBooked: b.status === 'CONFIRMED',
+        sessionDuration: pack?.sessionDuration ?? 60,
+        packRemaining: pack ? pack.total - pack.used : 0,
+      }))
+
+    return [...fromReleases, ...fromMyBookings]
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
   },
 
