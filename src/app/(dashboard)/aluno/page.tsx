@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, CheckCircle2, Package, Loader2, X, Flame, Star } from 'lucide-react'
+import { Calendar, CheckCircle2, Package, Loader2, X, Flame, Star, LayoutGrid, List } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
@@ -19,6 +19,8 @@ import type { AlunoDashboard, RecentSession, Availability, Booking, Aluno, Perso
 function hoursUntil(startTime: string): number {
   return (new Date(startTime).getTime() - Date.now()) / (1000 * 60 * 60)
 }
+
+const WEEKDAYS = [0, 1, 2, 3, 4, 5] // Mon–Sat
 
 /* ── vacancy helpers — paleta unificada: verde=disponível, cinza=ocupado, azul=confirmado ── */
 function vacancyDot(spots: number) {
@@ -38,6 +40,7 @@ function vacancyColor(spots: number) {
 function AgendaSection() {
   const qc = useQueryClient()
   const [weekOffset, setWeekOffset] = useState(0)
+  const [view, setView] = useState<'agenda' | 'lista'>('agenda')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<{ bookingId: string; availId: string; startTime: string; endTime: string } | null>(null)
@@ -114,13 +117,23 @@ function AgendaSection() {
   }
 
   const now = new Date()
-  const grouped = slots.reduce<Record<string, Availability[]>>((acc, s) => {
-    if (new Date(s.startTime) <= now) return acc
+  const futureSlots = slots.filter(s => new Date(s.startTime) > now)
+
+  const grouped = futureSlots.reduce<Record<string, Availability[]>>((acc, s) => {
     const d = format(new Date(s.startTime), 'yyyy-MM-dd')
     ;(acc[d] ??= []).push(s)
     return acc
   }, {})
   const sortedDays = Object.keys(grouped).sort()
+
+  // Grid (Agenda view) — same future slots, indexed by date+time for a
+  // Mon–Sat x horário layout, mirroring the PT's own weekly calendar.
+  const slotMap: Record<string, Availability> = {}
+  for (const s of futureSlots) {
+    const key = `${format(new Date(s.startTime), 'yyyy-MM-dd')}-${format(new Date(s.startTime), 'HH:mm')}`
+    slotMap[key] = s
+  }
+  const allTimes = [...new Set(futureSlots.map(s => format(new Date(s.startTime), 'HH:mm')))].sort()
 
   const confirmedThisWeek = [...bookedMap.keys()].filter(id => slots.some(s => s.id === id)).length
   const isLoading = slotsLoading || !me
@@ -168,7 +181,7 @@ function AgendaSection() {
         )}
       </div>
 
-      {/* Week toggle + confirmed badge */}
+      {/* Week toggle + agenda/lista toggle + confirmed badge */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
           {['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'].map((label, idx) => (
@@ -184,15 +197,36 @@ function AgendaSection() {
             </button>
           ))}
         </div>
-        {confirmedThisWeek > 0 && (
-          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-            <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-            <span><strong>{confirmedThisWeek}</strong> confirmada{confirmedThisWeek !== 1 ? 's' : ''} esta semana</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setView('agenda')}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors min-h-[32px]',
+                view === 'agenda' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
+              )}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" /> Agenda
+            </button>
+            <button
+              onClick={() => setView('lista')}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors min-h-[32px]',
+                view === 'lista' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
+              )}
+            >
+              <List className="w-3.5 h-3.5" /> Lista
+            </button>
           </div>
-        )}
+          {confirmedThisWeek > 0 && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+              <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+              <span><strong>{confirmedThisWeek}</strong> confirmada{confirmedThisWeek !== 1 ? 's' : ''} esta semana</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Session list */}
       {isLoading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
@@ -201,6 +235,94 @@ function AgendaSection() {
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <p className="text-gray-500 text-sm font-semibold">Sem sessões disponíveis</p>
           <p className="text-gray-300 text-xs mt-1">{myPt?.name} ainda não tem horários para esta semana</p>
+        </div>
+      ) : view === 'agenda' ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[560px] p-3">
+              {/* Day headers */}
+              <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: `52px repeat(6, minmax(0, 1fr))` }}>
+                <div />
+                {WEEKDAYS.map(d => {
+                  const date = addDays(monday, d)
+                  return (
+                    <div key={d} className="text-center py-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">{format(date, 'EEE', { locale: ptBR })}</p>
+                      <p className="text-[10px] text-gray-300">{format(date, 'd')}</p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Time rows */}
+              <div className="space-y-0.5">
+                {allTimes.map(time => (
+                  <div key={time} className="grid gap-1 items-center" style={{ gridTemplateColumns: `52px repeat(6, minmax(0, 1fr))` }}>
+                    <span className="text-[9px] font-mono text-gray-300 text-right pr-1.5 leading-none">{time}</span>
+                    {WEEKDAYS.map(d => {
+                      const date = addDays(monday, d)
+                      const dateStr = format(date, 'yyyy-MM-dd')
+                      const slot = slotMap[`${dateStr}-${time}`]
+                      if (!slot) return <div key={d} className="h-9" />
+
+                      const confirmed = bookedMap.has(slot.id)
+                      const bookingId = bookedMap.get(slot.id)
+                      const spotsLeft = slot.availableSlots ?? Math.max(0, slot.maxAlunos - slot.confirmedCount)
+                      const full = spotsLeft === 0 && !confirmed
+                      const isLoadingThis = loadingId === slot.id || cancellingId === slot.id
+
+                      return (
+                        <button
+                          key={d}
+                          disabled={isLoadingThis || (full && !confirmed)}
+                          onClick={() => {
+                            if (confirmed) {
+                              bookingId && setConfirmCancel({ bookingId, availId: slot.id, startTime: slot.startTime, endTime: slot.endTime })
+                            } else if (!full) {
+                              handleConfirm(slot.id)
+                            }
+                          }}
+                          className={cn(
+                            'h-9 rounded-md flex items-center justify-center px-1 transition-opacity',
+                            confirmed
+                              ? 'bg-blue-600 text-white hover:opacity-80 cursor-pointer'
+                              : full
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer',
+                            isLoadingThis && 'opacity-50',
+                          )}
+                        >
+                          {isLoadingThis ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : confirmed ? (
+                            <span className="text-[9px] font-bold leading-none">Confirmado</span>
+                          ) : full ? (
+                            <span className="text-[9px] opacity-80">lotado</span>
+                          ) : (
+                            <span className="text-[9px] font-bold leading-none">{spotsLeft} vagas</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+
+              {/* Legend — paleta unificada: verde=disponível, cinza=ocupado, azul=confirmado */}
+              <div className="flex gap-4 mt-3 px-1">
+                {[
+                  { color: 'bg-emerald-500', label: 'Disponível' },
+                  { color: 'bg-blue-600', label: 'Confirmado' },
+                  { color: 'bg-gray-300', label: 'Ocupado' },
+                ].map(({ color, label }) => (
+                  <span key={label} className="flex items-center gap-1 text-[9px] text-gray-400">
+                    <span className={cn('w-2 h-2 rounded-sm', color)} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
