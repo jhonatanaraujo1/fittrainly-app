@@ -8,6 +8,10 @@ import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { SessionDetailDialog } from '@/components/session-detail-dialog'
 import { adminScheduleApi, ptApi, bookingApi, studioScheduleApi } from '@/lib/api'
 import { cn, getInitials } from '@/lib/utils'
@@ -30,6 +34,7 @@ export default function AdminSchedulePage() {
   const [ptSearch, setPtSearch] = useState('')
   const [selectedSession, setSelectedSession] = useState<{ ptId: string; ptName: string; slotKey: string; startTime: string; endTime: string } | null>(null)
   const [blockMode, setBlockMode] = useState(false)
+  const [pendingAllocation, setPendingAllocation] = useState<{ ptId: string; ptName: string; date: string; slotTime: string } | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -379,7 +384,7 @@ export default function AdminSchedulePage() {
                                         <button key={pt.id}
                                           onClick={() => {
                                             setPopover(null); setPtSearch('')
-                                            addRelease.mutate({ ptId: pt.id, date: dateStr, slotTime: time })
+                                            setPendingAllocation({ ptId: pt.id, ptName: pt.name, date: dateStr, slotTime: time })
                                           }}
                                           className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors text-left min-h-[44px]"
                                         >
@@ -433,6 +438,39 @@ export default function AdminSchedulePage() {
           cancellingId={cancelBooking.isPending ? cancelBooking.variables ?? null : null}
         />
       )}
+
+      {/* Confirm PT allocation — não deve alocar direto no clique */}
+      <Dialog open={!!pendingAllocation} onOpenChange={(o) => !o && setPendingAllocation(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alocar {pendingAllocation?.ptName}?</DialogTitle>
+            <DialogDescription>
+              {pendingAllocation && (
+                <>
+                  {format(new Date(pendingAllocation.date + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR })} às {pendingAllocation.slotTime}.
+                  {' '}{pendingAllocation.ptName} passa a ter este horário liberado no estúdio.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingAllocation(null)} disabled={addRelease.isPending}>
+              Voltar
+            </Button>
+            <Button
+              disabled={addRelease.isPending}
+              onClick={() => {
+                if (pendingAllocation) {
+                  addRelease.mutate({ ptId: pendingAllocation.ptId, date: pendingAllocation.date, slotTime: pendingAllocation.slotTime })
+                }
+                setPendingAllocation(null)
+              }}
+            >
+              Sim, alocar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
