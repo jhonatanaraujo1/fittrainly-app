@@ -164,7 +164,7 @@ export default function LoginPage() {
         {/* Headline */}
         <div className="relative z-10 space-y-10">
           <div className="space-y-5">
-            <p className="text-white/35 text-[10px] font-bold tracking-[0.25em] uppercase">Gestão de Estúdio Boutique</p>
+            <p className="text-white/35 text-[10px] font-bold tracking-[0.25em] uppercase">Gestão de Estúdio</p>
             <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)' }}>
               O sistema que<br />
               o teu estúdio<br />
