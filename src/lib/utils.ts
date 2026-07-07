@@ -89,3 +89,21 @@ export function bookingStatusColor(status: string): string {
     COMPLETED: 'bg-emerald-100 text-emerald-700',
   } as Record<string, string>)[status] ?? 'bg-gray-100 text-gray-500'
 }
+
+// Shared status for any "validade" field (TEEF, seguro, etc.) — one place
+// deciding what counts as "perto do fim", so the PT list, PT profile, and
+// the admin dashboard alert never disagree about it.
+const DOC_WARNING_DAYS = 30
+
+export interface DocStatus {
+  status: 'ok' | 'warning' | 'expired'
+  daysLeft: number
+}
+
+export function docStatus(validUntil: string | undefined, warningDays = DOC_WARNING_DAYS): DocStatus | null {
+  if (!validUntil) return null
+  const daysLeft = Math.ceil((new Date(validUntil + 'T00:00:00').getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (daysLeft < 0) return { status: 'expired', daysLeft }
+  if (daysLeft <= warningDays) return { status: 'warning', daysLeft }
+  return { status: 'ok', daysLeft }
+}

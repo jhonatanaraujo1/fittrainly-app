@@ -23,7 +23,7 @@ import { ptApi, adminApi, billingApi, planApi } from '@/lib/api'
 import { db } from '@/lib/mock-db'
 import {
   getInitials, avatarColor, formatCurrency, formatDate,
-  planTypeLabel, planTypeBadge, bookingStatusLabel, bookingStatusColor,
+  planTypeLabel, planTypeBadge, bookingStatusLabel, bookingStatusColor, docStatus,
 } from '@/lib/utils'
 import type { PersonalTrainer, RentalPlan, BillingEntry } from '@/types'
 import type { MockAluno, MockBooking } from '@/lib/mock-db'
@@ -54,6 +54,9 @@ function EditSheet({ pt, plans, onClose }: {
     specialty: pt.specialty ?? '',
     bio:       pt.bio ?? '',
     planId:    pt.plan?.id ?? '',
+    teefNumber:          pt.teefNumber ?? '',
+    teefValidUntil:      pt.teefValidUntil ?? '',
+    insuranceValidUntil: pt.insuranceValidUntil ?? '',
   })
 
   const update = useMutation({
@@ -101,6 +104,20 @@ function EditSheet({ pt, plans, onClose }: {
                 {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {planTypeLabel(p.type)}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Número TEEF</Label>
+            <Input value={form.teefNumber} onChange={e => setForm(f => ({ ...f, teefNumber: e.target.value }))} placeholder="TEEF-2026-00000" className="min-h-[44px]" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Validade TEEF</Label>
+              <Input type="date" value={form.teefValidUntil} onChange={e => setForm(f => ({ ...f, teefValidUntil: e.target.value }))} className="min-h-[44px]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Validade Seguro</Label>
+              <Input type="date" value={form.insuranceValidUntil} onChange={e => setForm(f => ({ ...f, insuranceValidUntil: e.target.value }))} className="min-h-[44px]" />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Bio</Label>
@@ -260,6 +277,47 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
               )}
             </div>
             {pt.bio && <p className="text-xs text-gray-400 mt-2 leading-relaxed">{pt.bio}</p>}
+
+            {/* Documentação — TEEF + seguro */}
+            {(pt.teefNumber || pt.teefValidUntil || pt.insuranceValidUntil) && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {pt.teefNumber && (
+                  <span className="text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                    TEEF {pt.teefNumber}
+                  </span>
+                )}
+                {(() => {
+                  const teef = docStatus(pt.teefValidUntil)
+                  if (!teef) return null
+                  const cls = teef.status === 'expired'
+                    ? 'bg-red-50 text-red-600 border-red-200'
+                    : teef.status === 'warning'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-gray-50 text-gray-500 border-gray-100'
+                  return (
+                    <span className={`text-[11px] font-medium rounded-lg px-2.5 py-1 border ${cls}`}>
+                      Validade TEEF: {formatDate(pt.teefValidUntil!)}
+                      {teef.status !== 'ok' && (teef.status === 'expired' ? ` (vencida há ${Math.abs(teef.daysLeft)}d)` : ` (${teef.daysLeft}d)`)}
+                    </span>
+                  )
+                })()}
+                {(() => {
+                  const insurance = docStatus(pt.insuranceValidUntil)
+                  if (!insurance) return null
+                  const cls = insurance.status === 'expired'
+                    ? 'bg-red-50 text-red-600 border-red-200'
+                    : insurance.status === 'warning'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-gray-50 text-gray-500 border-gray-100'
+                  return (
+                    <span className={`text-[11px] font-medium rounded-lg px-2.5 py-1 border ${cls}`}>
+                      Validade Seguro: {formatDate(pt.insuranceValidUntil!)}
+                      {insurance.status !== 'ok' && (insurance.status === 'expired' ? ` (vencido há ${Math.abs(insurance.daysLeft)}d)` : ` (${insurance.daysLeft}d)`)}
+                    </span>
+                  )
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Actions */}

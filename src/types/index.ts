@@ -63,6 +63,9 @@ export interface PersonalTrainer {
   plan?: PlanSummary
   alunoCount: number
   hoursThisMonth: number
+  teefNumber?: string
+  teefValidUntil?: string
+  insuranceValidUntil?: string
 }
 
 export interface Aluno {

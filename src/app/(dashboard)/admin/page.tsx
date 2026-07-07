@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Users, UserCheck, Calendar, Clock, ArrowRight, TrendingUp } from 'lucide-react'
+import { Users, UserCheck, Calendar, Clock, ArrowRight, TrendingUp, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -12,7 +12,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { dashboardApi } from '@/lib/api'
-import { formatCurrency, getInitials, avatarColor, planTypeLabel } from '@/lib/utils'
+import { formatCurrency, getInitials, avatarColor, planTypeLabel, docStatus } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import type { AdminDashboard } from '@/types'
 
@@ -47,6 +47,17 @@ export default function AdminDashboardPage() {
 
   const occupation = ((data?.stats?.sessionsThisWeek ?? 0) / Math.max((data?.occupationByDay?.reduce((s, d) => s + d.occupied + d.available, 0) ?? 1), 1)) * 100
 
+  // Documentação a expirar/vencida — o admin precisa de ver isto sem ter de
+  // entrar em cada PT individualmente.
+  const docAlerts = (pts ?? []).flatMap(pt => {
+    const alerts: { pt: PersonalTrainer; label: string; doc: NonNullable<ReturnType<typeof docStatus>> }[] = []
+    const teef = docStatus(pt.teefValidUntil)
+    if (teef && teef.status !== 'ok') alerts.push({ pt, label: 'TEEF', doc: teef })
+    const insurance = docStatus(pt.insuranceValidUntil)
+    if (insurance && insurance.status !== 'ok') alerts.push({ pt, label: 'Seguro', doc: insurance })
+    return alerts
+  }).sort((a, b) => a.doc.daysLeft - b.doc.daysLeft)
+
   const chartData = (data?.occupationByDay ?? []).map(d => ({
     name: DAY_LABELS[d.day] ?? d.day,
     Sessões: d.occupied,
@@ -64,6 +75,38 @@ export default function AdminDashboardPage() {
           {new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </motion.div>
+
+      {/* Alerta de documentação — TEEF/seguro a vencer ou vencidos */}
+      {docAlerts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+          className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-3.5 space-y-2"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <p className="text-sm font-semibold text-amber-800">
+              {docAlerts.length} documento{docAlerts.length !== 1 ? 's' : ''} de PT a precisar de atenção
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {docAlerts.map(({ pt, label, doc }) => (
+              <Link
+                key={`${pt.id}-${label}`}
+                href={`/admin/personal-trainers/${pt.id}`}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                  doc.status === 'expired'
+                    ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+                    : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                {pt.name} — {label} {doc.status === 'expired' ? `vencido há ${Math.abs(doc.daysLeft)}d` : `vence em ${doc.daysLeft}d`}
+              </Link>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Insight banner */}
       {data && (
@@ -229,4 +272,6 @@ interface PersonalTrainer {
   specialty?: string; active: boolean; alunoCount: number
   plan?: { id: string; name: string; type: string }
   sessionsThisMonth?: number
+  teefValidUntil?: string
+  insuranceValidUntil?: string
 }

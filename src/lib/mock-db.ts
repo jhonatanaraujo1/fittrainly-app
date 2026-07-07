@@ -124,6 +124,12 @@ export interface MockPT {
   // students — they have no billing relationship with the studio themselves,
   // it's the PT who manages that with their own students.
   billingCycleAnchorDay: number
+  // Professional credential (TEEF) + liability insurance — the admin needs
+  // to know before either lapses, since an expired one is a legal/compliance
+  // risk for the studio, not just the PT.
+  teefNumber?: string
+  teefValidUntil?: string       // "YYYY-MM-DD"
+  insuranceValidUntil?: string  // "YYYY-MM-DD"
 }
 export interface MockAluno {
   id: string; userId: string; name: string; email: string; phone?: string
@@ -327,9 +333,11 @@ function createDB() {
   ]
 
   const pts: MockPT[] = [
-    { id: PT.joao, userId: U.joao, name: 'João Silva', email: 'joao@fittrainly.com', phone: '+351 912 345 678', specialty: 'Musculação e Força', bio: 'Especialista em hipertrofia com 8 anos de experiência. Certificado pela NSCA.', active: true, inadimplente: false, planId: P.monthly, alunoCount: 4, hoursThisMonth: 22, billingCycleAnchorDay: 15 },
-    { id: PT.ana,  userId: U.ana,  name: 'Ana Costa',  email: 'ana@fittrainly.com',  phone: '+351 913 456 789', specialty: 'Funcional e Mobilidade', bio: 'Certificada pela NSCA, foco em longevidade e qualidade de movimento.', active: true, inadimplente: false, planId: P.hourly, alunoCount: 2, hoursThisMonth: 14, billingCycleAnchorDay: 10 },
-    { id: PT.pedro,userId: U.pedro,name: 'Pedro Santos',email:'pedro@fittrainly.com',phone: '+351 914 567 890', specialty: 'Emagrecimento e Saúde', bio: 'Nutricionista e personal trainer, abordagem holística do emagrecimento.', active: true, inadimplente: true, planId: P.weekly, alunoCount: 2, hoursThisMonth: 8, billingCycleAnchorDay: 5 },
+    // TEEF/seguro de exemplo: João em dia, Ana perto de vencer (demonstra o
+    // alerta), Pedro já vencido (demonstra o estado mais crítico).
+    { id: PT.joao, userId: U.joao, name: 'João Silva', email: 'joao@fittrainly.com', phone: '+351 912 345 678', specialty: 'Musculação e Força', bio: 'Especialista em hipertrofia com 8 anos de experiência. Certificado pela NSCA.', active: true, inadimplente: false, planId: P.monthly, alunoCount: 4, hoursThisMonth: 22, billingCycleAnchorDay: 15, teefNumber: 'TEEF-2024-00812', teefValidUntil: localDate(addDays(new Date(), 180)), insuranceValidUntil: localDate(addDays(new Date(), 200)) },
+    { id: PT.ana,  userId: U.ana,  name: 'Ana Costa',  email: 'ana@fittrainly.com',  phone: '+351 913 456 789', specialty: 'Funcional e Mobilidade', bio: 'Certificada pela NSCA, foco em longevidade e qualidade de movimento.', active: true, inadimplente: false, planId: P.hourly, alunoCount: 2, hoursThisMonth: 14, billingCycleAnchorDay: 10, teefNumber: 'TEEF-2023-00456', teefValidUntil: localDate(addDays(new Date(), 18)), insuranceValidUntil: localDate(addDays(new Date(), 150)) },
+    { id: PT.pedro,userId: U.pedro,name: 'Pedro Santos',email:'pedro@fittrainly.com',phone: '+351 914 567 890', specialty: 'Emagrecimento e Saúde', bio: 'Nutricionista e personal trainer, abordagem holística do emagrecimento.', active: true, inadimplente: true, planId: P.weekly, alunoCount: 2, hoursThisMonth: 8, billingCycleAnchorDay: 5, teefNumber: 'TEEF-2022-00219', teefValidUntil: localDate(addDays(new Date(), 210)), insuranceValidUntil: localDate(addDays(new Date(), -6)) },
   ]
 
   const alunos: MockAluno[] = [

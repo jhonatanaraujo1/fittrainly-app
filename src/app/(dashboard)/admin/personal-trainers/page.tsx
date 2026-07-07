@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { ptApi, planApi } from '@/lib/api'
-import { getInitials, avatarColor, planTypeLabel, planTypeBadge } from '@/lib/utils'
+import { getInitials, avatarColor, planTypeLabel, planTypeBadge, docStatus } from '@/lib/utils'
 import type { PersonalTrainer, RentalPlan } from '@/types'
 
 // ── NovoPTSheet — redesigned 2-step form ──────────────────────────────────────
@@ -28,7 +28,7 @@ interface NovoPTSheetProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   plans: RentalPlan[]
-  onCreate: (data: { name: string; email: string; password: string; phone: string; specialty: string; bio: string; planId: string }) => void
+  onCreate: (data: { name: string; email: string; password: string; phone: string; specialty: string; bio: string; planId: string; teefNumber: string; teefValidUntil: string; insuranceValidUntil: string }) => void
   isPending: boolean
 }
 
@@ -40,7 +40,7 @@ const SPECIALTIES = [
 function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTSheetProps) {
   const [step, setStep] = useState(1)
   const [showPass, setShowPass] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', specialty: '', bio: '', planId: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }))
@@ -61,7 +61,7 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
     onOpenChange(false)
     setTimeout(() => {
       setStep(1)
-      setForm({ name: '', email: '', password: '', phone: '', specialty: '', bio: '', planId: '' })
+      setForm({ name: '', email: '', password: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
       setTouched({})
     }, 300)
   }
@@ -255,6 +255,37 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
                       ✓ {plans.find(p => p.id === form.planId)?.name} seleccionado
                     </p>
                   )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Número TEEF</Label>
+                  <Input
+                    placeholder="TEEF-2026-00000"
+                    value={form.teefNumber}
+                    onChange={e => set('teefNumber', e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Validade TEEF</Label>
+                    <Input
+                      type="date"
+                      value={form.teefValidUntil}
+                      onChange={e => set('teefValidUntil', e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Validade Seguro</Label>
+                    <Input
+                      type="date"
+                      value={form.insuranceValidUntil}
+                      onChange={e => set('insuranceValidUntil', e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -527,6 +558,31 @@ export default function PersonalTrainersPage() {
               {pt.specialty && (
                 <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 leading-snug">{pt.specialty}</p>
               )}
+
+              {/* TEEF / seguro — só aparece quando algo precisa de atenção */}
+              {(() => {
+                const teef = docStatus(pt.teefValidUntil)
+                const insurance = docStatus(pt.insuranceValidUntil)
+                const alerts = [
+                  teef && teef.status !== 'ok' && { label: 'TEEF', doc: teef },
+                  insurance && insurance.status !== 'ok' && { label: 'Seguro', doc: insurance },
+                ].filter(Boolean) as { label: string; doc: NonNullable<ReturnType<typeof docStatus>> }[]
+                if (alerts.length === 0) return null
+                return (
+                  <div className="flex flex-col gap-1">
+                    {alerts.map(({ label, doc }) => (
+                      <span key={label} className={`flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border ${
+                        doc.status === 'expired'
+                          ? 'bg-red-50 text-red-600 border-red-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                        {label}: {doc.status === 'expired' ? `vencido há ${Math.abs(doc.daysLeft)}d` : `vence em ${doc.daysLeft}d`}
+                      </span>
+                    ))}
+                  </div>
+                )
+              })()}
 
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-2 py-2 border-t border-b border-gray-50">
