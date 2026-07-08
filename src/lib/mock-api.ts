@@ -16,6 +16,7 @@ import {
 } from './mock-db'
 import type { MockPlanHourTier } from './mock-db'
 import { addDays, startOfWeek } from 'date-fns'
+import { generateTempPassword, sendCredentialsEmail } from './notify'
 
 function localDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -43,6 +44,47 @@ export const authApi = {
   refresh: async (_refreshToken: string) => {
     await delay(200)
     return { accessToken: 'mock-token-' + uid() }
+  },
+
+  // Self-service — usado no ecrã de login antes de autenticar. Nunca revela
+  // se o email existe (mensagem genérica), mas gera e grava uma password
+  // temporária de verdade e tenta enviá-la por email real. Sem chave de
+  // provedor configurada (RESEND_API_KEY), a UI que chama isto mostra a
+  // password para o utilizador copiar/receber por WhatsApp — nunca fica sem
+  // saída.
+  forgotPassword: async (email: string): Promise<{ found: boolean; emailSent: boolean; tempPassword?: string }> => {
+    await delay(400)
+    const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase())
+    if (!user) return { found: false, emailSent: false }
+    const tempPassword = generateTempPassword()
+    user.password = tempPassword
+    const { sent } = await sendCredentialsEmail({ to: user.email, name: user.name, password: tempPassword, isReset: true })
+    return { found: true, emailSent: sent, tempPassword: sent ? undefined : tempPassword }
+  },
+
+  // Alteração de password estando autenticado — exige a password atual.
+  changePassword: async (userId: string, currentPassword: string, newPassword: string): Promise<{ success: true }> => {
+    await delay(350)
+    const user = db.users.find(u => u.id === userId)
+    if (!user) throw new Error('Utilizador não encontrado')
+    if (user.password !== currentPassword) throw new Error('Password atual incorreta')
+    if (newPassword.length < 6) throw new Error('A nova password precisa de pelo menos 6 caracteres')
+    user.password = newPassword
+    return { success: true }
+  },
+
+  // Reset forçado pelo admin — para quando o PT/aluno perde o acesso e não
+  // tem email de recuperação a funcionar (ou não quer esperar). Gera uma
+  // password nova, tenta email real, e devolve sempre a password + um link de
+  // WhatsApp pronto para o admin reenviar manualmente se o email falhar.
+  adminResetPassword: async (userId: string, name: string, email: string): Promise<{ tempPassword: string; emailSent: boolean }> => {
+    await delay(350)
+    const user = db.users.find(u => u.id === userId)
+    if (!user) throw new Error('Utilizador não encontrado')
+    const tempPassword = generateTempPassword()
+    user.password = tempPassword
+    const { sent } = await sendCredentialsEmail({ to: email, name, password: tempPassword, isReset: true })
+    return { tempPassword, emailSent: sent }
   },
 }
 
@@ -261,12 +303,16 @@ export const alunoApi = {
     }))
   },
 
-  // PT can create a new aluno linked to themselves
+  // PT can create a new aluno linked to themselves. Password is generated
+  // (never a fixed guessable "aluno123") and sent the same way PT creation
+  // does — real email if configured, tempPassword/emailSent returned so the
+  // UI can fall back to copy/WhatsApp.
   createByPT: async (data: { name: string; email: string; phone?: string; objetivo?: string; dataNascimento?: string }) => {
     await delay(400)
     const user = getCurrentUser()
     const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
-    const newUser = { id: 'u-' + uid(), email: data.email, password: 'aluno123', name: data.name, role: 'ALUNO' as const }
+    const tempPassword = generateTempPassword()
+    const newUser = { id: 'u-' + uid(), email: data.email, password: tempPassword, name: data.name, role: 'ALUNO' as const }
     const newAluno = {
       id: 'al-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone,
       personalTrainerId: pt.id, personalTrainerName: pt.name,
@@ -276,7 +322,8 @@ export const alunoApi = {
     }
     db.users.push(newUser)
     db.alunos.push(newAluno)
-    return newAluno
+    const { sent } = await sendCredentialsEmail({ to: data.email, name: data.name, password: tempPassword, isReset: false })
+    return { ...newAluno, tempPassword, emailSent: sent }
   },
 
   create: async (data: { name: string; email: string; password: string; personalTrainerId: string }) => {

@@ -118,16 +118,29 @@ function matchesSearch(lead: MockLead, q: string): boolean {
   )
 }
 
-function matchesPeriod(lead: MockLead, period: string): boolean {
-  if (period === 'all') return true
+function matchesPeriod(lead: MockLead, period: string, month: string): boolean {
   const d = parseISO(lead.createdAt)
   const now = new Date()
+  if (period === 'all') {
+    if (month === 'all') return true
+    // Mês específico sem ano escolhido: assume o ano corrente
+    return format(d, 'yyyy-MM') === `${now.getFullYear()}-${month}`
+  }
   if (period === '30d')  return differenceInDays(now, d) <= 30
   if (period === '90d')  return differenceInDays(now, d) <= 90
   if (period === '6m')   return differenceInDays(now, d) <= 180
   if (period === '1y')   return differenceInDays(now, d) <= 365
-  return format(d, 'yyyy') === period
+  // period é um ano específico (ex: "2026")
+  if (month === 'all') return format(d, 'yyyy') === period
+  return format(d, 'yyyy-MM') === `${period}-${month}`
 }
+
+const MONTH_OPTIONS = [
+  { value: '01', label: 'Janeiro' }, { value: '02', label: 'Fevereiro' }, { value: '03', label: 'Março' },
+  { value: '04', label: 'Abril' }, { value: '05', label: 'Maio' }, { value: '06', label: 'Junho' },
+  { value: '07', label: 'Julho' }, { value: '08', label: 'Agosto' }, { value: '09', label: 'Setembro' },
+  { value: '10', label: 'Outubro' }, { value: '11', label: 'Novembro' }, { value: '12', label: 'Dezembro' },
+]
 
 // ── Universal Move Dialog ─────────────────────────────────────────────────────
 
@@ -866,6 +879,7 @@ export default function LeadsPage() {
   const [convertLead, setConvertLead]     = useState<MockLead | null>(null)
   const [search, setSearch]               = useState('')
   const [periodFilter, setPeriodFilter]   = useState('all')
+  const [monthFilter, setMonthFilter]     = useState('all')
 
   const { data: allLeads = [], isLoading } = useQuery<MockLead[]>({
     queryKey: ['leads'],
@@ -907,8 +921,8 @@ export default function LeadsPage() {
   // ── Filter + group ────────────────────────────────────────────────────────
 
   const filteredLeads = useMemo(
-    () => allLeads.filter(l => matchesSearch(l, search) && matchesPeriod(l, periodFilter)),
-    [allLeads, search, periodFilter],
+    () => allLeads.filter(l => matchesSearch(l, search) && matchesPeriod(l, periodFilter, monthFilter)),
+    [allLeads, search, periodFilter, monthFilter],
   )
 
   const byStatus = useMemo(() => {
@@ -987,6 +1001,15 @@ export default function LeadsPage() {
             <option key={y} value={String(y)}>{y}</option>
           ))}
         </select>
+        <select
+          value={monthFilter}
+          onChange={e => setMonthFilter(e.target.value)}
+          className="flex-shrink-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
+          title="Filtrar por mês específico (combina com o ano escolhido ao lado)"
+        >
+          <option value="all">Todos os meses</option>
+          {MONTH_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
       </div>
 
       {/* Quick stats */}
@@ -1011,11 +1034,11 @@ export default function LeadsPage() {
       </div>
 
       {/* Search/filter empty state */}
-      {(search || periodFilter !== 'all') && filteredLeads.length === 0 && (
+      {(search || periodFilter !== 'all' || monthFilter !== 'all') && filteredLeads.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Search className="w-8 h-8 text-gray-200" />
           <p className="text-sm text-gray-400">Nenhum lead encontrado com os filtros aplicados</p>
-          <button onClick={() => { setSearch(''); setPeriodFilter('all') }} className="text-sm text-gray-600 underline">Limpar filtros</button>
+          <button onClick={() => { setSearch(''); setPeriodFilter('all'); setMonthFilter('all') }} className="text-sm text-gray-600 underline">Limpar filtros</button>
         </div>
       )}
 

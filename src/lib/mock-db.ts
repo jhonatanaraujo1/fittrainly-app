@@ -505,6 +505,18 @@ function createDB() {
   const pedDate = localDate(pedWed)
   bookings.push(makeBooking(`bk-${AL.paula}-${pedDate}-11:00`, pedDate, '11:00', PT.pedro, 'Pedro Santos', AL.paula, 'Paula Lima', 'CONFIRMED', 60))
 
+  // Today (whatever day the app happens to be opened) — always at least one
+  // CONFIRMED session so "Agenda de Hoje" / "Sessões Esta Semana" never look
+  // like an empty studio just because the seed's fixed relative offsets
+  // (next week) don't happen to land on today.
+  const todayDow = now.getDay()
+  if (todayDow >= 1 && todayDow <= 5) {
+    const todayDate = localDate(now)
+    bookings.push(makeBooking(`bk-today-${AL.carlos}-${todayDate}-09:00`, todayDate, '09:00', PT.joao, 'João Silva', AL.carlos, 'Carlos Mendes', 'CONFIRMED', 60))
+    bookings.push(makeBooking(`bk-today-${AL.maria}-${todayDate}-09:40`, todayDate, '09:40', PT.joao, 'João Silva', AL.maria, 'Maria Fernandes', 'CONFIRMED', 60))
+    bookings.push(makeBooking(`bk-today-${AL.helena}-${todayDate}-09:40`, todayDate, '09:40', PT.ana, 'Ana Costa', AL.helena, 'Helena Martins', 'CONFIRMED', 60))
+  }
+
   // Last week COMPLETED — Carlos daily at 09:00
   for (let d = 0; d < 5; d++) {
     const day = addDays(lastMonday, d)
@@ -657,6 +669,59 @@ function createDB() {
 
 // ── Module-level mutable state ──────────────────────────────────────────────
 export const db = createDB()
+
+// ── Persistência local ───────────────────────────────────────────────────────
+// Sem isto, qualquer PT/aluno/faixa/reserva criada em produção real desaparece
+// no primeiro F5 (o mock roda 100% em memória JS). Guarda o estado inteiro em
+// localStorage e hidrata por cima do seed no load do módulo — mutações
+// continuam a ser feitas nos mesmos arrays (push/splice in-place), só
+// persistDB() precisa de ser chamado depois de cada uma (ver api.ts,
+// withPersistence).
+const PERSIST_KEY = 'fittrainly-mock-db-v1'
+type DBShape = ReturnType<typeof createDB>
+
+export function persistDB(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ db, studioSchedule, studioBlocks }))
+  } catch {
+    // Storage indisponível/cheio — a sessão atual continua a funcionar em
+    // memória, só não sobrevive a um reload. Não há mais nada seguro a fazer
+    // aqui sem arriscar perder a mutação que acabou de acontecer.
+  }
+}
+
+function hydrateDB(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(PERSIST_KEY)
+    if (!raw) return
+    const saved = JSON.parse(raw) as { db?: Partial<DBShape>; studioSchedule?: MockStudioScheduleDay[]; studioBlocks?: MockStudioBlock[] }
+    if (saved.db) {
+      for (const key of Object.keys(db) as (keyof DBShape)[]) {
+        const savedArr = saved.db[key]
+        if (Array.isArray(savedArr)) {
+          const arr = db[key] as unknown[]
+          arr.length = 0
+          arr.push(...savedArr)
+        }
+      }
+    }
+    if (Array.isArray(saved.studioSchedule)) {
+      studioSchedule.length = 0
+      studioSchedule.push(...saved.studioSchedule)
+    }
+    if (Array.isArray(saved.studioBlocks)) {
+      studioBlocks.length = 0
+      studioBlocks.push(...saved.studioBlocks)
+    }
+  } catch {
+    // Estado persistido corrompido/incompatível — cai de volta pro seed fresco
+    // já carregado em `db`, em vez de travar a aplicação inteira.
+  }
+}
+
+hydrateDB()
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 export const delay = (ms = 280): Promise<void> => new Promise(r => setTimeout(r, ms))

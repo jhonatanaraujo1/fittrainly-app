@@ -17,9 +17,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { ptApi, planApi } from '@/lib/api'
 import { getInitials, avatarColor, planTypeLabel, planTypeBadge, docStatus } from '@/lib/utils'
+import { sendCredentialsEmail, whatsappCredentialsUrl } from '@/lib/notify'
 import type { PersonalTrainer, RentalPlan } from '@/types'
 
 // ── NovoPTSheet — redesigned 2-step form ──────────────────────────────────────
@@ -267,7 +271,7 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Validade TEEF</Label>
                     <Input
@@ -375,6 +379,7 @@ export default function PersonalTrainersPage() {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('todos')
   const [sort, setSort] = useState<SortKey>('horas_desc')
+  const [welcomeResult, setWelcomeResult] = useState<{ name: string; email: string; phone?: string; password: string; emailSent: boolean } | null>(null)
 
   const { data: pts = [], isLoading } = useQuery<PersonalTrainer[]>({
     queryKey: ['admin-pts'],
@@ -388,17 +393,16 @@ export default function PersonalTrainersPage() {
 
   const createPT = useMutation({
     mutationFn: ptApi.create,
-    onSuccess: (created) => {
+    onSuccess: async (created, variables) => {
       qc.invalidateQueries({ queryKey: ['admin-pts'] })
       qc.invalidateQueries({ queryKey: ['admin-dashboard'] })
       toast.success(`${created.name ?? 'PT'} adicionado com sucesso! 🎉`)
-      setTimeout(() => {
-        toast.success(
-          `📧 Email de boas-vindas com instruções de uso da plataforma enviado para ${created.email}`,
-          { duration: 5000, id: 'email-pt-bv' }
-        )
-      }, 800)
       setOpen(false)
+      // Credencial real, não um toast fingindo que enviou algo. Se o email
+      // real não estiver configurado/falhar, mostra a password + WhatsApp —
+      // o PT tem de conseguir entrar amanhã de manhã de qualquer forma.
+      const { sent } = await sendCredentialsEmail({ to: variables.email, name: variables.name, password: variables.password, isReset: false })
+      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: variables.password, emailSent: sent })
     },
     onError: () => toast.error('Erro ao criar Personal Trainer. Verifica os dados e tente novamente.'),
   })
@@ -641,6 +645,52 @@ export default function PersonalTrainersPage() {
           ))}
         </div>
       )}
+
+      {/* Credenciais do PT recém-criado — sempre mostra a password + WhatsApp,
+          nunca depende só do email real ter funcionado */}
+      <Dialog open={!!welcomeResult} onOpenChange={o => !o && setWelcomeResult(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Acesso de {welcomeResult?.name} criado</DialogTitle>
+          </DialogHeader>
+          {welcomeResult && (
+            <div className="space-y-3">
+              {welcomeResult.emailSent ? (
+                <p className="text-sm text-emerald-600">✓ Credenciais enviadas por email para {welcomeResult.email}</p>
+              ) : (
+                <p className="text-sm text-gray-500">Não foi possível enviar por email agora — entrega manualmente:</p>
+              )}
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-1">
+                <p className="text-xs text-gray-400">Email de login</p>
+                <p className="text-sm font-mono font-semibold text-gray-900">{welcomeResult.email}</p>
+                <p className="text-xs text-gray-400 mt-2">Password</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-base font-mono font-bold tracking-wide text-gray-900">{welcomeResult.password}</code>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(welcomeResult.password); toast.success('Password copiada') }}
+                    className="text-xs font-semibold text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </div>
+              {welcomeResult.phone && whatsappCredentialsUrl(welcomeResult.phone, welcomeResult.name, welcomeResult.email, welcomeResult.password, false) && (
+                <a
+                  href={whatsappCredentialsUrl(welcomeResult.phone, welcomeResult.name, welcomeResult.email, welcomeResult.password, false)!}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors"
+                >
+                  Enviar por WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" className="min-h-[44px]" onClick={() => setWelcomeResult(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

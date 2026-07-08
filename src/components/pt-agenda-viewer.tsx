@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react'
 import { toast } from 'sonner'
@@ -41,7 +42,21 @@ export function PTTodaySummary() {
   if (isLoading) {
     return <Skeleton className="h-20 rounded-xl" />
   }
-  if (todaysSessions.length === 0) return null
+  if (todaysSessions.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-gray-50">
+          <h2 className="text-sm font-semibold text-gray-900">Agenda de Hoje</h2>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-2 px-5 py-8 text-center">
+          <p className="text-sm text-gray-400">Sem sessões hoje</p>
+          <Link href="/pt/availability" className="text-xs font-semibold text-[#2E75B6] hover:underline min-h-[44px] flex items-center">
+            Ver Minha Agenda →
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

@@ -95,7 +95,7 @@ export default function AdminDashboardPage() {
               <Link
                 key={`${pt.id}-${label}`}
                 href={`/admin/personal-trainers/${pt.id}`}
-                className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors min-h-[44px] flex items-center ${
                   doc.status === 'expired'
                     ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
                     : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-100'

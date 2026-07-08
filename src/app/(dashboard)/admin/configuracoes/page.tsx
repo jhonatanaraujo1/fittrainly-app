@@ -61,26 +61,26 @@ function TierEditor({ planId }: { planId: string }) {
         <div key={i} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray-500">Faixa {i + 1}</span>
-            <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 transition-colors p-1 -m-1">
+            <button onClick={() => removeRow(i)} className="text-gray-300 hover:text-red-500 transition-colors min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div className="space-y-1">
               <Label className="text-[10px] text-gray-400">De (horas)</Label>
-              <Input value={row.hoursFrom} onChange={e => set(i, 'hoursFrom', e.target.value)} className="h-9 text-sm" type="number" />
+              <Input value={row.hoursFrom} onChange={e => set(i, 'hoursFrom', e.target.value)} className="h-9 text-base md:text-sm" type="number" />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-gray-400">Até (vazio = sem limite)</Label>
-              <Input value={row.hoursTo} onChange={e => set(i, 'hoursTo', e.target.value)} className="h-9 text-sm" type="number" />
+              <Input value={row.hoursTo} onChange={e => set(i, 'hoursTo', e.target.value)} className="h-9 text-base md:text-sm" type="number" />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-gray-400">€ por hora</Label>
-              <Input value={row.pricePerHour} onChange={e => set(i, 'pricePerHour', e.target.value)} className="h-9 text-sm" type="number" step="0.01" />
+              <Input value={row.pricePerHour} onChange={e => set(i, 'pricePerHour', e.target.value)} className="h-9 text-base md:text-sm" type="number" step="0.01" />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-gray-400">Bónus (€)</Label>
-              <Input value={row.bonus} onChange={e => set(i, 'bonus', e.target.value)} className="h-9 text-sm" type="number" step="0.01" />
+              <Input value={row.bonus} onChange={e => set(i, 'bonus', e.target.value)} className="h-9 text-base md:text-sm" type="number" step="0.01" />
             </div>
           </div>
         </div>

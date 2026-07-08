@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, CheckCircle2, Package, Loader2, X, Flame, Star, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, CheckCircle2, Loader2, X, Flame, Star, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
@@ -471,9 +471,6 @@ export default function AlunoDashboardPage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-black text-gray-900 tracking-tight">Olá, {user?.name?.split(' ')[0]} 👋</h1>
-        {data?.ptName && (
-          <p className="text-sm text-gray-400 mt-0.5">O teu Personal Trainer: <span className="font-medium text-gray-600">{data.ptName}</span></p>
-        )}
         {data?.ptBillingCycleDay && (
           <p className="text-xs text-gray-300 mt-1">
             Ciclo de pagamento do teu PT com o estúdio fecha todo dia <strong className="text-gray-400">{data.ptBillingCycleDay}</strong> — não afeta as tuas sessões
@@ -506,53 +503,6 @@ export default function AlunoDashboardPage() {
           <StatCard title="Sessões Agendadas" value={data?.upcomingCount ?? 0} icon={Calendar} iconColor="#C9A84C" delay={0.1} />
           <StatCard title="Sessões Realizadas" value={data?.completedCount ?? 0} icon={CheckCircle2} iconColor="#C9A84C" delay={0.15} />
         </div>
-      )}
-
-      {/* Pack / Contract summary */}
-      {!isLoading && data?.pack && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2">
-              <Package className="w-4 h-4 text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-900">O meu pack</h2>
-            </div>
-            <div className="grid grid-cols-3 divide-x divide-gray-50">
-              <div className="px-4 py-4 text-center">
-                <p className="text-2xl font-black text-gray-900">{data.pack.remaining}</p>
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Restantes</p>
-                <p className="text-[10px] text-gray-300 mt-0.5">de {data.pack.total}</p>
-              </div>
-              <div className="px-4 py-4 text-center">
-                <p className="text-2xl font-black text-gray-900">{data.pack.sessionDuration}<span className="text-sm font-medium text-gray-400">min</span></p>
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Por sessão</p>
-              </div>
-              <div className="px-4 py-4 text-center">
-                {data.pack.expiresAt ? (
-                  <>
-                    <p className="text-sm font-black text-gray-900 leading-tight">
-                      {new Date(data.pack.expiresAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                    </p>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Validade</p>
-                  </>
-                ) : (
-                  <p className="text-xs text-gray-400">—</p>
-                )}
-              </div>
-            </div>
-            {/* progress bar */}
-            <div className="px-5 pb-4">
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={cn('h-full rounded-full transition-all', data.pack.remaining <= 2 ? 'bg-orange-400' : 'bg-emerald-500')}
-                  style={{ width: `${Math.round((data.pack.remaining / data.pack.total) * 100)}%` }}
-                />
-              </div>
-              {data.pack.remaining <= 3 && (
-                <p className="text-[10px] text-orange-600 font-medium mt-1.5">Pack a acabar — fala com o teu PT para renovar</p>
-              )}
-            </div>
-          </div>
-        </motion.div>
       )}
 
       {/* Agenda — the dashboard IS the booking screen now */}

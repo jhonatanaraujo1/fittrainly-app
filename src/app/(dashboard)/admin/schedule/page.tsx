@@ -454,10 +454,11 @@ export default function AdminSchedulePage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingAllocation(null)} disabled={addRelease.isPending}>
+            <Button variant="outline" className="min-h-[44px]" onClick={() => setPendingAllocation(null)} disabled={addRelease.isPending}>
               Voltar
             </Button>
             <Button
+              className="min-h-[44px]"
               disabled={addRelease.isPending}
               onClick={() => {
                 if (pendingAllocation) {

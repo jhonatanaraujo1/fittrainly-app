@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, Phone, Mail, Dumbbell, Calendar, Clock, Receipt,
-  CheckCircle2, AlertTriangle, Users, Edit2, X, Loader2,
+  CheckCircle2, AlertTriangle, Users, Edit2, X, Loader2, KeyRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, parseISO } from 'date-fns'
@@ -16,15 +16,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ptApi, adminApi, billingApi, planApi } from '@/lib/api'
+import { ptApi, adminApi, billingApi, planApi, authApi } from '@/lib/api'
 import { db } from '@/lib/mock-db'
 import {
   getInitials, avatarColor, formatCurrency, formatDate,
   planTypeLabel, planTypeBadge, bookingStatusLabel, bookingStatusColor, docStatus,
 } from '@/lib/utils'
+import { whatsappCredentialsUrl } from '@/lib/notify'
 import type { PersonalTrainer, RentalPlan, BillingEntry } from '@/types'
 import type { MockAluno, MockBooking } from '@/lib/mock-db'
 
@@ -109,7 +114,7 @@ function EditSheet({ pt, plans, onClose }: {
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Número TEEF</Label>
             <Input value={form.teefNumber} onChange={e => setForm(f => ({ ...f, teefNumber: e.target.value }))} placeholder="TEEF-2026-00000" className="min-h-[44px]" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Validade TEEF</Label>
               <Input type="date" value={form.teefValidUntil} onChange={e => setForm(f => ({ ...f, teefValidUntil: e.target.value }))} className="min-h-[44px]" />
@@ -153,6 +158,7 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
   const qc = useQueryClient()
   const [editOpen, setEditOpen] = useState(false)
   const [tab, setTab] = useState<'alunos' | 'sessoes'>('alunos')
+  const [resetResult, setResetResult] = useState<{ tempPassword: string; emailSent: boolean } | null>(null)
 
   const { data: pt, isLoading: ptLoading } = useQuery<PersonalTrainer>({
     queryKey: ['admin-pt-detail', ptId],
@@ -203,6 +209,22 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
       qc.invalidateQueries({ queryKey: ['admin-pts'] })
       toast.success(value ? 'PT ativado ✅' : 'PT desativado')
     },
+  })
+
+  // Reset forçado — para quando o PT perde o acesso e não pode/quer esperar
+  // pelo self-service de "esqueci a password". Gera uma nova password, tenta
+  // email real, e mostra sempre a password + um link de WhatsApp pronto,
+  // para o admin nunca ficar sem forma de entregar o acesso.
+  const resetPassword = useMutation({
+    mutationFn: () => {
+      if (!pt) throw new Error('PT não carregado')
+      return authApi.adminResetPassword(pt.userId, pt.name, pt.email)
+    },
+    onSuccess: (result) => {
+      setResetResult(result)
+      if (result.emailSent) toast.success('Nova password enviada por email')
+    },
+    onError: (e: Error) => toast.error(e.message || 'Não foi possível gerar nova password'),
   })
 
   if (ptLoading) {
@@ -342,9 +364,55 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
               className="flex items-center justify-center gap-1.5 min-h-[40px] px-4 text-xs font-medium rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
               {pt.active ? 'Desativar PT' : 'Ativar PT'}
             </button>
+            <button
+              onClick={() => resetPassword.mutate()}
+              disabled={resetPassword.isPending}
+              className="flex items-center justify-center gap-1.5 min-h-[40px] px-4 text-xs font-medium rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+              {resetPassword.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+              Gerar nova senha
+            </button>
           </div>
         </div>
       </motion.div>
+
+      {/* Resultado do reset de senha — sempre mostra a password + WhatsApp,
+          nunca depende só do email real ter funcionado */}
+      <Dialog open={!!resetResult} onOpenChange={o => !o && setResetResult(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova password gerada</DialogTitle>
+          </DialogHeader>
+          {resetResult && (
+            <div className="space-y-3">
+              {resetResult.emailSent && (
+                <p className="text-sm text-emerald-600">✓ Enviada por email para {pt?.email}</p>
+              )}
+              <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 min-h-[44px]">
+                <code className="flex-1 text-base font-mono font-bold tracking-wide text-gray-900">{resetResult.tempPassword}</code>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(resetResult.tempPassword); toast.success('Password copiada') }}
+                  className="text-xs font-semibold text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
+                >
+                  Copiar
+                </button>
+              </div>
+              {pt?.phone && whatsappCredentialsUrl(pt.phone, pt.name, pt.email, resetResult.tempPassword, true) && (
+                <a
+                  href={whatsappCredentialsUrl(pt.phone, pt.name, pt.email, resetResult.tempPassword, true)!}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors"
+                >
+                  Enviar por WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" className="min-h-[44px]" onClick={() => setResetResult(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

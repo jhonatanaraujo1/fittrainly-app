@@ -12,23 +12,33 @@
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 
-export const USE_REAL = {
-  auth: process.env.NEXT_PUBLIC_REAL_AUTH === 'true',
-  plans: process.env.NEXT_PUBLIC_REAL_PLANS === 'true',
-  modalidades: process.env.NEXT_PUBLIC_REAL_MODALIDADES === 'true',
-  personalTrainers: process.env.NEXT_PUBLIC_REAL_PERSONAL_TRAINERS === 'true',
-  billing: process.env.NEXT_PUBLIC_REAL_BILLING === 'true',
-  // Backend já cobre estes domínios (auditoria de 01/jul), mas continuam
-  // desligados por defeito — produção não tem backend plugado ainda.
-  // Ligar exige NEXT_PUBLIC_API_URL apontado + a env var correspondente
-  // "true" NUM DEPLOYMENT SEPARADO, nunca na produção atual.
-  leads: process.env.NEXT_PUBLIC_REAL_LEADS === 'true',
-  packs: process.env.NEXT_PUBLIC_REAL_PACKS === 'true',
-  avaliacoes: process.env.NEXT_PUBLIC_REAL_AVALIACOES === 'true',
-} as const
+// INTERRUPTOR MESTRE. Setar NEXT_PUBLIC_USE_REAL_BACKEND=true no deployment
+// (Vercel) joga TODOS os domínios pro backend real de uma vez — não é preciso
+// acertar 20 flags individuais. É isto que evita o "Frankenstein" (uns
+// domínios reais, outros mock) que mostra dados fake num estúdio real.
+// As flags individuais continuam válidas como override pontual (só ligam,
+// nunca desligam o mestre). Em produção, use SÓ o mestre.
+const ALL_REAL = process.env.NEXT_PUBLIC_USE_REAL_BACKEND === 'true'
+const on = (v: string | undefined) => ALL_REAL || v === 'true'
 
-// Domínios que o backend ainda não implementa (ver auditoria):
-// workout plans, notificações reais (disparo de email), disponibilidade/
-// agendamento (grid de slots), dashboards combinados. Continuam SEMPRE em
-// mock até existir contrato real — não têm flag porque não há para onde
-// apontar ainda.
+export const USE_REAL = {
+  auth: on(process.env.NEXT_PUBLIC_REAL_AUTH),
+  plans: on(process.env.NEXT_PUBLIC_REAL_PLANS),
+  modalidades: on(process.env.NEXT_PUBLIC_REAL_MODALIDADES),
+  personalTrainers: on(process.env.NEXT_PUBLIC_REAL_PERSONAL_TRAINERS),
+  billing: on(process.env.NEXT_PUBLIC_REAL_BILLING),
+  leads: on(process.env.NEXT_PUBLIC_REAL_LEADS),
+  packs: on(process.env.NEXT_PUBLIC_REAL_PACKS),
+  avaliacoes: on(process.env.NEXT_PUBLIC_REAL_AVALIACOES),
+  availability: on(process.env.NEXT_PUBLIC_REAL_AVAILABILITY),
+  bookings: on(process.env.NEXT_PUBLIC_REAL_BOOKINGS),
+  adminSchedule: on(process.env.NEXT_PUBLIC_REAL_ADMIN_SCHEDULE),
+  studioSchedule: on(process.env.NEXT_PUBLIC_REAL_STUDIO_SCHEDULE),
+  dashboard: on(process.env.NEXT_PUBLIC_REAL_DASHBOARD),
+  aluno: on(process.env.NEXT_PUBLIC_REAL_ALUNO),
+  planTiers: on(process.env.NEXT_PUBLIC_REAL_PLAN_TIERS),
+  ptPayment: on(process.env.NEXT_PUBLIC_REAL_PT_PAYMENT),
+  workout: on(process.env.NEXT_PUBLIC_REAL_WORKOUT),
+  notifications: on(process.env.NEXT_PUBLIC_REAL_NOTIFICATIONS),
+  admin: on(process.env.NEXT_PUBLIC_REAL_ADMIN),
+} as const

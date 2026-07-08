@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -7,10 +8,11 @@ import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, History,
   Dumbbell, LogOut, Layers, ClipboardList,
-  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, Settings2,
+  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, Settings2, KeyRound,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
+import { ChangePasswordDialog } from '@/components/change-password-dialog'
 import type { UserRole } from '@/types'
 
 const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementType }[]> = {
@@ -50,6 +52,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuthStore()
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
 
   if (!user) return null
   const links = NAV[user.role] ?? []
@@ -136,6 +139,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           </div>
         </div>
         <button
+          onClick={() => setChangePasswordOpen(true)}
+          className="w-full flex items-center gap-2.5 px-2 py-2.5 rounded-md text-white/40 hover:text-white hover:bg-white/[0.07] transition-all text-xs font-medium min-h-[44px]"
+        >
+          <KeyRound className="w-3.5 h-3.5 flex-shrink-0" />
+          Alterar password
+        </button>
+        <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2.5 px-2 py-2.5 rounded-md text-white/40 hover:text-white hover:bg-white/[0.07] transition-all text-xs font-medium min-h-[44px]"
         >
@@ -143,6 +153,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           Sair
         </button>
       </div>
+      <ChangePasswordDialog userId={user.id} open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </div>
   )
 

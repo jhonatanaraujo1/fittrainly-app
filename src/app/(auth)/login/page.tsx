@@ -76,6 +76,8 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'reset'>('login')
   const [resetEmail, setResetEmail] = useState('')
   const [resetSent, setResetSent] = useState(false)
+  const [resetPending, setResetPending] = useState(false)
+  const [resetTempPassword, setResetTempPassword] = useState<string | null>(null)
   const [contactHint, setContactHint] = useState<'pt' | 'admin' | 'fittrainly' | null>(null)
 
   async function handleReset(e: React.FormEvent) {
@@ -84,12 +86,26 @@ export default function LoginPage() {
       toast.error('Introduza um email válido')
       return
     }
-    await new Promise(r => setTimeout(r, 800))
-    toast.success(
-      `📧 Se o email existir na plataforma, receberá as instruções em breve.`,
-      { duration: 6000 }
-    )
-    setResetSent(true)
+    setResetPending(true)
+    try {
+      const result = await authApi.forgotPassword(resetEmail)
+      // Nunca revela se o email existe ou não — mensagem idêntica nos dois
+      // casos, para não permitir enumerar contas via este formulário.
+      if (result.emailSent) {
+        toast.success('📧 Se o email existir na plataforma, a nova password foi enviada.', { duration: 6000 })
+        setResetTempPassword(null)
+      } else if (result.found && result.tempPassword) {
+        // Envio real de email não configurado/falhou — não podemos deixar a
+        // pessoa sem acesso: mostramos a password temporária diretamente.
+        setResetTempPassword(result.tempPassword)
+      } else {
+        toast.success('📧 Se o email existir na plataforma, a nova password foi enviada.', { duration: 6000 })
+        setResetTempPassword(null)
+      }
+      setResetSent(true)
+    } finally {
+      setResetPending(false)
+    }
   }
 
   async function doLogin(e?: string, p?: string) {
@@ -278,18 +294,40 @@ export default function LoginPage() {
                     <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
                       <CheckCircle2 className="w-7 h-7 text-emerald-600" />
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-base">Instruções enviadas</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Verifique <strong>{resetEmail}</strong> e siga as instruções.
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Não recebeu? Contacte o seu PT.
-                      </p>
-                    </div>
+                    {resetTempPassword ? (
+                      <div className="w-full">
+                        <p className="font-bold text-gray-900 text-base">Nova password gerada</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Não foi possível enviar por email agora. Usa esta password para entrares:
+                        </p>
+                        <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 min-h-[44px]">
+                          <code className="flex-1 text-left text-base font-mono font-bold tracking-wide text-gray-900">{resetTempPassword}</code>
+                          <button
+                            type="button"
+                            onClick={() => { navigator.clipboard.writeText(resetTempPassword); toast.success('Password copiada') }}
+                            className="text-xs font-semibold text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-3">
+                          Depois de entrares, altera a password em Definições.
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-bold text-gray-900 text-base">Instruções enviadas</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Verifique <strong>{resetEmail}</strong> e siga as instruções.
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Não recebeu? Contacte o seu PT.
+                        </p>
+                      </div>
+                    )}
                     <button
                       type="button"
-                      onClick={() => { setMode('login'); setResetSent(false) }}
+                      onClick={() => { setMode('login'); setResetSent(false); setResetTempPassword(null) }}
                       className="text-sm font-semibold text-gray-700 underline underline-offset-2 hover:text-gray-900 transition-colors"
                     >
                       Voltar ao login
@@ -311,11 +349,11 @@ export default function LoginPage() {
                     </div>
                     <button
                       type="submit"
-                      disabled={!resetEmail}
+                      disabled={!resetEmail || resetPending}
                       className="w-full h-12 rounded-xl font-bold text-[15px] tracking-wide transition-all disabled:opacity-40 active:scale-[0.98] flex items-center justify-center gap-2"
                       style={{ background: '#111111', color: '#ffffff' }}
                     >
-                      <KeyRound className="w-4 h-4" />
+                      {resetPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
                       Enviar instruções
                     </button>
                     <p className="text-center text-xs text-gray-400">

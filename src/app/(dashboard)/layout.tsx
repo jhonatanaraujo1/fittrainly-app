@@ -2,8 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Cookies from 'js-cookie'
+import { Dumbbell } from 'lucide-react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { useAuthStore } from '@/store/auth'
+
+// Guarda de sessão anti-tela-branca: existem dois mecanismos de sessão
+// independentes (cookies lidos pelo proxy.ts no servidor, Zustand/localStorage
+// lido aqui no cliente). Se ficarem dessincronizados — ex: storage parcialmente
+// limpo — o app não pode travar num `return null` para sempre: sempre mostra
+// feedback visível, e força o redirect via location.href (não router.replace,
+// que o middleware server-side pode reverter) depois de um timeout curto.
+function AuthLoadingScreen() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-[#F8F9FA]">
+      <div className="flex flex-col items-center gap-3">
+        <Dumbbell className="w-8 h-8 text-[#1F3864] animate-pulse" />
+        <p className="text-sm text-gray-400">A carregar…</p>
+      </div>
+    </div>
+  )
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -21,10 +40,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   useEffect(() => {
-    if (hydrated && !isAuthenticated) router.replace('/login')
+    if (!hydrated || isAuthenticated) return
+    // Se os cookies (fonte de verdade do middleware server-side) ainda
+    // afirmam sessão válida enquanto o Zustand/localStorage local diz que
+    // não, router.replace('/login') entra em loop: o middleware manda de
+    // volta pra cá. Limpar os cookies primeiro garante que o próximo
+    // redirect não seja revertido — sempre um caminho de saída determinístico.
+    Cookies.remove('fittrainly-refresh')
+    Cookies.remove('fittrainly-role')
+    router.replace('/login')
+    // Timeout de segurança: se em 2.5s ainda não navegamos, força um
+    // redirect real de página inteira, que reavalia tudo do zero.
+    const t = setTimeout(() => {
+      if (window.location.pathname !== '/login') window.location.href = '/login'
+    }, 2500)
+    return () => clearTimeout(t)
   }, [hydrated, isAuthenticated, router])
 
-  if (!hydrated || !isAuthenticated) return null
+  if (!hydrated || !isAuthenticated) return <AuthLoadingScreen />
 
   return (
     <div className="flex min-h-dvh bg-[#F8F9FA]">

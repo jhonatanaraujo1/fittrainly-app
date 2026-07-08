@@ -1,24 +1,36 @@
 'use client'
 
 // Real implementations — call the Kotlin/Spring Boot backend in production.
-// Only the domains the backend already covers with a confirmed contract
-// (auth, rental plans, activity types, personal trainers, billing, leads,
-// session packs, physical assessments) exist here. Everything else stays in
-// mock-api.ts.
+// Domains covered here (confirmed live against the backend on 07-08/jul):
+// auth, rental plans, activity types, personal trainers, billing, leads,
+// session packs, physical assessments, availability, bookings, admin
+// schedule, studio schedule, dashboards, alunos/students, plan tiers, PT
+// weekly payment cycle, workout plans.
 //
-// availability / bookings / admin-schedule / workout plans are intentionally
-// NOT implemented here yet. The backend now matches the mock's shared
-// studio-wide capacity model (Tenant.studioCapacity, confirmed with the
-// product owner — see fittrainly-backend V10 migration), so wiring these
-// domains is no longer blocked on a business decision, just implementation
-// work: StudioSchedule/StudioBlock, TIERED_HOURLY billing, and the weekly
-// payment cycle still only exist in the mock (see backend tasks #12-#14).
+// IMPORTANT — data model mismatch with the mock (read this before touching
+// availability/booking/adminSchedule code):
+// The mock models a slot as a shared "slotKey" (date+time) that ANY PT can
+// release into and that has one shared studio-wide occupancy counter
+// (STUDIO_MAX_SPOTS = 4 across all PTs). The real backend models Availability
+// as a per-PT entity with its own UUID (Availability.maxStudents = 1, always
+// 1-on-1 — see Availability.kt). The studio-wide shared cap (Tenant
+// .studioCapacity, confirmed = 4 in the seed) is enforced server-side only
+// inside BookingService.create (counts confirmed bookings across ALL PTs at
+// the exact same startTime) — there is no client-visible "studio slot
+// grid cell" the way the mock materializes one. The adapters below preserve
+// the mock's return SHAPE (so existing pages keep compiling/working) but
+// synthesize the grid/slotKey fields from the flat list of per-PT
+// Availability rows the backend actually returns. `studioCount` per cell is
+// derived by grouping the flat list by exact startTime, which is exactly
+// what the backend itself does for the shared cap — same semantics, just
+// computed client-side for display instead of served pre-grouped.
 //
 // Never imported directly by pages — only through api.ts (facade), which
 // decides mock vs real per domain via the flags in api-config.ts.
 
 import { API_BASE_URL } from './api-config'
 import { useAuthStore } from '@/store/auth'
+import { generateTempPassword, sendCredentialsEmail } from './notify'
 import type { UserRole } from '@/types'
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -39,6 +51,20 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json() as Promise<T>
 }
 
+// ── Shared helpers for availability/booking adapters ──────────────────────
+interface RealAvailability {
+  id: string
+  personalTrainerId: string
+  personalTrainerName: string
+  startTime: string
+  endTime: string
+  maxStudents: number
+  confirmedCount: number
+  availableSlots: number
+}
+
+const STUDIO_MAX_SPOTS_FALLBACK = 4 // matches Tenant.studioCapacity seed default; real cap is enforced server-side
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   login: async (email: string, password: string) =>
@@ -49,6 +75,23 @@ export const authApi = {
   refresh: async (refreshToken: string) =>
     apiFetch<{ accessToken: string }>('/api/v1/auth/refresh', {
       method: 'POST', body: JSON.stringify({ refreshToken }),
+    }),
+  // Público — nunca revela se o email existe (ForgotPasswordResponse é
+  // sempre a mesma mensagem genérica, confirmado no AuthDtos.kt do backend:
+  // "CRÍTICO: nunca adicionar tempPassword aqui"). Diferente do mock, que
+  // devolve a tempPassword diretamente quando o envio de email falha — no
+  // backend real isso nunca acontece, o fluxo de recuperação depende 100% do
+  // envio de email funcionar.
+  forgotPassword: async (email: string) =>
+    apiFetch<{ message: string }>('/api/v1/auth/forgot-password', {
+      method: 'POST', body: JSON.stringify({ email }),
+    }),
+  // userId é ignorado — o backend identifica o utilizador pelo JWT
+  // autenticado (UserDetailsImpl), nunca por um id no corpo/rota. Mantido no
+  // parâmetro só para bater com a assinatura que as páginas já chamam.
+  changePassword: async (_userId: string, currentPassword: string, newPassword: string) =>
+    apiFetch<void>('/api/v1/auth/change-password', {
+      method: 'POST', body: JSON.stringify({ currentPassword, newPassword }),
     }),
 }
 
@@ -89,6 +132,13 @@ export const ptApi = {
     apiFetch('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(data) }),
   update: async (id: string, data: object) =>
     apiFetch(`/api/v1/personal-trainers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Confirmado live 07/jul: POST /personal-trainers/{id}/reset-password
+  // (ADMIN only) devolve exatamente { tempPassword, emailSent } —
+  // mesmo shape do mock (adminResetPassword), sem rename necessário.
+  resetPassword: async (id: string) =>
+    apiFetch<{ tempPassword: string; emailSent: boolean }>(`/api/v1/personal-trainers/${id}/reset-password`, {
+      method: 'POST',
+    }),
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────
@@ -176,4 +226,602 @@ export const avaliacaoApi = {
     }),
   update: async (id: string, data: object) =>
     apiFetch(`/api/v1/assessments/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+}
+
+// ── Availability — PT releases studio slots ───────────────────────────────────
+// Confirmed live 07-08/jul. See the model-mismatch note at the top of this
+// file: the backend has no "studio grid cell" concept — each row here is one
+// PT's own Availability row. The grid/slotKey-shaped methods below
+// synthesize that view client-side from GET /admin/schedule (all PTs) or
+// GET /availability (own PT only).
+export const availabilityApi = {
+  // mock signature: studioGrid(startDate, endDate) -> per-slot grid rows
+  // shaped { date, slotTime, startTime, endTime, released, releaseId,
+  // studioCount, myBookings, studioMax, alunoNames }. Built by fetching the
+  // current PT's own availability rows (GET /availability) for the "released"
+  // flag/myBookings, plus the admin-wide schedule to compute the shared
+  // studio-wide occupancy per exact startTime (studioCount). A PT (not
+  // ADMIN) can't call GET /admin/schedule (403), so studioCount here is
+  // approximated from the PT's own rows only — the true cross-PT count is
+  // only ever enforced server-side at booking time (BookingService.create).
+  // This mirrors what a PT is *allowed* to see (their own releases), not a
+  // full admin view (see adminScheduleApi for that).
+  studioGrid: async (startDate: string, endDate: string) => {
+    const start = new Date(startDate).toISOString()
+    const end = new Date(endDate).toISOString()
+    const mine = await apiFetch<RealAvailability[]>(
+      `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
+    )
+    return mine.map(a => ({
+      date: a.startTime.slice(0, 10),
+      slotTime: a.startTime.slice(11, 16),
+      startTime: a.startTime,
+      endTime: a.endTime,
+      released: true,
+      releaseId: a.id,
+      // Cross-PT studio occupancy isn't visible to a PERSONAL_TRAINER —
+      // only their own confirmedCount is known here. Falls back to the
+      // PT's own count; the studio-wide cap is still enforced server-side
+      // regardless of what the UI displays.
+      studioCount: a.confirmedCount,
+      myBookings: a.confirmedCount,
+      studioMax: STUDIO_MAX_SPOTS_FALLBACK,
+      alunoNames: [] as string[],
+    }))
+  },
+
+  // Legacy mock method — kept for API-shape parity, delegates to the same
+  // GET /availability the studioGrid uses.
+  mySlots: async (startDate: string, endDate: string) => {
+    const start = new Date(startDate).toISOString()
+    const end = new Date(endDate).toISOString()
+    const rows = await apiFetch<RealAvailability[]>(
+      `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
+    )
+    return rows.map(r => ({
+      id: r.id,
+      personalTrainerId: r.personalTrainerId,
+      personalTrainerName: r.personalTrainerName,
+      startTime: r.startTime,
+      endTime: r.endTime,
+      maxAlunos: r.maxStudents,
+      confirmedCount: r.confirmedCount,
+      availableSlots: r.availableSlots,
+      myBookings: r.confirmedCount,
+    }))
+  },
+
+  // Aluno-facing: slots released by their own PT, with isBooked info.
+  // GET /availability/pt/{ptId} — any authenticated user, service enforces
+  // tenant match.
+  ptSlots: async (ptId: string, startDate: string, endDate: string) => {
+    const start = new Date(startDate).toISOString()
+    const end = new Date(endDate).toISOString()
+    const rows = await apiFetch<RealAvailability[]>(
+      `/api/v1/availability/pt/${ptId}?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
+    )
+    // isBooked requires knowing which of these the current student already
+    // holds a CONFIRMED booking for — cross-referenced against /bookings/my
+    // (student-scoped) since Availability itself doesn't carry per-student
+    // booking state (only aggregate confirmedCount).
+    const myBookings = await apiFetch<Array<{ availabilityId: string; status: string }>>('/api/v1/bookings/my').catch(() => [])
+    const bookedIds = new Set(myBookings.filter(b => b.status === 'CONFIRMED').map(b => b.availabilityId))
+    return rows.map(r => ({
+      id: r.id,
+      personalTrainerId: r.personalTrainerId,
+      personalTrainerName: r.personalTrainerName,
+      startTime: r.startTime,
+      endTime: r.endTime,
+      maxAlunos: r.maxStudents,
+      confirmedCount: r.confirmedCount,
+      availableSlots: r.availableSlots,
+      isBooked: bookedIds.has(r.id),
+      // sessionDuration/packRemaining aren't part of AvailabilityResponse —
+      // computed from the slot's own duration and left for the caller
+      // (dashboardApi/alunoApi) to enrich with the active pack separately.
+      sessionDuration: Math.round((new Date(r.endTime).getTime() - new Date(r.startTime).getTime()) / 60000),
+      packRemaining: 0,
+    }))
+  },
+
+  // PT releases a slot — POST /availability { startTime, endTime }, no
+  // slotTime/date split like the mock (real Availability rows carry full
+  // ISO instants for both bounds). The 40-minute mock convention doesn't
+  // apply — the real endTime must be provided by the caller.
+  create: async (data: { date: string; slotTime: string; endTime?: string }) => {
+    const startISO = `${data.date}T${data.slotTime}:00Z`
+    const endISO = data.endTime ?? new Date(new Date(startISO).getTime() + 60 * 60000).toISOString()
+    return apiFetch<RealAvailability>('/api/v1/availability', {
+      method: 'POST',
+      body: JSON.stringify({ startTime: startISO, endTime: endISO }),
+    })
+  },
+
+  // Admin creates a release on behalf of a PT — POST /admin/schedule
+  // { ptId, startTime, endTime }.
+  createForPT: async (data: { ptId: string; date: string; slotTime: string; endTime?: string }) => {
+    const startISO = `${data.date}T${data.slotTime}:00Z`
+    const endISO = data.endTime ?? new Date(new Date(startISO).getTime() + 60 * 60000).toISOString()
+    return apiFetch<RealAvailability>('/api/v1/admin/schedule', {
+      method: 'POST',
+      body: JSON.stringify({ ptId: data.ptId, startTime: startISO, endTime: endISO }),
+    })
+  },
+
+  // PT removes their own release — DELETE /availability/{id}. Note:
+  // releaseId here MUST be the real Availability UUID, not a "date-time"
+  // slotKey the mock used — callers built against the mock's slotKey format
+  // need to pass through the `id`/`releaseId` field this file's studioGrid/
+  // mySlots already return as the real UUID.
+  delete: async (releaseId: string) => apiFetch<void>(`/api/v1/availability/${releaseId}`, { method: 'DELETE' }),
+
+  // Attendees for a specific PT's own slot — GET /admin/schedule/{id}/attendees
+  // also serves PERSONAL_TRAINER (service checks the slot belongs to them).
+  attendees: async (slotKey: string) =>
+    apiFetch<Array<{ studentId: string; studentName: string; status: string }>>(
+      `/api/v1/admin/schedule/${slotKey}/attendees`,
+    ).then(rows => rows.map(r => ({ bookingId: r.studentId, alunoId: r.studentId, alunoName: r.studentName, status: r.status }))),
+}
+
+// ── Admin Schedule ────────────────────────────────────────────────────────────
+// Confirmed live 07/jul: GET /admin/schedule returns a FLAT array of
+// AvailabilityResponse (one row per PT per released slot), not a grid
+// pre-grouped by date+time+PT the way the mock's adminScheduleApi.list
+// returns. Grouped here client-side to keep the exact same return shape.
+export const adminScheduleApi = {
+  list: async (startDate: string, endDate: string) => {
+    const start = new Date(startDate).toISOString()
+    const end = new Date(endDate).toISOString()
+    const rows = await apiFetch<RealAvailability[]>(
+      `/api/v1/admin/schedule?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
+    )
+
+    // Group by exact startTime — this is precisely how the backend itself
+    // computes the shared studio-wide cap in BookingService.create
+    // (countConfirmedByTenantAndExactStartTime), so grouping by startTime
+    // here mirrors the server's own notion of "one studio slot".
+    const byStart = new Map<string, RealAvailability[]>()
+    for (const r of rows) {
+      const list = byStart.get(r.startTime) ?? []
+      list.push(r)
+      byStart.set(r.startTime, list)
+    }
+
+    // studio-schedule blocks aren't cross-referenced here (no endpoint
+    // returns "is this exact grid cell blocked" pre-computed) — the block
+    // list is fetched separately via studioScheduleApi.listBlocks by pages
+    // that need it, same as the mock's separate studioBlocks array.
+    return [...byStart.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([startTime, group]) => {
+        const first = group[0]
+        const studioCount = group.reduce((s, r) => s + r.confirmedCount, 0)
+        return {
+          date: startTime.slice(0, 10),
+          slotTime: startTime.slice(11, 16),
+          startTime,
+          endTime: first.endTime,
+          studioCount,
+          studioMax: STUDIO_MAX_SPOTS_FALLBACK,
+          releases: group.map(r => ({
+            releaseId: r.id,
+            ptId: r.personalTrainerId,
+            ptName: r.personalTrainerName,
+            confirmedCount: r.confirmedCount,
+          })),
+          blocked: false,
+          blockReason: undefined as string | undefined,
+          blockId: undefined as string | undefined,
+        }
+      })
+  },
+
+  addRelease: async (data: { ptId: string; date: string; slotTime: string; endTime?: string }) =>
+    availabilityApi.createForPT(data),
+
+  removeRelease: async (releaseId: string) =>
+    apiFetch<void>(`/api/v1/admin/schedule/${releaseId}`, { method: 'DELETE' }),
+
+  // Admin sees attendees for any PT's slot. AttendeeResponse from the
+  // backend doesn't include email/phone (unlike the mock's admin-only
+  // enrichment) — confirmed live: { studentId, studentName, status } only.
+  // Contact info would need a separate GET /students/{id} call per attendee;
+  // left un-enriched here to avoid an N+1 fan-out on every modal open. Pages
+  // relying on email/phone in this response need a follow-up fetch.
+  attendees: async (_ptId: string, slotKey: string) =>
+    apiFetch<Array<{ studentId: string; studentName: string; status: string }>>(
+      `/api/v1/admin/schedule/${slotKey}/attendees`,
+    ).then(rows => rows.map(r => ({
+      bookingId: r.studentId, alunoId: r.studentId, alunoName: r.studentName, status: r.status,
+      email: undefined as string | undefined, phone: undefined as string | undefined,
+    }))),
+}
+
+// ── Studio Schedule (weekly hours + one-off blocks) ───────────────────────────
+// Confirmed live 07/jul against StudioScheduleController — all ADMIN-only.
+export const studioScheduleApi = {
+  getWeeklyHours: async () =>
+    apiFetch<Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null }>>(
+      '/api/v1/admin/studio-schedule/weekly-hours',
+    ),
+
+  updateWeeklyHours: async (dayOfWeek: number, openTime: string | null, closeTime: string | null) =>
+    apiFetch(`/api/v1/admin/studio-schedule/weekly-hours/${dayOfWeek}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ openTime, closeTime }),
+    }),
+
+  listBlocks: async (startDate: string, endDate: string) =>
+    apiFetch<Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>>(
+      `/api/v1/admin/studio-schedule/blocks?startDate=${startDate}&endDate=${endDate}`,
+    ),
+
+  createBlock: async (data: { date: string; startTime: string; endTime: string; reason: string }) =>
+    apiFetch('/api/v1/admin/studio-schedule/blocks', { method: 'POST', body: JSON.stringify(data) }),
+
+  deleteBlock: async (id: string) =>
+    apiFetch<void>(`/api/v1/admin/studio-schedule/blocks/${id}`, { method: 'DELETE' }),
+}
+
+// ── Bookings ──────────────────────────────────────────────────────────────────
+// Confirmed live 07/jul. BookingResponse doesn't carry a slotKey — callers
+// that need one (e.g. cross-referencing against availabilityApi rows) should
+// use `availabilityId` (the real Availability UUID) instead of the mock's
+// synthetic date-time slotKey.
+export const bookingApi = {
+  myBookings: async () =>
+    apiFetch<Array<{
+      id: string; availabilityId: string; startTime: string; endTime: string
+      studentId: string; studentName: string; personalTrainerId: string; personalTrainerName: string
+      status: string; createdAt: string
+    }>>('/api/v1/bookings/my'),
+
+  // mock signature: create(slotKey) where slotKey = "YYYY-MM-DD-HH:MM". The
+  // real backend takes an availabilityId (UUID) directly — callers must pass
+  // the real Availability id (as returned by availabilityApi.ptSlots/
+  // studioGrid's `id`/`releaseId` field), not a synthesized slotKey.
+  create: async (availabilityId: string) =>
+    apiFetch('/api/v1/bookings', {
+      method: 'POST',
+      body: JSON.stringify({ availabilityId }),
+    }),
+
+  cancel: async (bookingId: string) =>
+    apiFetch<void>(`/api/v1/bookings/${bookingId}`, { method: 'DELETE' }),
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+// Confirmed live 07/jul against DashboardController/DashboardDtos. Field
+// renames from the mock: totalAlunos -> totalStudents, confirmedAlunos ->
+// confirmedStudents, maxAlunos -> maxStudents, alunosBooked has no backend
+// equivalent (NextSession doesn't carry per-student names — only counts).
+export const dashboardApi = {
+  admin: async () =>
+    apiFetch<{
+      stats: {
+        activePTs: number; totalStudents: number; sessionsThisWeek: number; sessionsThisMonth: number
+        estimatedRevenue: number; hoursThisMonth: number; hoursLastMonth: number
+      }
+      occupationByDay: Array<{ day: string; occupied: number; available: number }>
+    }>('/api/v1/dashboard/admin').then(res => ({
+      stats: { ...res.stats, totalAlunos: res.stats.totalStudents },
+      occupationByDay: res.occupationByDay,
+    })),
+
+  pt: async () =>
+    apiFetch<{
+      stats: { totalStudents: number; sessionsThisWeek: number; hoursThisMonth: number; amountDue: number }
+      nextSessions: Array<{ availabilityId: string; startTime: string; endTime: string; confirmedStudents: number; maxStudents: number }>
+    }>('/api/v1/dashboard/pt').then(res => ({
+      stats: { ...res.stats, totalAlunos: res.stats.totalStudents },
+      nextSessions: res.nextSessions.map(s => ({
+        availabilityId: s.availabilityId, startTime: s.startTime, endTime: s.endTime,
+        confirmedAlunos: s.confirmedStudents, maxAlunos: s.maxStudents,
+        // studioCount/alunosBooked have no backend equivalent in
+        // PTDashboardResponse.NextSession — left as safe defaults so pages
+        // reading these fields don't crash; real per-slot studio occupancy
+        // requires a separate availabilityApi call if a page needs it.
+        studioCount: s.confirmedStudents, alunosBooked: [] as string[],
+      })),
+      // recentBookings doesn't exist in PTDashboardResponse (backend only
+      // returns nextSessions, not a history list) — bookingApi.myBookings
+      // isn't PT-scoped either (it's STUDENT-only per BookingController).
+      // GAP: see summary at the end of this task.
+      recentBookings: [] as unknown[],
+    })),
+
+  aluno: async () =>
+    apiFetch<{
+      nextSession?: { availabilityId: string; startTime: string; endTime: string; confirmedStudents: number; maxStudents: number }
+      upcomingCount: number; completedCount: number; ptName: string
+      recentSessions: Array<{ bookingId: string; startTime: string; endTime: string; status: string; ptName: string }>
+      pack?: { total: number; used: number; remaining: number; sessionDuration: number; expiresAt: string | null }
+    }>('/api/v1/dashboard/student').then(res => ({
+      nextSession: res.nextSession ? {
+        availabilityId: res.nextSession.availabilityId, startTime: res.nextSession.startTime, endTime: res.nextSession.endTime,
+        confirmedAlunos: res.nextSession.confirmedStudents, maxAlunos: res.nextSession.maxStudents,
+      } : undefined,
+      upcomingCount: res.upcomingCount,
+      completedCount: res.completedCount,
+      ptName: res.ptName,
+      // ptBillingCycleDay/inscricaoDate have no equivalent in
+      // StudentDashboardResponse — see GAP summary.
+      ptBillingCycleDay: undefined as number | undefined,
+      inscricaoDate: undefined as string | undefined,
+      pack: res.pack,
+      recentSessions: res.recentSessions,
+    })),
+}
+
+// ── Alunos (student-side own view) ────────────────────────────────────────────
+// Mix of StudentController (own profile) + availabilityApi/bookingApi (own
+// PT's slots + booking). Confirmed live 07/jul.
+export const alunoApi = {
+  me: async () =>
+    apiFetch<{
+      id: string; userId: string; name: string; email: string; phone?: string
+      personalTrainerId: string; personalTrainerName: string
+      nextSession?: string; completedSessions: number; status: string; enrollmentDate: string
+    }>('/api/v1/students/me'),
+
+  // Alias kept for pages built against the mock's `assinarAnamnese`/intake
+  // form naming — backend route is /students/me/intake-form/sign.
+  assinarAnamnese: async (nome: string) =>
+    apiFetch('/api/v1/students/me/intake-form/sign', { method: 'POST', body: JSON.stringify({ name: nome }) }),
+
+  myStudents: async () => apiFetch('/api/v1/students/my-students'),
+
+  // Backend requires a password on CreateStudentRequest — personalTrainerId
+  // is auto-filled server-side when the caller is a PERSONAL_TRAINER (see
+  // StudentController.create). Generates a real random password (never a
+  // fixed/guessable one) and tries to email it, same pattern as
+  // ptApi.create's welcome-credentials flow — returns tempPassword/emailSent
+  // so the calling page can fall back to copy/WhatsApp when email fails.
+  createByPT: async (data: { name: string; email: string; phone?: string; objetivo?: string; dataNascimento?: string }) => {
+    const tempPassword = generateTempPassword()
+    const created = await apiFetch<Record<string, unknown>>('/api/v1/students', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: data.name, email: data.email, phone: data.phone,
+        goal: data.objetivo, dateOfBirth: data.dataNascimento,
+        password: tempPassword,
+        // @NotBlank no backend, mas o valor é sempre sobrescrito
+        // server-side quando quem chama é um PERSONAL_TRAINER (ver
+        // StudentController.create) — precisa só ser não-vazio.
+        personalTrainerId: 'auto',
+      }),
+    })
+    const { sent } = await sendCredentialsEmail({ to: data.email, name: data.name, password: tempPassword, isReset: false })
+    return { ...created, tempPassword, emailSent: sent }
+  },
+
+  create: async (data: { name: string; email: string; password: string; personalTrainerId: string }) =>
+    apiFetch('/api/v1/students', {
+      method: 'POST',
+      body: JSON.stringify({ name: data.name, email: data.email, password: data.password, personalTrainerId: data.personalTrainerId }),
+    }),
+}
+
+// ── Plan Tiers (TIERED_HOURLY pricing) ────────────────────────────────────────
+// Confirmed live 07/jul (tested against an empty tier list — no
+// TIERED_HOURLY plan in the seed, but the route/shape is confirmed via
+// RentalPlanController + PlanHourTierResponse).
+export const planTierApi = {
+  listTiers: async (planId: string) =>
+    apiFetch<Array<{ id: string; tierOrder: number; hoursFrom: number; hoursTo: number | null; pricePerHour: number; bonus: number }>>(
+      `/api/v1/plans/${planId}/tiers`,
+    ),
+  // Backend PUT replaces all tiers, matching the mock's saveTiers
+  // replace-all semantics exactly — no per-row diffing needed.
+  saveTiers: async (planId: string, tiers: Array<{ hoursFrom: number; hoursTo: number | null; pricePerHour: number; bonus: number }>) =>
+    apiFetch(`/api/v1/plans/${planId}/tiers`, { method: 'PUT', body: JSON.stringify(tiers) }),
+}
+
+// ── PT weekly payment cycle (TIERED_HOURLY plans only) ────────────────────────
+// Confirmed live 07/jul — errors with 422 "Este PT não está num plano por
+// faixas" for a non-TIERED_HOURLY plan, exactly like the mock's guard.
+export const ptPaymentApi = {
+  weeklySchedule: async (ptId: string, month: string) =>
+    apiFetch<{
+      ptId: string; ptName: string; planName: string
+      tiers: Array<{ id: string; tierOrder: number; hoursFrom: number; hoursTo: number | null; pricePerHour: number; bonus: number }>
+      weeks: Array<{
+        weekStart: string; weekEnd: string; hoursThisWeek: number; cumulativeHours: number
+        isClosingWeek: boolean; amountAdvanced: number; retroactiveAdjustment?: number; bonus?: number
+      }>
+      totalHours: number
+    }>(`/api/v1/billing/${ptId}/weekly-schedule?month=${encodeURIComponent(month)}`),
+}
+
+// ── Workout Plans ─────────────────────────────────────────────────────────────
+// Confirmed live 07/jul against WorkoutController/WorkoutDtos.
+export const workoutApi = {
+  // mock signature: ptAlunos(ptId) -> students of a PT with a planCount.
+  // Backend has no single endpoint for "students of PT X with workout plan
+  // counts" — composed here from /students/my-students (PERSONAL_TRAINER-
+  // scoped, ptId param is ignored/unused since the backend infers the PT
+  // from the JWT) + one /workout-plans?studentId= call per student to
+  // count plans. This is an N+1 the mock doesn't have — acceptable for a
+  // PT's own student list (typically single digits), but see GAP summary.
+  ptAlunos: async (_ptId: string) => {
+    const students = await apiFetch<Array<{ id: string; name: string; email: string }>>('/api/v1/students/my-students')
+    const withCounts = await Promise.all(students.map(async s => {
+      const plans = await apiFetch<unknown[]>(`/api/v1/workout-plans?studentId=${s.id}`).catch(() => [])
+      return { ...s, planCount: plans.length }
+    }))
+    return withCounts
+  },
+
+  plans: async (alunoId: string) =>
+    apiFetch<Array<{
+      id: string; studentId: string; studentName: string; ptId: string; label: string; focus: string
+      exercises: Array<{ id: string; name: string; muscleGroup: string; sets: number; reps: string; rest: string; notes?: string }>
+      validUntil: string | null; updatedAt: string
+    }>>(`/api/v1/workout-plans?studentId=${alunoId}`),
+
+  savePlan: async (data: { alunoId: string; alunoName: string; ptId: string; label: string; focus: string; exercises: import('@/types').Exercise[]; validUntil?: string }) =>
+    apiFetch('/api/v1/workout-plans', {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: data.alunoId,
+        label: data.label,
+        focus: data.focus,
+        exercises: data.exercises.map(e => ({
+          name: e.name, muscleGroup: e.muscleGroup, sets: e.sets, reps: e.reps, rest: e.rest, notes: e.notes,
+        })),
+        validUntil: data.validUntil,
+      }),
+    }),
+
+  updateValidity: async (planId: string, validUntil: string) =>
+    apiFetch(`/api/v1/workout-plans/${planId}/validity`, { method: 'PATCH', body: JSON.stringify({ validUntil }) }),
+
+  addExercise: async (planId: string, exercise: Omit<import('@/types').Exercise, 'id'>) =>
+    apiFetch(`/api/v1/workout-plans/${planId}/exercises`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: exercise.name, muscleGroup: exercise.muscleGroup, sets: exercise.sets,
+        reps: exercise.reps, rest: exercise.rest, notes: exercise.notes,
+      }),
+    }),
+
+  removeExercise: async (planId: string, exerciseId: string) =>
+    apiFetch<void>(`/api/v1/workout-plans/${planId}/exercises/${exerciseId}`, { method: 'DELETE' }),
+
+  // No standalone DELETE /workout-plans/{id} caller in the mock's shape
+  // mismatch sense — the backend DOES have this route (WorkoutController
+  // line 72-77), so this maps directly with no gap.
+  deletePlan: async (planId: string) => apiFetch<void>(`/api/v1/workout-plans/${planId}`, { method: 'DELETE' }),
+}
+
+// ── Notification engine config ────────────────────────────────────────────────
+// Antes de 08/jul isto não existia em lugar nenhum (nem mock nem real) além
+// da tela de toggles — agora o backend de facto dispara os emails
+// (NotificationDispatchService), então esta tela precisa falar com o
+// backend real para os toggles terem efeito de verdade em produção.
+export const notificationApi = {
+  list: async () => apiFetch('/api/v1/notification-configs'),
+  toggle: async (id: string, enabled: boolean) =>
+    apiFetch(`/api/v1/notification-configs/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  update: async (id: string, data: Partial<{ enabled: boolean; daysOffset: number }>) =>
+    apiFetch(`/api/v1/notification-configs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+}
+
+// ── Admin — gestão de alunos ──────────────────────────────────────────────────
+// O backend fala inglês (StudentResponse/CreateStudentRequest), o frontend
+// espera o shape MockAluno em português. Estes mapas fazem a tradução
+// bidirecional dos enums e nomes de campo — sem eles, o admin/alunos mostraria
+// undefined em tudo. Estúdio novo = lista vazia (correto), nunca dados fake.
+
+const GENDER_EN2PT: Record<string, 'MASCULINO' | 'FEMININO' | 'OUTRO'> = { MALE: 'MASCULINO', FEMALE: 'FEMININO', OTHER: 'OUTRO' }
+const GENDER_PT2EN: Record<string, string> = { MASCULINO: 'MALE', FEMININO: 'FEMALE', OUTRO: 'OTHER' }
+const ALCOHOL_EN2PT: Record<string, 'NUNCA' | 'OCASIONAL' | 'FREQUENTE'> = { NEVER: 'NUNCA', OCCASIONAL: 'OCASIONAL', FREQUENT: 'FREQUENTE' }
+const ALCOHOL_PT2EN: Record<string, string> = { NUNCA: 'NEVER', OCASIONAL: 'OCCASIONAL', FREQUENTE: 'FREQUENT' }
+const ACTIVITY_EN2PT: Record<string, 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO'> = { SEDENTARY: 'SEDENTARIO', LIGHTLY_ACTIVE: 'POUCO_ATIVO', ACTIVE: 'ATIVO', VERY_ACTIVE: 'MUITO_ATIVO' }
+const ACTIVITY_PT2EN: Record<string, string> = { SEDENTARIO: 'SEDENTARY', POUCO_ATIVO: 'LIGHTLY_ACTIVE', ATIVO: 'ACTIVE', MUITO_ATIVO: 'VERY_ACTIVE' }
+const STRESS_EN2PT: Record<string, 'BAIXO' | 'MEDIO' | 'ALTO'> = { LOW: 'BAIXO', MEDIUM: 'MEDIO', HIGH: 'ALTO' }
+const STRESS_PT2EN: Record<string, string> = { BAIXO: 'LOW', MEDIO: 'MEDIUM', ALTO: 'HIGH' }
+const STATUS_EN2PT: Record<string, 'ATIVO' | 'INATIVO' | 'SUSPENSO'> = { ACTIVE: 'ATIVO', INACTIVE: 'INATIVO', SUSPENDED: 'SUSPENSO' }
+const STATUS_PT2EN: Record<string, string> = { ATIVO: 'ACTIVE', INATIVO: 'INACTIVE', SUSPENSO: 'SUSPENDED' }
+
+type RealStudent = Record<string, unknown>
+
+function studentToMock(s: RealStudent) {
+  const g = (v: unknown, m: Record<string, string>) => (v == null ? undefined : m[v as string])
+  return {
+    id: String(s.id), userId: String(s.userId ?? ''), name: String(s.name ?? ''), email: String(s.email ?? ''),
+    phone: (s.phone as string) ?? undefined,
+    personalTrainerId: String(s.personalTrainerId ?? ''), personalTrainerName: String(s.personalTrainerName ?? ''),
+    nextSession: (s.nextSession as string) ?? undefined,
+    completedSessions: (s.completedSessions as number) ?? 0,
+    status: STATUS_EN2PT[s.status as string] ?? 'ATIVO',
+    dataNascimento: (s.dateOfBirth as string) ?? undefined,
+    inscricaoDate: (s.enrollmentDate as string) ?? new Date().toISOString().slice(0, 10),
+    objetivo: (s.goal as string) ?? undefined,
+    genero: g(s.gender, GENDER_EN2PT) as 'MASCULINO' | 'FEMININO' | 'OUTRO' | undefined,
+    profissao: (s.occupation as string) ?? undefined,
+    doencas: (s.medicalConditions as string[]) ?? [],
+    doencasOutras: (s.otherMedicalConditions as string) ?? undefined,
+    cirurgias: (s.surgeries as string) ?? undefined,
+    medicamentos: (s.medications as string) ?? undefined,
+    limitacoesFisicas: (s.physicalLimitations as string) ?? undefined,
+    fumante: (s.smoker as boolean) ?? undefined,
+    alcool: g(s.alcoholConsumption, ALCOHOL_EN2PT) as 'NUNCA' | 'OCASIONAL' | 'FREQUENTE' | undefined,
+    praticouAtividade: (s.hasPracticedActivity as boolean) ?? undefined,
+    atividadeAnterior: (s.previousActivity as string) ?? undefined,
+    tempoSemAtividade: (s.timeWithoutActivity as string) ?? undefined,
+    nivelAtividade: g(s.activityLevel, ACTIVITY_EN2PT) as 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO' | undefined,
+    horasSono: (s.sleepHours as number) ?? undefined,
+    nivelEstresse: g(s.stressLevel, STRESS_EN2PT) as 'BAIXO' | 'MEDIO' | 'ALTO' | undefined,
+    prazoObjetivo: (s.goalDeadline as string) ?? undefined,
+    disponibilidadeSemanal: (s.weeklyAvailability as number) ?? undefined,
+    observacoesGerais: (s.generalNotes as string) ?? undefined,
+    anamneseAssinadaEm: (s.intakeFormSignedAt as string) ?? undefined,
+    anamneseAssinadaNome: (s.intakeFormSignedName as string) ?? undefined,
+  }
+}
+
+// Traduz o payload PT do form → EN que o backend aceita. Só inclui chaves
+// presentes (undefined não vira null no JSON, graças ao filtro).
+function mockToStudentPayload(d: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  const put = (k: string, v: unknown) => { if (v !== undefined && v !== null && v !== '') out[k] = v }
+  put('name', d.name); put('email', d.email); put('phone', d.phone)
+  put('personalTrainerId', d.personalTrainerId)
+  put('dateOfBirth', d.dataNascimento)
+  put('gender', d.genero ? GENDER_PT2EN[d.genero as string] : undefined)
+  put('occupation', d.profissao)
+  put('goal', d.objetivo); put('goalDeadline', d.prazoObjetivo)
+  put('weeklyAvailability', d.disponibilidadeSemanal)
+  put('medicalConditions', d.doencas)
+  put('otherMedicalConditions', d.doencasOutras)
+  put('surgeries', d.cirurgias); put('medications', d.medicamentos)
+  put('physicalLimitations', d.limitacoesFisicas)
+  put('smoker', d.fumante)
+  put('alcoholConsumption', d.alcool ? ALCOHOL_PT2EN[d.alcool as string] : undefined)
+  put('hasPracticedActivity', d.praticouAtividade)
+  put('previousActivity', d.atividadeAnterior)
+  put('timeWithoutActivity', d.tempoSemAtividade)
+  put('activityLevel', d.nivelAtividade ? ACTIVITY_PT2EN[d.nivelAtividade as string] : undefined)
+  put('sleepHours', d.horasSono)
+  put('stressLevel', d.nivelEstresse ? STRESS_PT2EN[d.nivelEstresse as string] : undefined)
+  put('generalNotes', d.observacoesGerais)
+  put('status', d.status ? STATUS_PT2EN[d.status as string] : undefined)
+  return out
+}
+
+export const adminApi = {
+  allAlunos: async () =>
+    apiFetch<{ content: RealStudent[] }>('/api/v1/students?size=200').then(p => p.content.map(studentToMock)),
+
+  alunosByPt: async (ptId: string) =>
+    adminApi.allAlunos().then(list => list.filter(a => a.personalTrainerId === ptId)),
+
+  alunoById: async (id: string) => {
+    const aluno = studentToMock(await apiFetch<RealStudent>(`/api/v1/students/${id}`))
+    // Agregados em paralelo — cada um degrada para [] se o endpoint falhar,
+    // nunca quebra a página inteira. Histórico de reservas do aluno visto
+    // pelo admin ainda não tem endpoint dedicado no backend (myBookings é
+    // STUDENT-only), então vem vazio por enquanto.
+    const [packs, avaliacoes, workoutPlans] = await Promise.all([
+      apiFetch<unknown[]>(`/api/v1/session-packs?studentId=${id}`).catch(() => []),
+      apiFetch<unknown[]>(`/api/v1/assessments?studentId=${id}`).catch(() => []),
+      apiFetch<unknown[]>(`/api/v1/workout-plans?studentId=${id}`).catch(() => []),
+    ])
+    return { aluno, bookings: [] as unknown[], packs, avaliacoes, workoutPlan: (workoutPlans as unknown[])[0] }
+  },
+
+  createAluno: async (data: Record<string, unknown>) =>
+    apiFetch<RealStudent>('/api/v1/students', {
+      method: 'POST',
+      body: JSON.stringify({ ...mockToStudentPayload(data), password: generateTempPassword() }),
+    }).then(studentToMock),
+
+  updateAluno: async (id: string, data: Record<string, unknown>) =>
+    apiFetch<RealStudent>(`/api/v1/students/${id}`, {
+      method: 'PATCH', body: JSON.stringify(mockToStudentPayload(data)),
+    }).then(studentToMock),
+
+  cancelBooking: async (bookingId: string) =>
+    apiFetch(`/api/v1/bookings/${bookingId}`, { method: 'DELETE' }),
 }
