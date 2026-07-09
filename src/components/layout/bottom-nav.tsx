@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Users2,
   Calendar, UserCheck, History, LogOut, Dumbbell,
   TrendingUp, ClipboardList, CreditCard, Receipt, Layers,
-  Bell, MoreHorizontal, X,
+  Bell, MoreHorizontal, X, BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -37,14 +37,25 @@ const PRIMARY: Record<UserRole, NavItem[]> = {
   ],
 }
 
-// Extra items — only in the "Mais" drawer
-const EXTRA: Record<UserRole, NavItem[]> = {
+// Extra items — only in the "Mais" drawer, grouped by the same topics as
+// the desktop sidebar. A header-less section is a flat list.
+type NavSection = { label?: string; items: NavItem[] }
+const EXTRA: Record<UserRole, NavSection[]> = {
   ADMIN: [
-    { href: '/admin/personal-trainers', label: 'Personal Trainers', icon: Users },
-    { href: '/admin/modalidades',       label: 'Modalidades',       icon: Layers },
-    { href: '/admin/plans',             label: 'Planos de Aluguel', icon: CreditCard },
-    { href: '/admin/billing',           label: 'Faturação',         icon: Receipt },
-    { href: '/admin/notificacoes',      label: 'Notificações',      icon: Bell },
+    { label: 'Pessoas', items: [
+      { href: '/admin/personal-trainers', label: 'Personal Trainers', icon: Users },
+    ] },
+    { label: 'Agenda', items: [
+      { href: '/admin/modalidades', label: 'Modalidades', icon: Layers },
+    ] },
+    { label: 'Financeiro', items: [
+      { href: '/admin/plans',      label: 'Planos de Aluguel', icon: CreditCard },
+      { href: '/admin/billing',    label: 'Faturação',         icon: Receipt },
+      { href: '/admin/relatorios', label: 'Relatórios',        icon: BarChart3 },
+    ] },
+    { label: 'Sistema', items: [
+      { href: '/admin/notificacoes', label: 'Notificações', icon: Bell },
+    ] },
   ],
   PERSONAL_TRAINER: [],
   ALUNO: [],
@@ -59,8 +70,9 @@ export function BottomNav() {
   if (!user) return null
 
   const primary = PRIMARY[user.role] ?? []
-  const extra   = EXTRA[user.role] ?? []
-  const hasExtra = extra.length > 0
+  const extraSections = EXTRA[user.role] ?? []
+  const extraItems = extraSections.flatMap(s => s.items)
+  const hasExtra = extraItems.length > 0
 
   function isActive(href: string) {
     if (href === '/admin' || href === '/pt' || href === '/aluno') return pathname === href
@@ -73,7 +85,7 @@ export function BottomNav() {
   }
 
   // Check if current page is in extra (highlight the "Mais" button)
-  const extraActive = extra.some(e => isActive(e.href))
+  const extraActive = extraItems.some(e => isActive(e.href))
 
   return (
     <>
@@ -169,34 +181,41 @@ export function BottomNav() {
                 <div className="w-8 h-1 rounded-full bg-white/20" />
               </div>
 
-              <p className="px-5 pt-2 pb-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                Mais opções
-              </p>
-
-              {/* Extra nav items — 2-column grid */}
-              <div className="px-4 pb-4 grid grid-cols-2 gap-2">
-                {extra.map(({ href, label, icon: Icon }) => {
-                  const active = isActive(href)
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all min-h-[56px]',
-                        active
-                          ? 'bg-white/10 text-white'
-                          : 'bg-white/[0.04] text-white/50 active:bg-white/10'
-                      )}
-                    >
-                      <Icon
-                        className="w-5 h-5 flex-shrink-0"
-                        style={{ color: active ? '#C9A84C' : undefined }}
-                      />
-                      <span className="text-sm font-medium leading-tight">{label}</span>
-                    </Link>
-                  )
-                })}
+              {/* Extra nav items — grouped by topic, each a 2-column grid */}
+              <div className="px-4 pb-4 space-y-4">
+                {extraSections.map((section, si) => (
+                  <div key={section.label ?? si}>
+                    {section.label && (
+                      <p className="pb-2 text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                        {section.label}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {section.items.map(({ href, label, icon: Icon }) => {
+                        const active = isActive(href)
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            onClick={() => setDrawerOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all min-h-[56px]',
+                              active
+                                ? 'bg-white/10 text-white'
+                                : 'bg-white/[0.04] text-white/50 active:bg-white/10'
+                            )}
+                          >
+                            <Icon
+                              className="w-5 h-5 flex-shrink-0"
+                              style={{ color: active ? '#C9A84C' : undefined }}
+                            />
+                            <span className="text-sm font-medium leading-tight">{label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Divider + Sair */}
