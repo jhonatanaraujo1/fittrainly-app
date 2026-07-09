@@ -103,7 +103,7 @@ function EditSheet({ pt, plans, onClose }: {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Plano de aluguel</Label>
-            <Select value={form.planId} onValueChange={v => setForm(f => ({ ...f, planId: v ?? '' }))}>
+            <Select value={form.planId} onValueChange={v => setForm(f => ({ ...f, planId: v ?? '' }))} items={plans.map(p => ({ value: p.id, label: `${p.name} — ${planTypeLabel(p.type)}` }))}>
               <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
               <SelectContent>
                 {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {planTypeLabel(p.type)}</SelectItem>)}

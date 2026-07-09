@@ -243,7 +243,7 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Plano de Aluguel</Label>
-                  <Select value={form.planId} onValueChange={v => set('planId', v ?? '')}>
+                  <Select value={form.planId} onValueChange={v => set('planId', v ?? '')} items={plans.map(p => ({ value: p.id, label: `${p.name} — ${planTypeLabel(p.type)}` }))}>
                     <SelectTrigger className="h-11"><SelectValue placeholder="Selecionar plano (opcional)" /></SelectTrigger>
                     <SelectContent>
                       {plans.map(p => (

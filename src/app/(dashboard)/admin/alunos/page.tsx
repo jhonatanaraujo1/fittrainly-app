@@ -209,7 +209,7 @@ function AlunoForm({ pts, onSuccess }: { pts: MockPT[]; onSuccess: () => void })
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Personal Trainer *</Label>
-              <Select value={form.personalTrainerId} onValueChange={v => set('personalTrainerId', v ?? '')}>
+              <Select value={form.personalTrainerId} onValueChange={v => set('personalTrainerId', v ?? '')} items={pts.map(pt => ({ value: pt.id, label: pt.name }))}>
                 <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecionar PT" /></SelectTrigger>
                 <SelectContent>{pts.map(pt => <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -533,7 +533,7 @@ export default function AlunosPage() {
             className="pl-9"
           />
         </div>
-        <Select value={ptFilter} onValueChange={v => setPtFilter(v ?? 'todos')}>
+        <Select value={ptFilter} onValueChange={v => setPtFilter(v ?? 'todos')} items={[{ value: 'todos', label: 'Todos os PTs' }, ...pts.map(pt => ({ value: pt.id, label: pt.name }))]}>
           <SelectTrigger className="sm:w-44">
             <SelectValue placeholder="Filtrar por PT" />
           </SelectTrigger>

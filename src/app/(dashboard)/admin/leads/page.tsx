@@ -362,7 +362,7 @@ function ConvertDialog({ lead, onClose, onConverted }: {
         <div className="px-6 pb-6 space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-gray-700">Atribuir ao Personal Trainer</label>
-            <Select value={selectedPT} onValueChange={v => setSelectedPT(v ?? '')}>
+            <Select value={selectedPT} onValueChange={v => setSelectedPT(v ?? '')} items={pts.map((pt: { id: string; name: string }) => ({ value: pt.id, label: pt.name }))}>
               <SelectTrigger className="min-h-[44px] text-sm">
                 <SelectValue placeholder="Selecionar PT..." />
               </SelectTrigger>
