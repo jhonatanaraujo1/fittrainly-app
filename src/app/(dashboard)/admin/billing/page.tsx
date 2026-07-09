@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueries } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Download, CheckCircle2, Printer, Layers, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
@@ -18,70 +18,145 @@ interface WeekRow {
   weekStart: string; weekEnd: string; hoursThisWeek: number; cumulativeHours: number
   isClosingWeek: boolean; amountAdvanced: number; retroactiveAdjustment?: number; bonus?: number
 }
+interface TierRow { tierOrder: number; hoursFrom: number; hoursTo: number | null; pricePerHour: number; bonus: number }
+interface Schedule { ptId: string; ptName: string; tiers: TierRow[]; weeks: WeekRow[]; totalHours: number }
 
-function WeeklyScheduleCard({ ptId, ptName, month }: { ptId: string; ptName: string; month: string }) {
-  const [open, setOpen] = useState(false)
-  const { data, isLoading } = useQuery<{ weeks: WeekRow[]; totalHours: number }>({
-    queryKey: ['pt-weekly-schedule', ptId, month],
-    queryFn: () => ptPaymentApi.weeklySchedule(ptId, month),
-    enabled: open,
+// The tier a PT's monthly hours land in — the last tier whose floor they've
+// reached. Drives the marginal rate and the "faixa atingida" label.
+function tierReached(totalHours: number, tiers: TierRow[]): TierRow | undefined {
+  const sorted = [...tiers].sort((a, b) => a.tierOrder - b.tierOrder)
+  return [...sorted].reverse().find(t => totalHours >= t.hoursFrom) ?? sorted[0]
+}
+function tierRangeLabel(t: TierRow): string {
+  return t.hoursTo === null ? `${t.hoursFrom}h+` : `${t.hoursFrom}–${t.hoursTo}h`
+}
+
+// Scannable per-PT monthly summary for TIERED_HOURLY plans — hours, tier
+// reached, discount credited (the retroactive adjustment, negative = credit
+// back to the PT) and bonus, all visible at a glance. Each row expands to
+// the week-by-week breakdown. Reuses the same weekly-schedule endpoint the
+// backend already serves; no per-card lazy loading, everything eager so the
+// table is fully populated when it renders.
+function TierMonthlySummary({ ptList, month }: { ptList: { ptId: string; ptName: string }[]; month: string }) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const results = useQueries({
+    queries: ptList.map(p => ({
+      queryKey: ['pt-weekly-schedule', p.ptId, month],
+      queryFn: () => ptPaymentApi.weeklySchedule(p.ptId, month) as Promise<Schedule>,
+    })),
   })
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-full ${avatarColor(ptName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-            {getInitials(ptName)}
-          </div>
-          <span className="font-medium text-gray-900 text-sm">{ptName}</span>
-        </div>
-        <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', open && 'rotate-180')} />
-      </button>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[520px]">
+          <thead>
+            <tr className="text-xs text-gray-400 bg-gray-50">
+              <th className="text-left px-5 py-3 font-medium">Personal Trainer</th>
+              <th className="text-right px-4 py-3 font-medium">Horas</th>
+              <th className="text-left px-4 py-3 font-medium">Faixa atingida</th>
+              <th className="text-right px-4 py-3 font-medium">Desconto</th>
+              <th className="text-right px-5 py-3 font-medium">Bónus</th>
+              <th className="w-8" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {ptList.map((p, i) => {
+              const r = results[i]
+              const s = r.data
+              const closing = s?.weeks.find(w => w.isClosingWeek)
+              // retroactiveAdjustment negative = crédito (desconto) ao PT
+              const discount = closing?.retroactiveAdjustment ?? 0
+              const bonus = closing?.bonus ?? 0
+              const tier = s ? tierReached(s.totalHours, s.tiers) : undefined
+              const isOpen = expanded === p.ptId
 
-      {open && (
-        <div className="border-t border-gray-50 px-5 py-4">
-          {isLoading || !data ? (
-            <Skeleton className="h-20 rounded-lg" />
-          ) : (
-            <div className="space-y-2">
-              {data.weeks.map((w, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'rounded-lg border px-3 py-2.5 text-xs',
-                    w.isClosingWeek ? 'bg-violet-50 border-violet-200' : 'bg-gray-50 border-gray-100',
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-700">
-                      {formatDate(w.weekStart)} – {formatDate(w.weekEnd)}
-                      {w.isClosingWeek && <span className="ml-2 text-violet-600 font-bold">Semana de fecho</span>}
-                    </span>
-                    <span className="text-gray-500">{w.hoursThisWeek}h esta semana · {w.cumulativeHours}h no mês</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-gray-500">
-                      Adiantado: <strong className="text-gray-800">{formatCurrency(w.amountAdvanced)}</strong>
-                      <span className="text-gray-400"> (c/ IVA: {formatCurrency(withIVA(w.amountAdvanced).total)})</span>
-                    </span>
-                    {w.isClosingWeek && w.retroactiveAdjustment !== undefined && (
-                      <span className={w.retroactiveAdjustment < 0 ? 'text-emerald-700 font-bold' : 'text-gray-700 font-bold'}>
-                        Acerto: {w.retroactiveAdjustment < 0 ? '−' : '+'}{formatCurrency(Math.abs(w.retroactiveAdjustment))}
-                        <span className="font-normal text-gray-400"> (c/ IVA: {formatCurrency(withIVA(Math.abs(w.retroactiveAdjustment)).total)})</span>
-                        {w.bonus ? ` · Bónus €${w.bonus}` : ''}
-                      </span>
+              return (
+                <>
+                  <tr
+                    key={p.ptId}
+                    onClick={() => setExpanded(o => (o === p.ptId ? null : p.ptId))}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full ${avatarColor(p.ptName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                          {getInitials(p.ptName)}
+                        </div>
+                        <span className="font-medium text-gray-900">{p.ptName}</span>
+                      </div>
+                    </td>
+                    {r.isLoading || !s ? (
+                      <td colSpan={4} className="px-4 py-3.5"><Skeleton className="h-4 w-40 rounded" /></td>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-gray-800">{s.totalHours}h</td>
+                        <td className="px-4 py-3.5">
+                          {tier ? (
+                            <span className="text-xs text-gray-600">{tierRangeLabel(tier)} · {formatCurrency(tier.pricePerHour)}/h</span>
+                          ) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          {discount < 0 ? (
+                            <span className="font-bold text-emerald-700">−{formatCurrency(Math.abs(discount))}</span>
+                          ) : discount > 0 ? (
+                            <span className="font-bold text-gray-700">+{formatCurrency(discount)}</span>
+                          ) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5 text-right tabular-nums">
+                          {bonus ? <span className="font-semibold text-violet-700">€{bonus}</span> : <span className="text-gray-300">—</span>}
+                        </td>
+                      </>
                     )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                    <td className="pr-4 text-right">
+                      <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform inline', isOpen && 'rotate-180')} />
+                    </td>
+                  </tr>
+
+                  {isOpen && s && (
+                    <tr key={p.ptId + '-detail'}>
+                      <td colSpan={6} className="bg-gray-50/60 px-5 py-4">
+                        <div className="space-y-2">
+                          {s.weeks.map((w, wi) => (
+                            <div
+                              key={wi}
+                              className={cn(
+                                'rounded-lg border px-3 py-2.5 text-xs',
+                                w.isClosingWeek ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-100',
+                              )}
+                            >
+                              <div className="flex items-center justify-between flex-wrap gap-1">
+                                <span className="font-semibold text-gray-700">
+                                  {formatDate(w.weekStart)} – {formatDate(w.weekEnd)}
+                                  {w.isClosingWeek && <span className="ml-2 text-violet-600 font-bold">Semana de fecho</span>}
+                                </span>
+                                <span className="text-gray-500">{w.hoursThisWeek}h esta semana · {w.cumulativeHours}h no mês</span>
+                              </div>
+                              <div className="flex items-center justify-between mt-1.5 flex-wrap gap-1">
+                                <span className="text-gray-500">
+                                  Adiantado: <strong className="text-gray-800">{formatCurrency(w.amountAdvanced)}</strong>
+                                  <span className="text-gray-400"> (c/ IVA: {formatCurrency(withIVA(w.amountAdvanced).total)})</span>
+                                </span>
+                                {w.isClosingWeek && w.retroactiveAdjustment !== undefined && (
+                                  <span className={w.retroactiveAdjustment < 0 ? 'text-emerald-700 font-bold' : 'text-gray-700 font-bold'}>
+                                    Acerto: {w.retroactiveAdjustment < 0 ? '−' : '+'}{formatCurrency(Math.abs(w.retroactiveAdjustment))}
+                                    <span className="font-normal text-gray-400"> (c/ IVA: {formatCurrency(withIVA(Math.abs(w.retroactiveAdjustment)).total)})</span>
+                                    {w.bonus ? ` · Bónus €${w.bonus}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -236,13 +311,15 @@ export default function BillingPage() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-3">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-violet-500" />
-            <h2 className="text-sm font-bold text-gray-900">Ciclo Semanal (Planos por Faixas)</h2>
+            <h2 className="text-sm font-bold text-gray-900">Desconto por PT (Planos por Faixas)</h2>
           </div>
-          <div className="space-y-2">
-            {entries.filter(e => e.planType === 'TIERED_HOURLY').map(e => (
-              <WeeklyScheduleCard key={e.ptId} ptId={e.ptId} ptName={e.ptName} month={selectedMonth} />
-            ))}
-          </div>
+          <p className="text-xs text-gray-400 -mt-1">
+            Horas do mês, faixa atingida e o crédito retroativo de cada PT. Clica numa linha para ver o detalhe semanal.
+          </p>
+          <TierMonthlySummary
+            ptList={entries.filter(e => e.planType === 'TIERED_HOURLY').map(e => ({ ptId: e.ptId, ptName: e.ptName }))}
+            month={selectedMonth}
+          />
         </motion.div>
       )}
 
