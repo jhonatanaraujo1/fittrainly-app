@@ -23,7 +23,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ptApi, adminApi, billingApi, planApi, authApi } from '@/lib/api'
+import { ptApi, adminApi, billingApi, planApi } from '@/lib/api'
 import { db } from '@/lib/mock-db'
 import {
   getInitials, avatarColor, formatCurrency, formatDate,
@@ -218,7 +218,11 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
   const resetPassword = useMutation({
     mutationFn: () => {
       if (!pt) throw new Error('PT não carregado')
-      return authApi.adminResetPassword(pt.userId, pt.name, pt.email)
+      // ptApi.resetPassword existe no mock E no real (POST
+      // /personal-trainers/{id}/reset-password) e devolve {tempPassword,
+      // emailSent} — antes chamava authApi.adminResetPassword, que só o
+      // mock tinha, quebrando em produção com "is not a function".
+      return ptApi.resetPassword(pt.id)
     },
     onSuccess: (result) => {
       setResetResult(result)

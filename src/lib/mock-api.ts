@@ -261,6 +261,21 @@ export const ptApi = {
     db.pts[idx] = { ...db.pts[idx], ...data }
     return db.pts[idx]
   },
+
+  // Reset de senha pelo admin — mesma assinatura/retorno do real
+  // (POST /personal-trainers/{id}/reset-password): gera senha nova, grava,
+  // tenta email, devolve {tempPassword, emailSent} para a UI mostrar o
+  // fallback (copiar/WhatsApp).
+  resetPassword: async (id: string): Promise<{ tempPassword: string; emailSent: boolean }> => {
+    await delay(350)
+    const pt = db.pts.find(p => p.id === id)
+    if (!pt) throw new Error('PT não encontrado')
+    const user = db.users.find(u => u.id === pt.userId)
+    const tempPassword = generateTempPassword()
+    if (user) user.password = tempPassword
+    const { sent } = await sendCredentialsEmail({ to: pt.email, name: pt.name, password: tempPassword, isReset: true })
+    return { tempPassword, emailSent: sent }
+  },
 }
 
 // ── Alunos ────────────────────────────────────────────────────────────────────
