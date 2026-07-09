@@ -15,30 +15,49 @@ import { useAuthStore } from '@/store/auth'
 import { ChangePasswordDialog } from '@/components/change-password-dialog'
 import type { UserRole } from '@/types'
 
-const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementType }[]> = {
+type NavLink = { href: string; label: string; icon: React.ElementType }
+// A section groups links under an optional topic header. Roles with few
+// items (PT, aluno) use a single header-less section = a flat list.
+type NavSection = { label?: string; items: NavLink[] }
+
+const NAV: Record<UserRole, NavSection[]> = {
   ADMIN: [
-    { href: '/admin',                   label: 'Dashboard',         icon: LayoutDashboard },
-    { href: '/admin/alunos',            label: 'Alunos',            icon: Users2 },
-    { href: '/admin/schedule',          label: 'Agenda do Estúdio', icon: Calendar },
-    { href: '/admin/personal-trainers', label: 'Personal Trainers', icon: Users },
-    { href: '/admin/modalidades',       label: 'Modalidades',       icon: Layers },
-    { href: '/admin/plans',             label: 'Planos de Aluguel', icon: CreditCard },
-    { href: '/admin/billing',           label: 'Faturação',         icon: Receipt },
-    { href: '/admin/relatorios',        label: 'Relatórios',        icon: BarChart3 },
-    { href: '/admin/leads',             label: 'Leads',             icon: TrendingUp },
-    { href: '/admin/notificacoes',      label: 'Notificações',      icon: Bell },
+    { items: [
+      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    ] },
+    { label: 'Pessoas', items: [
+      { href: '/admin/personal-trainers', label: 'Personal Trainers', icon: Users },
+      { href: '/admin/alunos',            label: 'Alunos',            icon: Users2 },
+      { href: '/admin/leads',             label: 'Leads',             icon: TrendingUp },
+    ] },
+    { label: 'Agenda', items: [
+      { href: '/admin/schedule',      label: 'Agenda do Estúdio', icon: Calendar },
+      { href: '/admin/modalidades',   label: 'Modalidades',       icon: Layers },
+    ] },
+    { label: 'Financeiro', items: [
+      { href: '/admin/plans',      label: 'Planos de Aluguel', icon: CreditCard },
+      { href: '/admin/billing',    label: 'Faturação',         icon: Receipt },
+      { href: '/admin/relatorios', label: 'Relatórios',        icon: BarChart3 },
+    ] },
+    { label: 'Sistema', items: [
+      { href: '/admin/notificacoes', label: 'Notificações', icon: Bell },
+    ] },
   ],
   PERSONAL_TRAINER: [
-    { href: '/pt',              label: 'Dashboard',   icon: LayoutDashboard },
-    { href: '/pt/availability', label: 'Minha Agenda', icon: Calendar },
-    { href: '/pt/students',     label: 'Meus Alunos', icon: UserCheck },
-    { href: '/pt/treinos',      label: 'Treinos',     icon: ClipboardList },
+    { items: [
+      { href: '/pt',              label: 'Dashboard',    icon: LayoutDashboard },
+      { href: '/pt/availability', label: 'Minha Agenda', icon: Calendar },
+      { href: '/pt/students',     label: 'Meus Alunos',  icon: UserCheck },
+      { href: '/pt/treinos',      label: 'Treinos',      icon: ClipboardList },
+    ] },
   ],
   ALUNO: [
-    { href: '/aluno',           label: 'Meus Agendamentos', icon: LayoutDashboard },
-    { href: '/aluno/treino',    label: 'Meu Treino',     icon: Dumbbell },
-    { href: '/aluno/history',   label: 'Histórico',      icon: History },
-    { href: '/aluno/anamnese',  label: 'Minha Anamnese', icon: ClipboardCheck },
+    { items: [
+      { href: '/aluno',           label: 'Meus Agendamentos', icon: LayoutDashboard },
+      { href: '/aluno/treino',    label: 'Meu Treino',        icon: Dumbbell },
+      { href: '/aluno/history',   label: 'Histórico',         icon: History },
+      { href: '/aluno/anamnese',  label: 'Minha Anamnese',    icon: ClipboardCheck },
+    ] },
   ],
 }
 
@@ -54,7 +73,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
 
   if (!user) return null
-  const links = NAV[user.role] ?? []
+  const sections = NAV[user.role] ?? []
 
   function handleLogout() {
     logout()
@@ -90,37 +109,48 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {links.map(({ href, label, icon: Icon }) => {
-          const active = isActive(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all relative',
-                active
-                  ? 'bg-white/[0.08] text-white'
-                  : 'text-white/45 hover:text-white/80 hover:bg-white/[0.05]'
-              )}
-            >
-              {active && (
-                <motion.div
-                  layoutId="sidebar-active"
-                  className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
-                  style={{ background: '#C9A84C' }}
-                />
-              )}
-              <Icon
-                className="w-4 h-4 flex-shrink-0"
-                style={{ color: active ? '#C9A84C' : undefined }}
-              />
-              {label}
-            </Link>
-          )
-        })}
+      {/* Nav — grouped by topic (header-less section = flat list) */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        {sections.map((section, si) => (
+          <div key={section.label ?? si} className={si > 0 ? 'mt-4' : ''}>
+            {section.label && (
+              <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.09em] text-white/30">
+                {section.label}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {section.items.map(({ href, label, icon: Icon }) => {
+                const active = isActive(href)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={onClose}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all relative',
+                      active
+                        ? 'bg-white/[0.08] text-white'
+                        : 'text-white/45 hover:text-white/80 hover:bg-white/[0.05]'
+                    )}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="sidebar-active"
+                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
+                        style={{ background: '#C9A84C' }}
+                      />
+                    )}
+                    <Icon
+                      className="w-4 h-4 flex-shrink-0"
+                      style={{ color: active ? '#C9A84C' : undefined }}
+                    />
+                    {label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User footer */}
