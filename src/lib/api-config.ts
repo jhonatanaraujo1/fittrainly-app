@@ -34,6 +34,7 @@ export const USE_REAL = {
   bookings: on(process.env.NEXT_PUBLIC_REAL_BOOKINGS),
   adminSchedule: on(process.env.NEXT_PUBLIC_REAL_ADMIN_SCHEDULE),
   studioSchedule: on(process.env.NEXT_PUBLIC_REAL_STUDIO_SCHEDULE),
+  studioConfig: on(process.env.NEXT_PUBLIC_REAL_STUDIO_CONFIG),
   dashboard: on(process.env.NEXT_PUBLIC_REAL_DASHBOARD),
   aluno: on(process.env.NEXT_PUBLIC_REAL_ALUNO),
   planTiers: on(process.env.NEXT_PUBLIC_REAL_PLAN_TIERS),

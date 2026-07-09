@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Plus, X, Search, Lock, Unlock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Search, Lock, Unlock, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SessionDetailDialog } from '@/components/session-detail-dialog'
-import { adminScheduleApi, ptApi, bookingApi, studioScheduleApi } from '@/lib/api'
+import { adminScheduleApi, ptApi, bookingApi, studioScheduleApi, studioConfigApi } from '@/lib/api'
 import { cn, getInitials } from '@/lib/utils'
 import type { AdminScheduleSlot, PersonalTrainer } from '@/types'
 
@@ -34,6 +34,8 @@ export default function AdminSchedulePage() {
   const [ptSearch, setPtSearch] = useState('')
   const [selectedSession, setSelectedSession] = useState<{ ptId: string; ptName: string; slotKey: string; startTime: string; endTime: string } | null>(null)
   const [blockMode, setBlockMode] = useState(false)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [durationInput, setDurationInput] = useState('')
   const [pendingAllocation, setPendingAllocation] = useState<{ ptId: string; ptName: string; date: string; slotTime: string } | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -59,6 +61,25 @@ export default function AdminSchedulePage() {
     queryKey: ['admin-schedule', weekOffset],
     queryFn: () => adminScheduleApi.list(startDate, endDate),
     staleTime: 20_000,
+  })
+
+  // V14: duração da aula configurável (cadência travada em 1h no backend).
+  const { data: studioConfig } = useQuery({
+    queryKey: ['studio-config'],
+    queryFn: studioConfigApi.get,
+    staleTime: 60_000,
+  })
+  const classDuration = studioConfig?.classDurationMinutes ?? 40
+
+  const updateClassDuration = useMutation({
+    mutationFn: studioConfigApi.update,
+    onSuccess: () => {
+      toast.success('Duração da aula atualizada')
+      qc.invalidateQueries({ queryKey: ['studio-config'] })
+      qc.invalidateQueries({ queryKey: ['admin-schedule'] })
+      setConfigOpen(false)
+    },
+    onError: (e: Error) => toast.error(e.message || 'Erro ao atualizar a duração'),
   })
 
   const addRelease = useMutation({
@@ -143,10 +164,17 @@ export default function AdminSchedulePage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Agenda do Estúdio</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Slots de 40 min fixos · Capacidade máx. <strong>4</strong> em simultâneo
+            Aulas de <strong>{classDuration} min</strong> · cadência de 1h · capacidade máx. <strong>4</strong> em simultâneo
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setDurationInput(String(classDuration)); setConfigOpen(true) }}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-colors min-h-[44px] bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+          >
+            <Clock className="w-4 h-4" />
+            Aula: {classDuration}min
+          </button>
           <button
             onClick={() => setBlockMode(b => !b)}
             className={cn(
@@ -423,7 +451,7 @@ export default function AdminSchedulePage() {
         <span>• Clica num chip com alunos confirmados para ver detalhes</span>
         <span>• Hover no chip → ✕ remove (sem reservas)</span>
         <span>• <strong>X/4</strong> = alunos confirmados no estúdio</span>
-        <span>• Slots de <strong>40 minutos</strong> fixos</span>
+        <span>• Aulas de <strong>{classDuration} minutos</strong> (cadência de 1h)</span>
       </div>
 
       {selectedSession && (
@@ -468,6 +496,50 @@ export default function AdminSchedulePage() {
               }}
             >
               Sim, alocar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duração da aula (V14) — cadência fica travada em 1h no backend */}
+      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duração da aula</DialogTitle>
+            <DialogDescription>
+              Quanto tempo dura cada aula. Os horários abrem sempre de hora a hora (cadência de 1h); a folga de {60 - classDuration} min fica entre aulas para o PT preparar a próxima.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-1">
+            <label htmlFor="class-duration" className="text-sm font-semibold text-gray-700">Minutos por aula</label>
+            <input
+              id="class-duration"
+              type="number"
+              min={1}
+              max={60}
+              value={durationInput}
+              onChange={(e) => setDurationInput(e.target.value)}
+              className="mt-1.5 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-gray-900"
+            />
+            <p className="text-xs text-gray-400 mt-1.5">Entre 1 e 60 minutos.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="min-h-[44px]" onClick={() => setConfigOpen(false)} disabled={updateClassDuration.isPending}>
+              Cancelar
+            </Button>
+            <Button
+              className="min-h-[44px]"
+              disabled={updateClassDuration.isPending}
+              onClick={() => {
+                const n = parseInt(durationInput, 10)
+                if (!Number.isFinite(n) || n < 1 || n > 60) {
+                  toast.error('A duração tem de estar entre 1 e 60 minutos')
+                  return
+                }
+                updateClassDuration.mutate(n)
+              }}
+            >
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -19,7 +19,11 @@ const AL = {
 // closures). Defaults below match the old hardcoded ranges: Mon-Fri
 // 7:00–20:20 (20 slots), Sat 9:00–13:00 (6 slots), Sun closed.
 export const STUDIO_MAX_SPOTS = 4
-export const SLOT_MINUTES = 40
+// V14: slot cadence (grid step) is locked at 60min; the class length is
+// configurable per studio (mockStudioConfig.classDurationMinutes, edited via
+// studioConfigApi). A slot occupies [start, start+classDuration).
+export const SLOT_STEP = 60
+export const mockStudioConfig = { slotDurationMinutes: 60, classDurationMinutes: 40 }
 
 export interface MockStudioScheduleDay {
   dayOfWeek: number // 0=Sun .. 6=Sat
@@ -58,10 +62,10 @@ function timeToMinutes(time: string): number {
   return h * 60 + m
 }
 
-// Slot overlaps a block if [slotStart, slotStart+40) intersects [blockStart, blockEnd)
+// Slot overlaps a block if [slotStart, slotStart+classDuration) intersects [blockStart, blockEnd)
 export function isSlotBlocked(date: string, time: string): boolean {
   const slotStart = timeToMinutes(time)
-  const slotEnd = slotStart + SLOT_MINUTES
+  const slotEnd = slotStart + mockStudioConfig.classDurationMinutes
   return studioBlocks.some(b => {
     if (b.date !== date) return false
     const bStart = timeToMinutes(b.startTime)
@@ -76,7 +80,8 @@ export function getSlotTimesForDay(date: Date): string[] {
   if (!day || !day.openTime || !day.closeTime) return []
 
   const times: string[] = []
-  for (let t = timeToMinutes(day.openTime); t + SLOT_MINUTES <= timeToMinutes(day.closeTime); t += SLOT_MINUTES) {
+  // Step by the cadence (60), include a start only if a full class fits.
+  for (let t = timeToMinutes(day.openTime); t + mockStudioConfig.classDurationMinutes <= timeToMinutes(day.closeTime); t += SLOT_STEP) {
     times.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`)
   }
   return times
@@ -250,7 +255,7 @@ function makeSlotKey(date: string, time: string): string {
 function slotISO(date: string, time: string): { start: string; end: string } {
   return {
     start: `${date}T${time}:00Z`,
-    end:   `${date}T${addMinutesToTime(time, 40)}:00Z`,
+    end:   `${date}T${addMinutesToTime(time, mockStudioConfig.classDurationMinutes)}:00Z`,
   }
 }
 

@@ -110,7 +110,13 @@ interface RealAvailability {
 }
 
 const STUDIO_MAX_SPOTS_FALLBACK = 4 // matches Tenant.studioCapacity seed default; real cap is enforced server-side
-const SLOT_MINUTES = 40 // fixed 40-min studio slots — matches mock-db SLOT_MINUTES and the "Slots de 40 min fixos" UI contract
+
+// V14: slot cadence (grid step) is locked at 60min; the class length is
+// configurable per studio via GET /api/v1/studio-config. A slot occupies
+// [start, start+classDuration), with slotStep as the row spacing. This
+// fallback matches the backend defaults so the grid still renders if the
+// config call fails.
+const DEFAULT_STUDIO_CONFIG = { slotDurationMinutes: 60, classDurationMinutes: 40 }
 
 // Studio open-hours fallback — mirrors backend StudioScheduleService.DEFAULT_HOURS
 // and mock-db `studioSchedule`. Used to draw the empty grid so a fresh studio
@@ -135,12 +141,13 @@ function minutesToTime(total: number): string {
 function addMinutesToTime(time: string, mins: number): string {
   return minutesToTime(timeToMinutes(time) + mins)
 }
-// 40-min slot start times within [open, close) — identical stepping to
-// mock-db.getSlotTimesForDay so cell keys line up across mock/real.
-function slotTimesForHours(open: string | null, close: string | null): string[] {
+// Slot start times within [open, close): step by the studio cadence
+// (slotStep, locked at 60), including a start only if a full class fits
+// before close. Matches mock-db.getSlotTimesForDay so cell keys line up.
+function slotTimesForHours(open: string | null, close: string | null, slotStep: number, classDuration: number): string[] {
   if (!open || !close) return []
   const out: string[] = []
-  for (let t = timeToMinutes(open); t + SLOT_MINUTES <= timeToMinutes(close); t += SLOT_MINUTES) {
+  for (let t = timeToMinutes(open); t + classDuration <= timeToMinutes(close); t += slotStep) {
     out.push(minutesToTime(t))
   }
   return out
@@ -166,18 +173,40 @@ function dowOf(dateStr: string): number {
   const [y, m, d] = dateStr.split('-').map(Number)
   return new Date(y, m - 1, d).getDay() // 0=Sun .. 6=Sat — same convention as backend
 }
-// A 40-min slot at `time` on `date` overlaps a block if their intervals cross.
+// A class at `time` on `date` occupies [start, start+classDuration); it's
+// blocked if that interval overlaps any block.
 function slotBlock(
   blocks: Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>,
-  date: string, time: string,
+  date: string, time: string, classDuration: number,
 ): { id: string; reason: string } | null {
   const s = timeToMinutes(time)
-  const e = s + SLOT_MINUTES
+  const e = s + classDuration
   for (const b of blocks) {
     if (b.date !== date) continue
     if (s < timeToMinutes(b.endTime) && timeToMinutes(b.startTime) < e) return { id: b.id, reason: b.reason }
   }
   return null
+}
+
+// Studio slot config (V14): cadence + class length. GET is any-authenticated,
+// PATCH is admin-only. Fallback keeps the grid working if the call fails.
+async function fetchStudioConfig(): Promise<{ slotDurationMinutes: number; classDurationMinutes: number }> {
+  return studioConfigApi.get().catch(() => DEFAULT_STUDIO_CONFIG)
+}
+
+// End instant of a class starting at slotTime, from the studio's class length.
+async function classEndISO(date: string, slotTime: string): Promise<string> {
+  const { classDurationMinutes } = await fetchStudioConfig()
+  return `${date}T${addMinutesToTime(slotTime, classDurationMinutes)}:00Z`
+}
+
+export const studioConfigApi = {
+  get: async () =>
+    apiFetch<{ slotDurationMinutes: number; classDurationMinutes: number }>('/api/v1/studio-config'),
+  update: async (classDurationMinutes: number) =>
+    apiFetch<{ slotDurationMinutes: number; classDurationMinutes: number }>('/api/v1/studio-config', {
+      method: 'PATCH', body: JSON.stringify({ classDurationMinutes }),
+    }),
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -364,9 +393,12 @@ export const availabilityApi = {
   studioGrid: async (startDate: string, endDate: string) => {
     const start = new Date(startDate).toISOString()
     const end = new Date(endDate).toISOString()
-    const mine = await apiFetch<RealAvailability[]>(
-      `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
-    )
+    const [mine, config] = await Promise.all([
+      apiFetch<RealAvailability[]>(
+        `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
+      ),
+      fetchStudioConfig(),
+    ])
 
     // Index the PT's own releases by cell key (backend UTC slice).
     const mineByCell = new Map<string, RealAvailability>()
@@ -384,12 +416,12 @@ export const availabilityApi = {
     }> = []
     for (const date of eachDateStr(startDate, endDate)) {
       const hours = DEFAULT_STUDIO_HOURS[dowOf(date)] ?? [null, null]
-      for (const time of slotTimesForHours(hours[0], hours[1])) {
+      for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes)) {
         const a = mineByCell.get(`${date}-${time}`)
         out.push({
           date, slotTime: time,
           startTime: a ? a.startTime : `${date}T${time}:00Z`,
-          endTime: a ? a.endTime : `${date}T${addMinutesToTime(time, SLOT_MINUTES)}:00Z`,
+          endTime: a ? a.endTime : `${date}T${addMinutesToTime(time, config.classDurationMinutes)}:00Z`,
           released: !!a,
           releaseId: a?.id,
           // Cross-PT studio occupancy isn't visible to a PERSONAL_TRAINER —
@@ -465,7 +497,7 @@ export const availabilityApi = {
   // apply — the real endTime must be provided by the caller.
   create: async (data: { date: string; slotTime: string; endTime?: string }) => {
     const startISO = `${data.date}T${data.slotTime}:00Z`
-    const endISO = data.endTime ?? `${data.date}T${addMinutesToTime(data.slotTime, SLOT_MINUTES)}:00Z`
+    const endISO = data.endTime ?? await classEndISO(data.date, data.slotTime)
     return apiFetch<RealAvailability>('/api/v1/availability', {
       method: 'POST',
       body: JSON.stringify({ startTime: startISO, endTime: endISO }),
@@ -476,7 +508,7 @@ export const availabilityApi = {
   // { ptId, startTime, endTime }.
   createForPT: async (data: { ptId: string; date: string; slotTime: string; endTime?: string }) => {
     const startISO = `${data.date}T${data.slotTime}:00Z`
-    const endISO = data.endTime ?? `${data.date}T${addMinutesToTime(data.slotTime, SLOT_MINUTES)}:00Z`
+    const endISO = data.endTime ?? await classEndISO(data.date, data.slotTime)
     return apiFetch<RealAvailability>('/api/v1/admin/schedule', {
       method: 'POST',
       body: JSON.stringify({ ptId: data.ptId, startTime: startISO, endTime: endISO }),
@@ -512,12 +544,13 @@ export const adminScheduleApi = {
     // configured weekly hours, and one-off blocks. weekly-hours/blocks are
     // ADMIN-only and this list() is only ever called from the admin agenda,
     // so they're available here. Both degrade gracefully to [] on failure.
-    const [rows, weekly, blocks] = await Promise.all([
+    const [rows, weekly, blocks, config] = await Promise.all([
       apiFetch<RealAvailability[]>(
         `/api/v1/admin/schedule?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
       ).catch(() => [] as RealAvailability[]),
       studioScheduleApi.getWeeklyHours().catch(() => [] as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null }>),
       studioScheduleApi.listBlocks(startDate, endDate).catch(() => [] as Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>),
+      fetchStudioConfig(),
     ])
 
     // Index existing releases by cell key (backend UTC slice). Grouping by
@@ -551,14 +584,14 @@ export const adminScheduleApi = {
     for (const date of eachDateStr(startDate, endDate)) {
       const dow = dowOf(date)
       const hours = hoursByDow.get(dow) ?? DEFAULT_STUDIO_HOURS[dow] ?? [null, null]
-      for (const time of slotTimesForHours(hours[0], hours[1])) {
+      for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes)) {
         const group = byCell.get(`${date}-${time}`) ?? []
         const first = group[0]
-        const blk = slotBlock(blocks, date, time)
+        const blk = slotBlock(blocks, date, time, config.classDurationMinutes)
         out.push({
           date, slotTime: time,
           startTime: first ? first.startTime : `${date}T${time}:00Z`,
-          endTime: first ? first.endTime : `${date}T${addMinutesToTime(time, SLOT_MINUTES)}:00Z`,
+          endTime: first ? first.endTime : `${date}T${addMinutesToTime(time, config.classDurationMinutes)}:00Z`,
           studioCount: group.reduce((s, r) => s + r.confirmedCount, 0),
           studioMax: STUDIO_MAX_SPOTS_FALLBACK,
           releases: group.map(r => ({

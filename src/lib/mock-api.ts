@@ -12,7 +12,7 @@ import {
   getStudioSlotCount, getPTSlotCount,
   getSlotTimesForDay, getBookableSlotTimesForDay, addMinutesToTime,
   sessionsThisWeek, estimatedRevenue, getOccupationByDay,
-  STUDIO_MAX_SPOTS, isSlotBlocked, studioSchedule, studioBlocks,
+  STUDIO_MAX_SPOTS, isSlotBlocked, studioSchedule, studioBlocks, mockStudioConfig,
 } from './mock-db'
 import type { MockPlanHourTier } from './mock-db'
 import { addDays, startOfWeek } from 'date-fns'
@@ -25,8 +25,25 @@ function localDate(d: Date): string {
 function slotKeyToISO(date: string, time: string): { start: string; end: string } {
   return {
     start: `${date}T${time}:00Z`,
-    end:   `${date}T${addMinutesToTime(time, 40)}:00Z`,
+    end:   `${date}T${addMinutesToTime(time, mockStudioConfig.classDurationMinutes)}:00Z`,
   }
+}
+
+// Studio slot config (V14) — cadência (travada 1h) + duração da aula
+// (editável pelo admin). Mock: vive em memória; a mudança vale na sessão.
+export const studioConfigApi = {
+  get: async () => {
+    await delay(120)
+    return { ...mockStudioConfig }
+  },
+  update: async (classDurationMinutes: number) => {
+    await delay(200)
+    if (classDurationMinutes <= 0 || classDurationMinutes > mockStudioConfig.slotDurationMinutes) {
+      throw new Error(`A duração da aula tem de estar entre 1 e ${mockStudioConfig.slotDurationMinutes} minutos`)
+    }
+    mockStudioConfig.classDurationMinutes = classDurationMinutes
+    return { ...mockStudioConfig }
+  },
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────

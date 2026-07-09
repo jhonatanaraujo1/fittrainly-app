@@ -49,6 +49,7 @@ export const alunoApi        = USE_REAL.aluno ? (real.alunoApi as unknown as typ
 export const availabilityApi = USE_REAL.availability ? (real.availabilityApi as unknown as typeof mock.availabilityApi) : withPersistence(mock.availabilityApi)
 export const adminScheduleApi = USE_REAL.adminSchedule ? (real.adminScheduleApi as unknown as typeof mock.adminScheduleApi) : withPersistence(mock.adminScheduleApi)
 export const studioScheduleApi = USE_REAL.studioSchedule ? (real.studioScheduleApi as typeof mock.studioScheduleApi) : withPersistence(mock.studioScheduleApi)
+export const studioConfigApi = USE_REAL.studioConfig ? (real.studioConfigApi as typeof mock.studioConfigApi) : withPersistence(mock.studioConfigApi)
 export const bookingApi      = USE_REAL.bookings ? (real.bookingApi as unknown as typeof mock.bookingApi) : withPersistence(mock.bookingApi)
 export const adminApi        = USE_REAL.admin ? (real.adminApi as unknown as typeof mock.adminApi) : withPersistence(mock.adminApi)
 export const modalidadeApi   = USE_REAL.modalidades ? (real.modalidadeApi as typeof mock.modalidadeApi) : withPersistence(mock.modalidadeApi)
