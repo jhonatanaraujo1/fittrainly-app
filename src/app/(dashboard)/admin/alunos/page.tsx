@@ -217,7 +217,7 @@ function AlunoForm({ pts, onSuccess }: { pts: MockPT[]; onSuccess: () => void })
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Data de nascimento</Label>
-                <DatePicker value={form.dataNascimento} onChange={v => set('dataNascimento', v)} placeholder="DD/MM/AAAA" maxDate={new Date().toISOString().slice(0, 10)} />
+                <DatePicker value={form.dataNascimento} onChange={v => set('dataNascimento', v)} placeholder="DD/MM/AAAA" maxDate={new Date().toISOString().slice(0, 10)} initialView="2000-01-01" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Género</Label>

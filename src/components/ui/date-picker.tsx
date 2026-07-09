@@ -88,10 +88,13 @@ interface CalendarBodyProps {
   onSelect: (v: string) => void
   minDate?: string
   maxDate?: string
+  initialView?: string  // YYYY-MM-DD — mês inicial quando value está vazio
 }
 
-function CalendarBody({ value, onSelect, minDate, maxDate }: CalendarBodyProps) {
-  const init = parseYMD(value) ?? new Date()
+function CalendarBody({ value, onSelect, minDate, maxDate, initialView }: CalendarBodyProps) {
+  // Quando não há valor, abre em initialView (ex: data de nascimento abre ~2000
+  // em vez do mês atual, evitando centenas de cliques até o ano de nascimento).
+  const init = parseYMD(value) ?? parseYMD(initialView ?? '') ?? new Date()
   const [viewYear, setViewYear] = useState(init.getFullYear())
   const [viewMonth, setViewMonth] = useState(init.getMonth())
 
@@ -179,11 +182,12 @@ export interface DatePickerProps {
   placeholder?: string
   minDate?: string        // YYYY-MM-DD
   maxDate?: string        // YYYY-MM-DD
+  initialView?: string    // YYYY-MM-DD — mês inicial quando vazio (ex: nascimento)
   className?: string
 }
 
 export function DatePicker({
-  value, onChange, placeholder = 'Selecionar data', minDate, maxDate, className,
+  value, onChange, placeholder = 'Selecionar data', minDate, maxDate, initialView, className,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -242,7 +246,7 @@ export function DatePicker({
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden min-w-[288px]"
           >
-            <CalendarBody value={value} onSelect={handleSelect} minDate={minDate} maxDate={maxDate} />
+            <CalendarBody value={value} onSelect={handleSelect} minDate={minDate} maxDate={maxDate} initialView={initialView} />
           </motion.div>
         )}
       </AnimatePresence>
