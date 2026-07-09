@@ -427,7 +427,11 @@ export default function AdminSchedulePage() {
                                       ))}
                                     {availablePts.filter(p => p.name.toLowerCase().includes(ptSearch.toLowerCase())).length === 0 && (
                                       <p className="text-xs text-gray-400 px-3 py-3 text-center">
-                                        {availablePts.length === 0 ? 'Todos os PTs já alocados' : 'Nenhum PT encontrado'}
+                                        {activePts.length === 0
+                                          ? 'Sem PTs ativos. Adiciona ou ativa um PT em Personal Trainers.'
+                                          : availablePts.length === 0
+                                          ? 'Todos os PTs já alocados neste horário'
+                                          : 'Nenhum PT encontrado'}
                                       </p>
                                     )}
                                   </div>
