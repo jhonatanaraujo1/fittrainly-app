@@ -69,6 +69,7 @@ export default function AdminSchedulePage() {
     queryFn: studioConfigApi.get,
     staleTime: 60_000,
   })
+  const slotDuration = studioConfig?.slotDurationMinutes ?? 30
   const classDuration = studioConfig?.classDurationMinutes ?? 30
 
   const updateClassDuration = useMutation({
@@ -164,7 +165,7 @@ export default function AdminSchedulePage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Agenda do Estúdio</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Aulas de <strong>{classDuration} min</strong> · cadência de 1h · capacidade máx. <strong>4</strong> em simultâneo
+            Slots de <strong>{slotDuration} min</strong>{classDuration < slotDuration ? <> · aula de <strong>{classDuration} min</strong></> : null} · capacidade máx. <strong>4</strong> em simultâneo
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -455,7 +456,7 @@ export default function AdminSchedulePage() {
         <span>• Clica num chip com alunos confirmados para ver detalhes</span>
         <span>• Hover no chip → ✕ remove (sem reservas)</span>
         <span>• <strong>X/4</strong> = alunos confirmados no estúdio</span>
-        <span>• Aulas de <strong>{classDuration} minutos</strong> (cadência de 1h)</span>
+        <span>• Slots de <strong>{slotDuration} minutos</strong>{classDuration < slotDuration ? <> · aula de {classDuration}min</> : null}</span>
       </div>
 
       {selectedSession && (
@@ -511,7 +512,7 @@ export default function AdminSchedulePage() {
           <DialogHeader>
             <DialogTitle>Duração da aula</DialogTitle>
             <DialogDescription>
-              Quanto tempo dura cada aula. Os horários abrem sempre de hora a hora (cadência de 1h); a folga de {60 - classDuration} min fica entre aulas para o PT preparar a próxima.
+              Quanto tempo dura cada aula dentro do slot de {slotDuration} min. A folga ({slotDuration} − aula = {slotDuration - classDuration} min) fica entre alunos para o PT preparar a próxima. Igual ao slot = sem folga.
             </DialogDescription>
           </DialogHeader>
           <div className="py-1">
@@ -520,12 +521,12 @@ export default function AdminSchedulePage() {
               id="class-duration"
               type="number"
               min={1}
-              max={60}
+              max={slotDuration}
               value={durationInput}
               onChange={(e) => setDurationInput(e.target.value)}
               className="mt-1.5 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-gray-900"
             />
-            <p className="text-xs text-gray-400 mt-1.5">Entre 1 e 60 minutos.</p>
+            <p className="text-xs text-gray-400 mt-1.5">Entre 1 e {slotDuration} minutos (não pode passar o slot).</p>
           </div>
           <DialogFooter>
             <Button variant="outline" className="min-h-[44px]" onClick={() => setConfigOpen(false)} disabled={updateClassDuration.isPending}>
@@ -536,8 +537,8 @@ export default function AdminSchedulePage() {
               disabled={updateClassDuration.isPending}
               onClick={() => {
                 const n = parseInt(durationInput, 10)
-                if (!Number.isFinite(n) || n < 1 || n > 60) {
-                  toast.error('A duração tem de estar entre 1 e 60 minutos')
+                if (!Number.isFinite(n) || n < 1 || n > slotDuration) {
+                  toast.error(`A duração tem de estar entre 1 e ${slotDuration} minutos`)
                   return
                 }
                 updateClassDuration.mutate(n)

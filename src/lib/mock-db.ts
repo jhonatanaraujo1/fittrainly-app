@@ -22,8 +22,8 @@ export const STUDIO_MAX_SPOTS = 4
 // V14: slot cadence (grid step) is locked at 60min; the class length is
 // configurable per studio (mockStudioConfig.classDurationMinutes, edited via
 // studioConfigApi). A slot occupies [start, start+classDuration).
-export const SLOT_STEP = 60
-export const mockStudioConfig = { slotDurationMinutes: 60, classDurationMinutes: 30 }
+export const SLOT_STEP = 30
+export const mockStudioConfig = { slotDurationMinutes: 30, classDurationMinutes: 30 }
 
 export interface MockStudioScheduleDay {
   dayOfWeek: number // 0=Sun .. 6=Sat
