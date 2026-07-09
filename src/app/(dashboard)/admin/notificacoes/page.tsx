@@ -30,8 +30,11 @@ const ICONS: Record<string, React.ElementType> = {
   'nc-12': MessageSquare,
 }
 
-const SECTION_1_IDS = ['nc-01', 'nc-02', 'nc-03', 'nc-04', 'nc-11', 'nc-12']
-const SECTION_2_IDS = ['nc-05', 'nc-06', 'nc-07', 'nc-08', 'nc-09', 'nc-10']
+// Agrupamento por `type` (estável entre mock e backend real) — antes era por
+// `id` fixo do mock ('nc-01'…), mas o backend gera UUIDs aleatórios, então as
+// secções ficavam vazias em produção.
+const SECTION_1_TYPES = ['BOOKING_CONFIRMATION', 'BOOKING_REMINDER', 'FIRST_EVAL_CONFIRM', 'FIRST_EVAL_REMINDER', 'PLAN_EXPIRING', 'EVAL_AFTER']
+const SECTION_2_TYPES = ['ABSENCE_7_DAYS', 'ABSENCE_15_DAYS', 'BIRTHDAY', 'MOTIVATIONAL_30', 'NPS_SURVEY', 'PACK_LOW']
 
 // ── Single notification card ──────────────────────────────────────────────────
 function NotificationCard({
@@ -173,8 +176,8 @@ export default function NotificacoesPage() {
   const allActive = activeCount === totalCount && totalCount > 0
   const isBulkPending = bulkToggleMutation.isPending
 
-  const section1 = configs.filter((c) => SECTION_1_IDS.includes(c.id))
-  const section2 = configs.filter((c) => SECTION_2_IDS.includes(c.id))
+  const section1 = configs.filter((c) => SECTION_1_TYPES.includes(c.type))
+  const section2 = configs.filter((c) => SECTION_2_TYPES.includes(c.type))
 
   return (
     <div className="p-5 lg:p-7 space-y-6 max-w-6xl mx-auto">

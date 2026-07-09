@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { planApi } from '@/lib/api'
+import { TierEditor } from '@/components/tier-editor'
 import { formatCurrency, planTypeLabel, planTypeBadge } from '@/lib/utils'
 import type { RentalPlan } from '@/types'
 
@@ -83,9 +84,11 @@ export default function PlansPage() {
   }
 
   // TIERED_HOURLY is a single studio-wide config, not a plan the admin
-  // creates/duplicates/deletes — kept out of this page, lives in
-  // Configurações instead.
+  // creates/duplicates/deletes — kept out of the plan grid above, but its
+  // tier editor lives at the bottom of this same page (a Configurações
+  // screen só para isto não se justificava).
   const rentalPlans = plans.filter(p => p.type !== 'TIERED_HOURLY')
+  const tieredConfig = plans.find(p => p.type === 'TIERED_HOURLY')
 
   return (
     <div className="p-5 lg:p-7 space-y-6 max-w-4xl mx-auto">
@@ -144,6 +147,26 @@ export default function PlansPage() {
               </motion.div>
             )
           })}
+        </div>
+      )}
+
+      {/* Cobrança por hora progressiva (TIERED_HOURLY) — antes numa tela
+          Configurações à parte, agora aqui dentro de Planos de Aluguel. */}
+      {!isLoading && tieredConfig && (
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-violet-50 text-violet-600 border border-violet-100 flex-shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900">Cobrança por Hora (Progressiva)</p>
+              <p className="text-xs text-gray-400">Vale para todos os PTs neste modelo</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2 mb-4 leading-relaxed">
+            {tieredConfig.description || 'Preço por hora decrescente por faixa, com acerto retroativo na última segunda do mês.'}
+          </p>
+          <TierEditor planId={tieredConfig.id} />
         </div>
       )}
 

@@ -670,6 +670,21 @@ function createDB() {
 // ── Module-level mutable state ──────────────────────────────────────────────
 export const db = createDB()
 
+// Modo backend-real: o Kotlin/Postgres é a ÚNICA fonte da verdade. Zeramos o
+// seed de demo (João/Ana/Pedro + alunos + reservas fake) para que qualquer
+// página que ainda leia `db.*` diretamente — em vez de passar pelo api.ts —
+// mostre VAZIO (o estado correto de um estúdio novo) em vez de dados fake.
+// É uma rede de segurança de um lugar só: neutraliza todos os ~15 ficheiros
+// que importam mock-db direto, sem precisar reescrever cada um antes do
+// go-live. Cada um será migrado para as APIs reais depois, com calma.
+const REAL_BACKEND_MODE = process.env.NEXT_PUBLIC_USE_REAL_BACKEND === 'true'
+if (REAL_BACKEND_MODE) {
+  for (const key of Object.keys(db) as (keyof typeof db)[]) {
+    const arr = db[key]
+    if (Array.isArray(arr)) arr.length = 0
+  }
+}
+
 // ── Persistência local ───────────────────────────────────────────────────────
 // Sem isto, qualquer PT/aluno/faixa/reserva criada em produção real desaparece
 // no primeiro F5 (o mock roda 100% em memória JS). Guarda o estado inteiro em
@@ -682,6 +697,9 @@ type DBShape = ReturnType<typeof createDB>
 
 export function persistDB(): void {
   if (typeof window === 'undefined') return
+  // Em modo backend-real o mock não é a fonte da verdade — não persistimos
+  // nada para não recriar dados fake nem interferir com o backend.
+  if (REAL_BACKEND_MODE) return
   try {
     localStorage.setItem(PERSIST_KEY, JSON.stringify({ db, studioSchedule, studioBlocks }))
   } catch {
@@ -721,7 +739,9 @@ function hydrateDB(): void {
   }
 }
 
-hydrateDB()
+// Só hidrata do localStorage em modo mock — em modo real o db fica vazio
+// (o backend é a fonte da verdade).
+if (!REAL_BACKEND_MODE) hydrateDB()
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 export const delay = (ms = 280): Promise<void> => new Promise(r => setTimeout(r, ms))
