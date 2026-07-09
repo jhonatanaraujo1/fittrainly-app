@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
-import { db } from '@/lib/mock-db'
+import { USE_REAL } from '@/lib/api-config'
 
 const DEMO = [
   {
@@ -121,10 +121,10 @@ export default function LoginPage() {
       router.push(ROLE_HOME[data.user.role] ?? '/login')
     } catch {
       setError('Email ou password incorrectos. Verifique e tente novamente.')
-      const found = db.users.find(u => u.email.toLowerCase() === finalEmail.toLowerCase())
-      if (found?.role === 'ALUNO') setContactHint('pt')
-      else if (found?.role === 'PERSONAL_TRAINER') setContactHint('admin')
-      else setContactHint('fittrainly')
+      // O backend real nunca revela o role numa falha de login (anti-enumeração
+      // de contas), então o hint de contacto é sempre o genérico. Antes isto
+      // dependia do mock-db (db.users), o que trazia dados fake para produção.
+      setContactHint('fittrainly')
       if (!e) setLoading(false)
     } finally {
       if (!e) setLoading(false)
@@ -493,8 +493,11 @@ export default function LoginPage() {
               </div>
             </form>}
 
-            {/* Demo quick access — hidden in reset mode */}
+            {/* Demo quick access — escondido no modo reset E em produção (backend
+                real): as credenciais demo (demo123) só existem no mock, contra o
+                backend real os botões falhariam. */}
             {mode === 'login' && <>
+            {!USE_REAL.auth && (
             <div>
               <div className="relative flex items-center gap-3 mb-4">
                 <div className="flex-1 h-px bg-gray-100" />
@@ -527,6 +530,7 @@ export default function LoginPage() {
               </div>
               <p className="text-center text-[10px] text-gray-300 mt-2.5">1 clique → login automático</p>
             </div>
+            )}
 
             {/* Conformidade */}
             <div className="pt-2 border-t border-gray-50">

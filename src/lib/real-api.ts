@@ -64,6 +64,75 @@ interface RealAvailability {
 }
 
 const STUDIO_MAX_SPOTS_FALLBACK = 4 // matches Tenant.studioCapacity seed default; real cap is enforced server-side
+const SLOT_MINUTES = 40 // fixed 40-min studio slots — matches mock-db SLOT_MINUTES and the "Slots de 40 min fixos" UI contract
+
+// Studio open-hours fallback — mirrors backend StudioScheduleService.DEFAULT_HOURS
+// and mock-db `studioSchedule`. Used to draw the empty grid so a fresh studio
+// (zero availabilities) still shows clickable cells. The admin grid overlays
+// the tenant's real weekly-hours on top of this; the PT grid uses it directly
+// because the weekly-hours endpoint is ADMIN-only.
+const DEFAULT_STUDIO_HOURS: Record<number, [string, string] | null> = {
+  0: null, // Sunday — closed
+  1: ['07:00', '20:20'], 2: ['07:00', '20:20'], 3: ['07:00', '20:20'],
+  4: ['07:00', '20:20'], 5: ['07:00', '20:20'],
+  6: ['09:00', '13:00'],
+}
+
+// ── Grid-synthesis helpers (port of mock-db slot maths) ────────────────────
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+function minutesToTime(total: number): string {
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+function addMinutesToTime(time: string, mins: number): string {
+  return minutesToTime(timeToMinutes(time) + mins)
+}
+// 40-min slot start times within [open, close) — identical stepping to
+// mock-db.getSlotTimesForDay so cell keys line up across mock/real.
+function slotTimesForHours(open: string | null, close: string | null): string[] {
+  if (!open || !close) return []
+  const out: string[] = []
+  for (let t = timeToMinutes(open); t + SLOT_MINUTES <= timeToMinutes(close); t += SLOT_MINUTES) {
+    out.push(minutesToTime(t))
+  }
+  return out
+}
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+// Every "YYYY-MM-DD" in [startDate, endDate] inclusive, built from the local
+// calendar (avoids +24h DST drift).
+function eachDateStr(startDate: string, endDate: string): string[] {
+  const out: string[] = []
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const [ey, em, ed] = endDate.split('-').map(Number)
+  const cur = new Date(sy, sm - 1, sd)
+  const end = new Date(ey, em - 1, ed)
+  while (cur <= end) {
+    out.push(localDateStr(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
+function dowOf(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).getDay() // 0=Sun .. 6=Sat — same convention as backend
+}
+// A 40-min slot at `time` on `date` overlaps a block if their intervals cross.
+function slotBlock(
+  blocks: Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>,
+  date: string, time: string,
+): { id: string; reason: string } | null {
+  const s = timeToMinutes(time)
+  const e = s + SLOT_MINUTES
+  for (const b of blocks) {
+    if (b.date !== date) continue
+    if (s < timeToMinutes(b.endTime) && timeToMinutes(b.startTime) < e) return { id: b.id, reason: b.reason }
+  }
+  return null
+}
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
@@ -252,22 +321,42 @@ export const availabilityApi = {
     const mine = await apiFetch<RealAvailability[]>(
       `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
     )
-    return mine.map(a => ({
-      date: a.startTime.slice(0, 10),
-      slotTime: a.startTime.slice(11, 16),
-      startTime: a.startTime,
-      endTime: a.endTime,
-      released: true,
-      releaseId: a.id,
-      // Cross-PT studio occupancy isn't visible to a PERSONAL_TRAINER —
-      // only their own confirmedCount is known here. Falls back to the
-      // PT's own count; the studio-wide cap is still enforced server-side
-      // regardless of what the UI displays.
-      studioCount: a.confirmedCount,
-      myBookings: a.confirmedCount,
-      studioMax: STUDIO_MAX_SPOTS_FALLBACK,
-      alunoNames: [] as string[],
-    }))
+
+    // Index the PT's own releases by cell key (backend UTC slice).
+    const mineByCell = new Map<string, RealAvailability>()
+    for (const a of mine) mineByCell.set(`${a.startTime.slice(0, 10)}-${a.startTime.slice(11, 16)}`, a)
+
+    // Draw the FULL week grid from studio open-hours, not just the rows that
+    // already exist — otherwise a fresh studio (zero availabilities) renders
+    // an empty grid with no black "click to release" cells, making it
+    // impossible to create the first slot. weekly-hours is ADMIN-only, so the
+    // PT grid uses the shared default hours (same as backend fallback).
+    const out: Array<{
+      date: string; slotTime: string; startTime: string; endTime: string
+      released: boolean; releaseId?: string
+      studioCount: number; myBookings: number; studioMax: number; alunoNames: string[]
+    }> = []
+    for (const date of eachDateStr(startDate, endDate)) {
+      const hours = DEFAULT_STUDIO_HOURS[dowOf(date)] ?? [null, null]
+      for (const time of slotTimesForHours(hours[0], hours[1])) {
+        const a = mineByCell.get(`${date}-${time}`)
+        out.push({
+          date, slotTime: time,
+          startTime: a ? a.startTime : `${date}T${time}:00Z`,
+          endTime: a ? a.endTime : `${date}T${addMinutesToTime(time, SLOT_MINUTES)}:00Z`,
+          released: !!a,
+          releaseId: a?.id,
+          // Cross-PT studio occupancy isn't visible to a PERSONAL_TRAINER —
+          // only their own confirmedCount is known here. The studio-wide cap
+          // is still enforced server-side regardless of what the UI displays.
+          studioCount: a ? a.confirmedCount : 0,
+          myBookings: a ? a.confirmedCount : 0,
+          studioMax: STUDIO_MAX_SPOTS_FALLBACK,
+          alunoNames: [] as string[],
+        })
+      }
+    }
+    return out
   },
 
   // Legacy mock method — kept for API-shape parity, delegates to the same
@@ -330,7 +419,7 @@ export const availabilityApi = {
   // apply — the real endTime must be provided by the caller.
   create: async (data: { date: string; slotTime: string; endTime?: string }) => {
     const startISO = `${data.date}T${data.slotTime}:00Z`
-    const endISO = data.endTime ?? new Date(new Date(startISO).getTime() + 60 * 60000).toISOString()
+    const endISO = data.endTime ?? `${data.date}T${addMinutesToTime(data.slotTime, SLOT_MINUTES)}:00Z`
     return apiFetch<RealAvailability>('/api/v1/availability', {
       method: 'POST',
       body: JSON.stringify({ startTime: startISO, endTime: endISO }),
@@ -341,7 +430,7 @@ export const availabilityApi = {
   // { ptId, startTime, endTime }.
   createForPT: async (data: { ptId: string; date: string; slotTime: string; endTime?: string }) => {
     const startISO = `${data.date}T${data.slotTime}:00Z`
-    const endISO = data.endTime ?? new Date(new Date(startISO).getTime() + 60 * 60000).toISOString()
+    const endISO = data.endTime ?? `${data.date}T${addMinutesToTime(data.slotTime, SLOT_MINUTES)}:00Z`
     return apiFetch<RealAvailability>('/api/v1/admin/schedule', {
       method: 'POST',
       body: JSON.stringify({ ptId: data.ptId, startTime: startISO, endTime: endISO }),
@@ -372,36 +461,59 @@ export const adminScheduleApi = {
   list: async (startDate: string, endDate: string) => {
     const start = new Date(startDate).toISOString()
     const end = new Date(endDate).toISOString()
-    const rows = await apiFetch<RealAvailability[]>(
-      `/api/v1/admin/schedule?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
-    )
 
-    // Group by exact startTime — this is precisely how the backend itself
-    // computes the shared studio-wide cap in BookingService.create
-    // (countConfirmedByTenantAndExactStartTime), so grouping by startTime
-    // here mirrors the server's own notion of "one studio slot".
-    const byStart = new Map<string, RealAvailability[]>()
+    // Fetch the three inputs in parallel: existing releases, the studio's
+    // configured weekly hours, and one-off blocks. weekly-hours/blocks are
+    // ADMIN-only and this list() is only ever called from the admin agenda,
+    // so they're available here. Both degrade gracefully to [] on failure.
+    const [rows, weekly, blocks] = await Promise.all([
+      apiFetch<RealAvailability[]>(
+        `/api/v1/admin/schedule?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
+      ),
+      studioScheduleApi.getWeeklyHours().catch(() => [] as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null }>),
+      studioScheduleApi.listBlocks(startDate, endDate).catch(() => [] as Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>),
+    ])
+
+    // Index existing releases by cell key (backend UTC slice). Grouping by
+    // exact date+time mirrors how the backend computes the shared studio-wide
+    // cap in BookingService.create (countConfirmedByTenantAndExactStartTime).
+    const byCell = new Map<string, RealAvailability[]>()
     for (const r of rows) {
-      const list = byStart.get(r.startTime) ?? []
+      const key = `${r.startTime.slice(0, 10)}-${r.startTime.slice(11, 16)}`
+      const list = byCell.get(key) ?? []
       list.push(r)
-      byStart.set(r.startTime, list)
+      byCell.set(key, list)
     }
 
-    // studio-schedule blocks aren't cross-referenced here (no endpoint
-    // returns "is this exact grid cell blocked" pre-computed) — the block
-    // list is fetched separately via studioScheduleApi.listBlocks by pages
-    // that need it, same as the mock's separate studioBlocks array.
-    return [...byStart.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([startTime, group]) => {
+    // Configured hours per weekday, HH:MM (backend serializes LocalTime as
+    // "HH:mm:ss"). Falls back to the shared defaults for any day the tenant
+    // hasn't configured — so a brand-new studio still gets a full grid.
+    const hoursByDow = new Map<number, [string | null, string | null]>()
+    for (const w of weekly) {
+      hoursByDow.set(w.dayOfWeek, [w.openTime ? w.openTime.slice(0, 5) : null, w.closeTime ? w.closeTime.slice(0, 5) : null])
+    }
+
+    // Materialize the full week grid: one cell per studio-hour slot per day,
+    // whether or not a PT is already released into it. Empty cells are what
+    // give the admin a "+ PT" button to allocate the first trainer.
+    const out: Array<{
+      date: string; slotTime: string; startTime: string; endTime: string
+      studioCount: number; studioMax: number
+      releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+      blocked: boolean; blockReason?: string; blockId?: string
+    }> = []
+    for (const date of eachDateStr(startDate, endDate)) {
+      const dow = dowOf(date)
+      const hours = hoursByDow.get(dow) ?? DEFAULT_STUDIO_HOURS[dow] ?? [null, null]
+      for (const time of slotTimesForHours(hours[0], hours[1])) {
+        const group = byCell.get(`${date}-${time}`) ?? []
         const first = group[0]
-        const studioCount = group.reduce((s, r) => s + r.confirmedCount, 0)
-        return {
-          date: startTime.slice(0, 10),
-          slotTime: startTime.slice(11, 16),
-          startTime,
-          endTime: first.endTime,
-          studioCount,
+        const blk = slotBlock(blocks, date, time)
+        out.push({
+          date, slotTime: time,
+          startTime: first ? first.startTime : `${date}T${time}:00Z`,
+          endTime: first ? first.endTime : `${date}T${addMinutesToTime(time, SLOT_MINUTES)}:00Z`,
+          studioCount: group.reduce((s, r) => s + r.confirmedCount, 0),
           studioMax: STUDIO_MAX_SPOTS_FALLBACK,
           releases: group.map(r => ({
             releaseId: r.id,
@@ -409,11 +521,13 @@ export const adminScheduleApi = {
             ptName: r.personalTrainerName,
             confirmedCount: r.confirmedCount,
           })),
-          blocked: false,
-          blockReason: undefined as string | undefined,
-          blockId: undefined as string | undefined,
-        }
-      })
+          blocked: !!blk,
+          blockReason: blk?.reason,
+          blockId: blk?.id,
+        })
+      }
+    }
+    return out
   },
 
   addRelease: async (data: { ptId: string; date: string; slotTime: string; endTime?: string }) =>
