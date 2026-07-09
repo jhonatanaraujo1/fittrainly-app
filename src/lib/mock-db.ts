@@ -23,7 +23,7 @@ export const STUDIO_MAX_SPOTS = 4
 // configurable per studio (mockStudioConfig.classDurationMinutes, edited via
 // studioConfigApi). A slot occupies [start, start+classDuration).
 export const SLOT_STEP = 60
-export const mockStudioConfig = { slotDurationMinutes: 60, classDurationMinutes: 40 }
+export const mockStudioConfig = { slotDurationMinutes: 60, classDurationMinutes: 30 }
 
 export interface MockStudioScheduleDay {
   dayOfWeek: number // 0=Sun .. 6=Sat

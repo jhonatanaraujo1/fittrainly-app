@@ -116,7 +116,7 @@ const STUDIO_MAX_SPOTS_FALLBACK = 4 // matches Tenant.studioCapacity seed defaul
 // [start, start+classDuration), with slotStep as the row spacing. This
 // fallback matches the backend defaults so the grid still renders if the
 // config call fails.
-const DEFAULT_STUDIO_CONFIG = { slotDurationMinutes: 60, classDurationMinutes: 40 }
+const DEFAULT_STUDIO_CONFIG = { slotDurationMinutes: 60, classDurationMinutes: 30 }
 
 // Studio open-hours fallback — mirrors backend StudioScheduleService.DEFAULT_HOURS
 // and mock-db `studioSchedule`. Used to draw the empty grid so a fresh studio

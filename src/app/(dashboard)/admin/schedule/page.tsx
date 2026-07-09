@@ -69,7 +69,7 @@ export default function AdminSchedulePage() {
     queryFn: studioConfigApi.get,
     staleTime: 60_000,
   })
-  const classDuration = studioConfig?.classDurationMinutes ?? 40
+  const classDuration = studioConfig?.classDurationMinutes ?? 30
 
   const updateClassDuration = useMutation({
     mutationFn: studioConfigApi.update,
