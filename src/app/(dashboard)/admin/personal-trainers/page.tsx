@@ -23,7 +23,7 @@ import {
 import { CustomSelect } from '@/components/ui/custom-select'
 import { ptApi, planApi } from '@/lib/api'
 import { getInitials, avatarColor, planTypeLabel, planTypeBadge, docStatus } from '@/lib/utils'
-import { sendCredentialsEmail, whatsappCredentialsUrl } from '@/lib/notify'
+import { whatsappCredentialsUrl } from '@/lib/notify'
 import type { PersonalTrainer, RentalPlan } from '@/types'
 
 // ── NovoPTSheet — redesigned 2-step form ──────────────────────────────────────
@@ -398,11 +398,11 @@ export default function PersonalTrainersPage() {
       qc.invalidateQueries({ queryKey: ['admin-dashboard'] })
       toast.success(`${created.name ?? 'PT'} adicionado com sucesso! 🎉`)
       setOpen(false)
-      // Credencial real, não um toast fingindo que enviou algo. Se o email
-      // real não estiver configurado/falhar, mostra a password + WhatsApp —
-      // o PT tem de conseguir entrar amanhã de manhã de qualquer forma.
-      const { sent } = await sendCredentialsEmail({ to: variables.email, name: variables.name, password: variables.password, isReset: false })
-      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: variables.password, emailSent: sent })
+      // O BACKEND envia o email de boas-vindas + credenciais no ato da criação
+      // (PersonalTrainerService.create → EmailService.sendWelcome), fonte única
+      // para não duplicar envio. A UI continua mostrando a password + WhatsApp
+      // como fallback manual — o PT tem de conseguir entrar de qualquer forma.
+      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: variables.password, emailSent: true })
     },
     onError: () => toast.error('Erro ao criar Personal Trainer. Verifica os dados e tente novamente.'),
   })
