@@ -28,12 +28,37 @@
 // Never imported directly by pages — only through api.ts (facade), which
 // decides mock vs real per domain via the flags in api-config.ts.
 
+import Cookies from 'js-cookie'
 import { API_BASE_URL } from './api-config'
 import { useAuthStore } from '@/store/auth'
 import { generateTempPassword, sendCredentialsEmail } from './notify'
 import type { UserRole } from '@/types'
 
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+// Single-flight refresh: many queries fire in parallel, and when the access
+// token has expired they'd all 401 at once. We only want ONE /auth/refresh
+// call for that burst — everyone awaits the same promise, then retries with
+// the new token.
+let refreshInFlight: Promise<string | null> | null = null
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = Cookies.get('fittrainly-refresh')
+  if (!refreshToken) return null
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { accessToken: string }
+    useAuthStore.getState().setAccessToken(data.accessToken)
+    return data.accessToken
+  } catch {
+    return null
+  }
+}
+
+async function apiFetch<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
   const token = useAuthStore.getState().accessToken
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -43,6 +68,27 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
       ...(options.headers ?? {}),
     },
   })
+
+  // Access token expired → refresh once and replay the request. Auth
+  // endpoints are excluded so a wrong-password 401 (or the refresh call
+  // itself) never triggers a refresh loop.
+  if (res.status === 401 && retry && !path.includes('/auth/')) {
+    if (!refreshInFlight) {
+      refreshInFlight = refreshAccessToken().finally(() => { refreshInFlight = null })
+    }
+    const newToken = await refreshInFlight
+    if (newToken) return apiFetch<T>(path, options, false)
+
+    // Refresh failed — the session is truly over. Clear it and bounce to
+    // login instead of leaving pages silently broken (blank agenda, empty
+    // billing) with a stale token.
+    useAuthStore.getState().logout()
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login'
+    }
+    throw new Error('Sessão expirada. Faz login novamente.')
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(body?.message ?? `Erro ${res.status} ao contactar o servidor`)
@@ -469,7 +515,7 @@ export const adminScheduleApi = {
     const [rows, weekly, blocks] = await Promise.all([
       apiFetch<RealAvailability[]>(
         `/api/v1/admin/schedule?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
-      ),
+      ).catch(() => [] as RealAvailability[]),
       studioScheduleApi.getWeeklyHours().catch(() => [] as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null }>),
       studioScheduleApi.listBlocks(startDate, endDate).catch(() => [] as Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>),
     ])
