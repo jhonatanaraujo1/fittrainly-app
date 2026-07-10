@@ -12,8 +12,9 @@ export function proxy(request: NextRequest) {
   const role = request.cookies.get('fittrainly-role')?.value
   const refresh = request.cookies.get('fittrainly-refresh')?.value
 
-  // Public routes
-  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/api')) {
+  // Public routes. `/l/` é a captura pública de leads do estúdio (/l/{slug}) —
+  // aberta a visitantes sem sessão, tal como o login.
+  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/api') || pathname.startsWith('/l/')) {
     if (refresh && role && pathname === '/login') {
       return NextResponse.redirect(new URL(ROLE_HOME[role] ?? '/login', request.url))
     }
