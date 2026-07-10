@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from 'sonner'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Providers } from '@/components/providers'
 import './globals.css'
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           closeButton
           toastOptions={{ duration: 4000 }}
         />
+        <SpeedInsights />
       </body>
     </html>
   )
