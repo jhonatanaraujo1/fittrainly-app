@@ -398,11 +398,11 @@ export default function PersonalTrainersPage() {
       qc.invalidateQueries({ queryKey: ['admin-dashboard'] })
       toast.success(`${created.name ?? 'PT'} adicionado com sucesso! 🎉`)
       setOpen(false)
-      // O BACKEND envia o email de boas-vindas + credenciais no ato da criação
-      // (PersonalTrainerService.create → EmailService.sendWelcome), fonte única
-      // para não duplicar envio. A UI continua mostrando a password + WhatsApp
-      // como fallback manual — o PT tem de conseguir entrar de qualquer forma.
-      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: variables.password, emailSent: true })
+      // A senha é GERADA no backend e enviada por email ao PT. O backend
+      // devolve essa senha inicial (temporaryPassword) só na criação, para o
+      // admin poder repassar. Em modo mock, cai na senha do próprio mock.
+      const tempPw = (created as { temporaryPassword?: string }).temporaryPassword ?? variables.password
+      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: tempPw, emailSent: true })
     },
     onError: () => toast.error('Erro ao criar Personal Trainer. Verifica os dados e tente novamente.'),
   })
