@@ -44,6 +44,19 @@ export const studioConfigApi = {
     mockStudioConfig.classDurationMinutes = classDurationMinutes
     return { ...mockStudioConfig }
   },
+  updateSettings: async (patch: { classDurationMinutes?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean }) => {
+    await delay(200)
+    if (patch.classDurationMinutes !== undefined) {
+      if (patch.classDurationMinutes <= 0 || patch.classDurationMinutes > mockStudioConfig.slotDurationMinutes) {
+        throw new Error(`A duração da aula tem de estar entre 1 e ${mockStudioConfig.slotDurationMinutes} minutos`)
+      }
+      mockStudioConfig.classDurationMinutes = patch.classDurationMinutes
+    }
+    if (patch.name?.trim()) mockStudioConfig.name = patch.name.trim()
+    if (patch.privacyPolicyUrl !== undefined) mockStudioConfig.privacyPolicyUrl = patch.privacyPolicyUrl?.trim() || null
+    if (patch.leadCaptureEnabled !== undefined) mockStudioConfig.leadCaptureEnabled = patch.leadCaptureEnabled
+    return { ...mockStudioConfig }
+  },
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────

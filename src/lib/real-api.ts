@@ -200,12 +200,32 @@ async function classEndISO(date: string, slotTime: string): Promise<string> {
   return `${date}T${addMinutesToTime(slotTime, classDurationMinutes)}:00Z`
 }
 
+interface StudioConfig {
+  slotDurationMinutes: number
+  classDurationMinutes: number
+  name: string
+  slug: string
+  privacyPolicyUrl: string | null
+  leadCaptureEnabled: boolean
+}
+interface StudioSettingsPatch {
+  classDurationMinutes?: number
+  name?: string
+  privacyPolicyUrl?: string | null
+  leadCaptureEnabled?: boolean
+}
+
 export const studioConfigApi = {
-  get: async () =>
-    apiFetch<{ slotDurationMinutes: number; classDurationMinutes: number }>('/api/v1/studio-config'),
+  get: async () => apiFetch<StudioConfig>('/api/v1/studio-config'),
+  // Duração de aula — assinatura antiga mantida (usada na Agenda).
   update: async (classDurationMinutes: number) =>
-    apiFetch<{ slotDurationMinutes: number; classDurationMinutes: number }>('/api/v1/studio-config', {
+    apiFetch<StudioConfig>('/api/v1/studio-config', {
       method: 'PATCH', body: JSON.stringify({ classDurationMinutes }),
+    }),
+  // PATCH parcial das configs do estúdio (identidade + captura de leads).
+  updateSettings: async (patch: StudioSettingsPatch) =>
+    apiFetch<StudioConfig>('/api/v1/studio-config', {
+      method: 'PATCH', body: JSON.stringify(patch),
     }),
 }
 

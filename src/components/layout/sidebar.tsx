@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, History,
   Dumbbell, LogOut, Layers, ClipboardList,
-  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, KeyRound,
+  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, KeyRound, Settings2,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -40,7 +40,8 @@ const NAV: Record<UserRole, NavSection[]> = {
       { href: '/admin/relatorios', label: 'Relatórios',        icon: BarChart3 },
     ] },
     { label: 'Sistema', items: [
-      { href: '/admin/notificacoes', label: 'Notificações', icon: Bell },
+      { href: '/admin/configuracoes', label: 'Configurações', icon: Settings2 },
+      { href: '/admin/notificacoes',  label: 'Notificações',  icon: Bell },
     ] },
   ],
   PERSONAL_TRAINER: [
