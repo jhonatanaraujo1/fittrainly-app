@@ -266,7 +266,7 @@ export default function LandingPage() {
               style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.25)' }}>
               <Dumbbell className="w-4 h-4" style={{ color: '#C9A84C' }} />
             </div>
-            <span className="font-black text-[15px] tracking-tight text-white">fitTrainly</span>
+            <span className="font-black text-[15px] tracking-tight text-white">Fit Studio Now</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -649,10 +649,10 @@ export default function LandingPage() {
               style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.15)' }}>
               <Dumbbell className="w-3 h-3" style={{ color: '#C9A84C' }} />
             </div>
-            <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.2)' }}>fitTrainly</span>
+            <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.2)' }}>Fit Studio Now</span>
           </div>
           <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
-            © 2026 fitTrainly · Almada, Portugal · Nike Strength Partner
+            © 2026 Fit Studio Now · Almada, Portugal · Nike Strength Partner
           </p>
           <div className="flex gap-6">
             {['Privacidade', 'Termos', 'RGPD'].map(l => (

@@ -20,12 +20,12 @@ export async function sendCredentialsEmail(opts: {
   isReset?: boolean
 }): Promise<{ sent: boolean }> {
   const subject = opts.isReset
-    ? 'A tua nova password — fitTrainly'
-    : 'Acesso à tua conta fitTrainly'
+    ? 'A tua nova password — Fit Studio Now'
+    : 'Acesso à tua conta Fit Studio Now'
   const html = `
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
       <h2>Olá, ${opts.name}</h2>
-      <p>${opts.isReset ? 'A tua password foi alterada pelo administrador do estúdio.' : 'A tua conta na plataforma fitTrainly foi criada.'}</p>
+      <p>${opts.isReset ? 'A tua password foi alterada pelo administrador do estúdio.' : 'A tua conta na plataforma Fit Studio Now foi criada.'}</p>
       <p><strong>Email:</strong> ${opts.to}<br/><strong>Password:</strong> ${opts.password}</p>
       <p>Recomendamos alterar esta password assim que entrares, em Definições → Alterar password.</p>
     </div>
@@ -48,7 +48,7 @@ export function whatsappCredentialsUrl(phone: string | undefined, name: string, 
   const digits = phone.replace(/\D/g, '')
   if (digits.length < 9) return null
   const msg = isReset
-    ? `Olá ${name}! A tua nova password de acesso ao fitTrainly é: ${password}\nEmail de login: ${email}`
-    : `Olá ${name}! O teu acesso ao fitTrainly foi criado.\nEmail: ${email}\nPassword: ${password}`
+    ? `Olá ${name}! A tua nova password de acesso ao Fit Studio Now é: ${password}\nEmail de login: ${email}`
+    : `Olá ${name}! O teu acesso ao Fit Studio Now foi criado.\nEmail: ${email}\nPassword: ${password}`
   return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
 }

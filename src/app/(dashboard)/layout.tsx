@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="h-[1.5px] bg-gray-700 rounded-full block" />
             </span>
           </button>
-          <span className="font-bold text-sm tracking-tight text-gray-900">fitTrainly</span>
+          <span className="font-bold text-sm tracking-tight text-gray-900">Fit Studio Now</span>
         </header>
 
         <main className="flex-1 min-w-0 overflow-y-auto">

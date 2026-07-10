@@ -54,7 +54,7 @@ export function ReportHeader({ estudio = 'MG Estúdio Boutique', data }: { estud
           <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: '#111111' }}>
             <span className="text-white text-[9px] font-black">FT</span>
           </div>
-          <span className="font-black text-lg tracking-tight text-gray-900">fitTrainly</span>
+          <span className="font-black text-lg tracking-tight text-gray-900">Fit Studio Now</span>
         </div>
         <p className="text-xs text-gray-400">{estudio}</p>
       </div>
@@ -97,7 +97,7 @@ export function ReportRow({ label, value }: { label: string; value?: string | nu
 export function ReportFooter() {
   return (
     <div className="mt-8 pt-4 border-t border-gray-200 flex items-center justify-between">
-      <p className="text-[10px] text-gray-400">fitTrainly — Software de Gestão de Estúdios de Personal Training</p>
+      <p className="text-[10px] text-gray-400">Fit Studio Now — Software de Gestão de Estúdios de Personal Training</p>
       <p className="text-[10px] text-gray-400">Documento gerado automaticamente · Não requer assinatura manual</p>
     </div>
   )

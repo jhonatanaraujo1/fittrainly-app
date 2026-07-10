@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 
 // Cores da marca do estúdio (verde + dourado do logo do MG). A página é DELES,
-// então segue a identidade deles, não a do painel fitTrainly.
+// então segue a identidade deles, não a do painel Fit Studio Now.
 const GREEN = '#0C4A3A'
 const GOLD = '#C9A227'
 

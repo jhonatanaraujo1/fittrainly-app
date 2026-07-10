@@ -139,7 +139,7 @@ export default function RelatorioFaturacaoPage() {
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400">{data.length} PTs · {data.reduce((s, e) => s + e.sessionsCount, 0)} sessões</p>
-          <p className="text-xs text-gray-400 mt-1">Gerado automaticamente pelo fitTrainly</p>
+          <p className="text-xs text-gray-400 mt-1">Gerado automaticamente pelo Fit Studio Now</p>
         </div>
       </div>
 

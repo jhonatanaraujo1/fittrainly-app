@@ -191,7 +191,7 @@ export default function LoginPage() {
             <Dumbbell className="w-[18px] h-[18px]" style={{ color: '#C9A84C' }} />
           </div>
           <div>
-            <span className="font-black text-[17px] tracking-tight text-white">fitTrainly</span>
+            <span className="font-black text-[17px] tracking-tight text-white">Fit Studio Now</span>
             <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C' }}>PRO</span>
           </div>
         </div>
@@ -255,7 +255,7 @@ export default function LoginPage() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#111111' }}>
               <Dumbbell className="w-[15px] h-[15px] text-white" />
             </div>
-            <span className="font-black text-base tracking-tight" style={{ color: '#111111' }}>fitTrainly</span>
+            <span className="font-black text-base tracking-tight" style={{ color: '#111111' }}>Fit Studio Now</span>
           </div>
           <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
             RGPD Compliant
@@ -615,9 +615,9 @@ export default function LoginPage() {
                 {contactHint === 'fittrainly' && (
                   <>Está com problemas?{' '}
                     <button type="button"
-                      onClick={() => toast.info('Entre em contacto com o suporte do fitTrainly para obter ajuda.', { duration: 5000 })}
+                      onClick={() => toast.info('Entre em contacto com o suporte do Fit Studio Now para obter ajuda.', { duration: 5000 })}
                       className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
-                      Entre em contacto com o fitTrainly
+                      Entre em contacto com o Fit Studio Now
                     </button>
                   </>
                 )}

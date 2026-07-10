@@ -98,7 +98,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           >
             <Dumbbell className="w-4 h-4" style={{ color: '#C9A84C' }} />
           </div>
-          <span className="font-bold text-base tracking-tight text-white">fitTrainly</span>
+          <span className="font-bold text-base tracking-tight text-white">Fit Studio Now</span>
         </div>
         {/* Close button — only visible on mobile overlay */}
         <button

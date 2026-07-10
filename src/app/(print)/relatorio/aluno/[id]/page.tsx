@@ -65,7 +65,7 @@ export default function RelatorioAlunoPage({ params }: { params: Promise<{ id: s
   const statusLabel: Record<string, string> = { CONFIRMED: 'Confirmada', COMPLETED: 'Realizada', CANCELLED: 'Cancelada' }
 
   return (
-    <ReportLayout title={`Ficha Completa — ${aluno.name}`} subtitle="Relatório gerado pelo fitTrainly">
+    <ReportLayout title={`Ficha Completa — ${aluno.name}`} subtitle="Relatório gerado pelo Fit Studio Now">
       <ReportHeader />
 
       {/* Report title */}

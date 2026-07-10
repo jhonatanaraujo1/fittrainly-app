@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ sent: false, reason: 'not_configured' })
   }
 
-  const from = process.env.RESEND_FROM_EMAIL || 'fitTrainly <onboarding@resend.dev>'
+  const from = process.env.RESEND_FROM_EMAIL || 'Fit Studio Now <onboarding@resend.dev>'
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
