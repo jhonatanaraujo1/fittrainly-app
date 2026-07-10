@@ -326,21 +326,69 @@ export const billingApi = {
 // Route and fields confirmed live against the backend on 01-02/jul — renamed
 // from /convert-to-aluno (interesse/responsavel/planoInteresse/observacoes)
 // to /convert-to-student (interest/assignedTo/interestedPlan/notes).
+// O backend usa LeadStatus em INGLÊS (NEW/CONTACTED/…); a CRM (e o mock)
+// usam PORTUGUÊS (NOVO/CONTACTADO/…). Sem traduzir, os leads chegam com um
+// status que não bate com nenhuma coluna → "0 leads no pipeline" mesmo com
+// leads no banco. Bug real, invisível ao tsc (lead é tipado solto).
+const LEAD_STATUS_EN_TO_PT: Record<string, string> = {
+  NEW: 'NOVO', CONTACTED: 'CONTACTADO', VISIT_SCHEDULED: 'VISITA_AGENDADA',
+  VISITED: 'VISITOU', ENROLLED: 'INSCRITO', NO_FEEDBACK: 'NAO_DEU_FEEDBACK',
+  LOST: 'PERDIDO', ARCHIVED: 'ARQUIVADO',
+}
+const LEAD_STATUS_PT_TO_EN: Record<string, string> =
+  Object.fromEntries(Object.entries(LEAD_STATUS_EN_TO_PT).map(([en, pt]) => [pt, en]))
+
+// LeadResponse (backend) → MockLead (o shape que a CRM lê). O mock renomeia
+// vários campos, então mapeamos todos — senão o lead aparece mas com
+// interesse/responsável/observações vazios.
+function mapLead(r: Record<string, unknown>) {
+  return {
+    id: r.id, name: r.name, email: r.email ?? undefined, phone: r.phone ?? undefined,
+    status: LEAD_STATUS_EN_TO_PT[r.status as string] ?? r.status,
+    interesse: r.interest ?? undefined,
+    source: r.source ?? undefined,
+    responsavel: r.assignedTo ?? undefined,
+    visitaDate: r.visitDate ?? undefined,
+    observacoes: r.notes ?? undefined,
+    tags: (r.tags as string[]) ?? [],
+    planoInteresse: r.interestedPlan ?? undefined,
+    followUpDate: r.followUpDate ?? undefined,
+    inscritoEm: r.enrolledAt ?? undefined,
+    createdAt: r.createdAt, updatedAt: r.updatedAt,
+  }
+}
+
+// Campos PT (que a CRM manda em updateStatus/create) → EN (o que o backend
+// espera). Só os presentes são reescritos.
+function leadPayloadPtToEn(data?: Record<string, unknown>): Record<string, unknown> {
+  if (!data) return {}
+  const map: Record<string, string> = {
+    interesse: 'interest', responsavel: 'assignedTo', observacoes: 'notes',
+    planoInteresse: 'interestedPlan', visitaDate: 'visitDate',
+  }
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(data)) out[map[k] ?? k] = v
+  return out
+}
+
 export const leadApi = {
-  // Backend now paginates GET /leads (Page<LeadResponse>: content/totalElements/
-  // etc, not a bare array) — unwrap .content to keep the array shape the rest
-  // of this file (and the mock) expects.
+  // Backend pagina GET /leads (Page<LeadResponse>). Desempacota .content E
+  // traduz cada lead (status EN→PT + campos renomeados) para o shape da CRM.
   list: async () =>
     apiFetch<{ content: Array<Record<string, unknown>> }>('/api/v1/leads?size=200')
-      .then((page) => page.content),
-  // Backend has no status filter on GET (lists everything and filters
-  // client-side) — keeps behavior parity with the mock.
+      .then((page) => page.content.map(mapLead)),
   byStatus: async (status: string) =>
     leadApi.list().then((all) => all.filter(l => l.status === status)),
   create: async (data: { name: string; email?: string; phone?: string; interest?: string; source?: string; assignedTo?: string; interestedPlan?: string; notes?: string }) =>
     apiFetch('/api/v1/leads', { method: 'POST', body: JSON.stringify(data) }),
   updateStatus: async (id: string, status: string, data?: object) =>
-    apiFetch(`/api/v1/leads/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, ...data }) }),
+    apiFetch(`/api/v1/leads/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: LEAD_STATUS_PT_TO_EN[status] ?? status,
+        ...leadPayloadPtToEn(data as Record<string, unknown>),
+      }),
+    }),
   delete: async (id: string) => apiFetch(`/api/v1/leads/${id}`, { method: 'DELETE' }),
   convertToAluno: async (leadId: string, personalTrainerId: string) =>
     apiFetch(`/api/v1/leads/${leadId}/convert-to-student`, {
