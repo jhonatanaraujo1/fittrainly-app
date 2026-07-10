@@ -138,6 +138,32 @@
   animation-delay: 1.5s;
 }
 
+/* ── Borda LED dourada (tema preto+dourado) ──────────────────────────────
+   Fio dourado fino + brilho externo difuso, tipo fita LED contornando o
+   card. `.led-gold` = estático sutil; `.led-gold-pulse` = respira devagar
+   (usar só em 1-2 elementos de destaque, nunca a página inteira). */
+.led-gold {
+  border: 1px solid rgba(201,168,76,0.30);
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,0.10),
+    0 0 18px -4px rgba(201,168,76,0.28),
+    inset 0 0 0 1px rgba(201,168,76,0.04);
+}
+.led-gold:hover {
+  border-color: rgba(201,168,76,0.45);
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,0.16),
+    0 0 24px -3px rgba(201,168,76,0.40);
+}
+@keyframes led-gold-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.10), 0 0 16px -4px rgba(201,168,76,0.22); }
+  50%      { box-shadow: 0 0 0 1px rgba(201,168,76,0.22), 0 0 26px -2px rgba(201,168,76,0.42); }
+}
+.led-gold-pulse {
+  border: 1px solid rgba(201,168,76,0.32);
+  animation: led-gold-breathe 4.5s ease-in-out infinite;
+}
+
 /* Sonner custom */
 [data-sonner-toaster] {
   --normal-bg: #fff;
