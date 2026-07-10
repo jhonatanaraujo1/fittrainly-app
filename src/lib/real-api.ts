@@ -250,6 +250,15 @@ export const authApi = {
     apiFetch<{ message: string }>('/api/v1/auth/forgot-password', {
       method: 'POST', body: JSON.stringify({ email }),
     }),
+  // Passo 2a: confirma o código (não consome). Passo 2b: código + nova senha.
+  verifyResetCode: async (email: string, code: string) =>
+    apiFetch<{ valid: boolean }>('/api/v1/auth/reset-password/verify', {
+      method: 'POST', body: JSON.stringify({ email, code }),
+    }),
+  resetPassword: async (email: string, code: string, newPassword: string) =>
+    apiFetch<void>('/api/v1/auth/reset-password', {
+      method: 'POST', body: JSON.stringify({ email, code, newPassword }),
+    }),
   // userId é ignorado — o backend identifica o utilizador pelo JWT
   // autenticado (UserDetailsImpl), nunca por um id no corpo/rota. Mantido no
   // parâmetro só para bater com a assinatura que as páginas já chamam.

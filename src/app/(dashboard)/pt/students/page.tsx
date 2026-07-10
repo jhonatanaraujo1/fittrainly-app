@@ -5,13 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Users, UserPlus, X, Dumbbell, ChevronRight } from 'lucide-react'
-import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { alunoApi } from '@/lib/api'
 import { getInitials, avatarColor, formatDate, formatTime } from '@/lib/utils'
-import { whatsappCredentialsUrl } from '@/lib/notify'
 import type { Aluno } from '@/types'
 
 type NewStudentResult = { name: string; email: string; phone?: string; tempPassword?: string; emailSent?: boolean }
@@ -236,37 +234,10 @@ export default function PTStudentsPage() {
           </DialogHeader>
           {newResult && (
             <div className="space-y-3">
-              {newResult.emailSent ? (
-                <p className="text-sm text-emerald-600">✓ Credenciais enviadas por email para {newResult.email}</p>
-              ) : newResult.tempPassword ? (
-                <>
-                  <p className="text-sm text-gray-500">Não foi possível enviar por email agora — entrega manualmente:</p>
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-1">
-                    <p className="text-xs text-gray-400">Email de login</p>
-                    <p className="text-sm font-mono font-semibold text-gray-900">{newResult.email}</p>
-                    <p className="text-xs text-gray-400 mt-2">Password</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-base font-mono font-bold tracking-wide text-gray-900">{newResult.tempPassword}</code>
-                      <button
-                        type="button"
-                        onClick={() => { navigator.clipboard.writeText(newResult.tempPassword!); toast.success('Password copiada') }}
-                        className="text-xs font-semibold text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                  {newResult.phone && whatsappCredentialsUrl(newResult.phone, newResult.name, newResult.email, newResult.tempPassword, false) && (
-                    <a
-                      href={whatsappCredentialsUrl(newResult.phone, newResult.name, newResult.email, newResult.tempPassword, false)!}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors"
-                    >
-                      Enviar por WhatsApp
-                    </a>
-                  )}
-                </>
-              ) : null}
+              <p className="text-sm text-emerald-600">✓ As credenciais de acesso foram enviadas por email para <strong>{newResult.email}</strong>.</p>
+              <p className="text-xs text-gray-400">
+                Por privacidade, a senha do aluno não é exibida aqui — só o próprio aluno a recebe. Se ele não receber o email, use &quot;Gerar nova senha&quot; no perfil dele.
+              </p>
             </div>
           )}
           <DialogFooter>

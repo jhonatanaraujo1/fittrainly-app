@@ -75,12 +75,21 @@ export default function LoginPage() {
   const [touched, setTouched] = useState({ email: false, password: false })
   const [mode, setMode] = useState<'login' | 'reset'>('login')
   const [resetEmail, setResetEmail] = useState('')
-  const [resetSent, setResetSent] = useState(false)
+  const [resetStep, setResetStep] = useState<'email' | 'code'>('email')
+  const [resetCode, setResetCode] = useState('')
+  const [resetNewPass, setResetNewPass] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetDevCode, setResetDevCode] = useState<string | null>(null)
   const [resetPending, setResetPending] = useState(false)
-  const [resetTempPassword, setResetTempPassword] = useState<string | null>(null)
   const [contactHint, setContactHint] = useState<'pt' | 'admin' | 'fittrainly' | null>(null)
 
-  async function handleReset(e: React.FormEvent) {
+  function backToLogin() {
+    setMode('login'); setResetStep('email')
+    setResetCode(''); setResetNewPass(''); setResetConfirm(''); setResetDevCode(null)
+  }
+
+  // Passo 1: pede o código. Resposta genérica (não revela se o email existe).
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
     if (!resetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) {
       toast.error('Introduza um email válido')
@@ -89,20 +98,30 @@ export default function LoginPage() {
     setResetPending(true)
     try {
       const result = await authApi.forgotPassword(resetEmail)
-      // Nunca revela se o email existe ou não — mensagem idêntica nos dois
-      // casos, para não permitir enumerar contas via este formulário.
-      if (result.emailSent) {
-        toast.success('📧 Se o email existir na plataforma, a nova password foi enviada.', { duration: 6000 })
-        setResetTempPassword(null)
-      } else if (result.found && result.tempPassword) {
-        // Envio real de email não configurado/falhou — não podemos deixar a
-        // pessoa sem acesso: mostramos a password temporária diretamente.
-        setResetTempPassword(result.tempPassword)
-      } else {
-        toast.success('📧 Se o email existir na plataforma, a nova password foi enviada.', { duration: 6000 })
-        setResetTempPassword(null)
-      }
-      setResetSent(true)
+      toast.success('📧 Se o email existir, enviámos um código de 6 dígitos.', { duration: 6000 })
+      // devCode só existe no modo mock/demo (sem email real). No backend real
+      // o código chega SÓ por email.
+      setResetDevCode((result as { devCode?: string }).devCode ?? null)
+      setResetStep('code')
+    } finally {
+      setResetPending(false)
+    }
+  }
+
+  // Passo 2: código + nova senha + confirmação.
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!/^\d{6}$/.test(resetCode)) { toast.error('O código tem 6 dígitos'); return }
+    if (resetNewPass.length < 6) { toast.error('A senha precisa de pelo menos 6 caracteres'); return }
+    if (resetNewPass !== resetConfirm) { toast.error('As senhas não coincidem'); return }
+    setResetPending(true)
+    try {
+      await authApi.resetPassword(resetEmail, resetCode, resetNewPass)
+      toast.success('Senha redefinida! Já podes entrar com a nova senha.', { duration: 6000 })
+      backToLogin()
+      setResetEmail('')
+    } catch (err) {
+      toast.error((err as Error).message || 'Código inválido ou expirado.')
     } finally {
       setResetPending(false)
     }
@@ -253,7 +272,7 @@ export default function LoginPage() {
                 <>
                   <button
                     type="button"
-                    onClick={() => { setMode('login'); setResetSent(false) }}
+                    onClick={backToLogin}
                     className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors mb-3"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao login
@@ -286,88 +305,86 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Reset password mode */}
-            {mode === 'reset' && (
-              <form onSubmit={handleReset} className="space-y-4" noValidate>
-                {resetSent ? (
-                  <div className="flex flex-col items-center gap-4 py-6 text-center">
-                    <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
-                      <CheckCircle2 className="w-7 h-7 text-emerald-600" />
-                    </div>
-                    {resetTempPassword ? (
-                      <div className="w-full">
-                        <p className="font-bold text-gray-900 text-base">Nova password gerada</p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Não foi possível enviar por email agora. Usa esta password para entrares:
-                        </p>
-                        <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 min-h-[44px]">
-                          <code className="flex-1 text-left text-base font-mono font-bold tracking-wide text-gray-900">{resetTempPassword}</code>
-                          <button
-                            type="button"
-                            onClick={() => { navigator.clipboard.writeText(resetTempPassword); toast.success('Password copiada') }}
-                            className="text-xs font-semibold text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-3">
-                          Depois de entrares, altera a password em Definições.
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="font-bold text-gray-900 text-base">Instruções enviadas</p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Verifique <strong>{resetEmail}</strong> e siga as instruções.
-                        </p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          Não recebeu? Contacte o seu PT.
-                        </p>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => { setMode('login'); setResetSent(false); setResetTempPassword(null) }}
-                      className="text-sm font-semibold text-gray-700 underline underline-offset-2 hover:text-gray-900 transition-colors"
-                    >
-                      Voltar ao login
-                    </button>
+            {/* Reset — passo 1: pedir o código */}
+            {mode === 'reset' && resetStep === 'email' && (
+              <form onSubmit={handleSendCode} className="space-y-4" noValidate>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reset-email" className="text-sm font-semibold text-gray-700">Email da conta</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    placeholder="o.seu@email.com"
+                    className="h-12 text-base rounded-xl border-gray-200 focus:border-gray-900 focus:ring-gray-900/10"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!resetEmail || resetPending}
+                  className="w-full h-12 rounded-xl font-bold text-[15px] tracking-wide transition-all disabled:opacity-40 active:scale-[0.98] flex items-center justify-center gap-2"
+                  style={{ background: '#111111', color: '#ffffff' }}
+                >
+                  {resetPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                  Enviar código
+                </button>
+                <p className="text-center text-xs text-gray-400">Enviaremos um código de 6 dígitos para o seu email.</p>
+              </form>
+            )}
+
+            {/* Reset — passo 2: código + nova senha + confirmação */}
+            {mode === 'reset' && resetStep === 'code' && (
+              <form onSubmit={handleResetPassword} className="space-y-4" noValidate>
+                <p className="text-sm text-gray-500">
+                  Enviámos um código de 6 dígitos para <strong>{resetEmail}</strong>. Digite-o abaixo com a nova senha.
+                </p>
+                {resetDevCode && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+                    Modo demo — o seu código é <strong className="font-mono tracking-widest">{resetDevCode}</strong>
                   </div>
-                ) : (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="reset-email" className="text-sm font-semibold text-gray-700">Email da conta</Label>
-                      <Input
-                        id="reset-email"
-                        type="email"
-                        value={resetEmail}
-                        onChange={e => setResetEmail(e.target.value)}
-                        placeholder="o.teu@email.com"
-                        className="h-12 text-base rounded-xl border-gray-200 focus:border-gray-900 focus:ring-gray-900/10"
-                        autoFocus
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={!resetEmail || resetPending}
-                      className="w-full h-12 rounded-xl font-bold text-[15px] tracking-wide transition-all disabled:opacity-40 active:scale-[0.98] flex items-center justify-center gap-2"
-                      style={{ background: '#111111', color: '#ffffff' }}
-                    >
-                      {resetPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                      Enviar instruções
-                    </button>
-                    <p className="text-center text-xs text-gray-400">
-                      Não tem acesso ao email?{' '}
-                      <button
-                        type="button"
-                        onClick={() => toast.info('Contacte o seu Personal Trainer para obter ajuda com o acesso.', { duration: 5000 })}
-                        className="font-semibold text-gray-600 hover:text-gray-900 underline underline-offset-2 transition-colors"
-                      >
-                        Contacte o seu PT
-                      </button>
-                    </p>
-                  </>
                 )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="reset-code" className="text-sm font-semibold text-gray-700">Código</Label>
+                  <Input
+                    id="reset-code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={resetCode}
+                    onChange={e => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    className="h-12 text-center text-2xl font-mono tracking-[0.4em] rounded-xl border-gray-200 focus:border-gray-900"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reset-newpass" className="text-sm font-semibold text-gray-700">Nova senha</Label>
+                  <Input id="reset-newpass" type="password" value={resetNewPass}
+                    onChange={e => setResetNewPass(e.target.value)} placeholder="Mínimo 6 caracteres"
+                    className="h-12 text-base rounded-xl border-gray-200 focus:border-gray-900" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reset-confirm" className="text-sm font-semibold text-gray-700">Confirmar nova senha</Label>
+                  <Input id="reset-confirm" type="password" value={resetConfirm}
+                    onChange={e => setResetConfirm(e.target.value)} placeholder="Repita a nova senha"
+                    className={`h-12 text-base rounded-xl border-gray-200 focus:border-gray-900 ${resetConfirm && resetNewPass !== resetConfirm ? 'border-red-300 bg-red-50/30' : ''}`} />
+                  {resetConfirm && resetNewPass !== resetConfirm && (
+                    <p className="text-xs text-red-500">As senhas não coincidem</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={resetPending}
+                  className="w-full h-12 rounded-xl font-bold text-[15px] tracking-wide transition-all disabled:opacity-40 active:scale-[0.98] flex items-center justify-center gap-2"
+                  style={{ background: '#111111', color: '#ffffff' }}
+                >
+                  {resetPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Redefinir senha
+                </button>
+                <button type="button" onClick={() => setResetStep('email')}
+                  className="w-full text-center text-xs text-gray-500 hover:text-gray-900 transition-colors">
+                  ← Reenviar código
+                </button>
               </form>
             )}
 
@@ -485,7 +502,7 @@ export default function LoginPage() {
               <div className="flex items-center justify-center">
                 <button
                   type="button"
-                  onClick={() => { setMode('reset'); setResetSent(false); setResetEmail('') }}
+                  onClick={() => { setMode('reset'); setResetStep('email'); setResetEmail('') }}
                   className="text-xs text-gray-400 hover:text-gray-700 transition-colors underline underline-offset-2"
                 >
                   Esqueceu a password?

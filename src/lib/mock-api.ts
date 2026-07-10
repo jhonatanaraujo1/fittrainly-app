@@ -60,6 +60,9 @@ export const studioConfigApi = {
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
+// Códigos de reset em memória (mock) — no backend real vivem em tabela própria.
+const mockResetCodes: Record<string, string> = {}
+
 export const authApi = {
   login: async (email: string, password: string) => {
     await delay(400)
@@ -76,29 +79,43 @@ export const authApi = {
     return { accessToken: 'mock-token-' + uid() }
   },
 
-  // Self-service — usado no ecrã de login antes de autenticar. Nunca revela
-  // se o email existe (mensagem genérica), mas gera e grava uma password
-  // temporária de verdade e tenta enviá-la por email real. Sem chave de
-  // provedor configurada (RESEND_API_KEY), a UI que chama isto mostra a
-  // password para o utilizador copiar/receber por WhatsApp — nunca fica sem
-  // saída.
-  forgotPassword: async (email: string): Promise<{ found: boolean; emailSent: boolean; tempPassword?: string }> => {
+  // Esqueci a senha — passo 1: gera um código de 6 dígitos. No mock não há
+  // email real, então devolvemos o código (devCode) para o demo funcionar; no
+  // backend real o código chega SÓ por email. Resposta genérica de qualquer
+  // forma (não revela se o email existe).
+  forgotPassword: async (email: string): Promise<{ message: string; devCode?: string }> => {
     await delay(400)
+    const generic = 'Se o email existir na plataforma, enviaremos um código para redefinir a senha.'
     const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase())
-    if (!user) return { found: false, emailSent: false }
-    const tempPassword = generateTempPassword()
-    user.password = tempPassword
-    const { sent } = await sendCredentialsEmail({ to: user.email, name: user.name, password: tempPassword, isReset: true })
-    return { found: true, emailSent: sent, tempPassword: sent ? undefined : tempPassword }
+    if (!user) return { message: generic }
+    const code = String(Math.floor(100000 + Math.random() * 900000))
+    mockResetCodes[user.email.toLowerCase()] = code
+    return { message: generic, devCode: code }
+  },
+  // Passo 2a — confirma o código (não consome).
+  verifyResetCode: async (email: string, code: string): Promise<{ valid: boolean }> => {
+    await delay(200)
+    return { valid: mockResetCodes[email.toLowerCase()] === code }
+  },
+  // Passo 2b — código + nova senha.
+  resetPassword: async (email: string, code: string, newPassword: string): Promise<void> => {
+    await delay(300)
+    const key = email.toLowerCase()
+    if (!mockResetCodes[key] || mockResetCodes[key] !== code) {
+      throw new Error('Código inválido ou expirado. Peça um novo.')
+    }
+    const user = db.users.find(u => u.email.toLowerCase() === key)
+    if (user) user.password = newPassword
+    delete mockResetCodes[key]
   },
 
-  // Alteração de password estando autenticado — exige a password atual.
+  // Alteração de senha estando autenticado — exige a senha atual.
   changePassword: async (userId: string, currentPassword: string, newPassword: string): Promise<{ success: true }> => {
     await delay(350)
     const user = db.users.find(u => u.id === userId)
     if (!user) throw new Error('Utilizador não encontrado')
-    if (user.password !== currentPassword) throw new Error('Password atual incorreta')
-    if (newPassword.length < 6) throw new Error('A nova password precisa de pelo menos 6 caracteres')
+    if (user.password !== currentPassword) throw new Error('Senha atual incorreta')
+    if (newPassword.length < 6) throw new Error('A nova senha precisa de pelo menos 6 caracteres')
     user.password = newPassword
     return { success: true }
   },
