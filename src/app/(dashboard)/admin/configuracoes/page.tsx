@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
+import { WeeklyHoursEditor } from '@/components/weekly-hours-editor'
 import { cn } from '@/lib/utils'
 import { studioConfigApi } from '@/lib/api'
 
@@ -146,8 +147,14 @@ export default function ConfiguracoesPage() {
             )}
 
             {tab === 'agenda' && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
+                  <label className={field}>HORÁRIO DE FUNCIONAMENTO</label>
+                  <WeeklyHoursEditor />
+                  <p className={hint}>Define quando o estúdio abre e fecha em cada dia. A agenda só oferece horários dentro desta janela.</p>
+                </div>
+
+                <div className="border-t border-gray-50 pt-4">
                   <label className={field}>DURAÇÃO DA AULA <span className="text-gray-300 font-normal">· slot de {data.slotDurationMinutes} min</span></label>
                   <div className="flex items-center gap-1.5">
                     <Input type="number" min={1} max={data.slotDurationMinutes} value={classDuration} onChange={e => setClassDuration(Number(e.target.value))} className="h-9 text-sm w-28" />
@@ -157,8 +164,9 @@ export default function ConfiguracoesPage() {
                   </div>
                   <p className={hint}>O resto do slot ({data.slotDurationMinutes - classDuration} min) é a folga do PT entre alunos.</p>
                 </div>
+
                 <Link href="/admin/schedule" className="flex items-center justify-between rounded-lg border border-gray-100 px-3 h-11 hover:bg-gray-50 transition-colors group">
-                  <span className="flex items-center gap-2 text-[13px] text-gray-700"><Calendar className="w-4 h-4 text-gray-400" /> Horário de funcionamento e bloqueios</span>
+                  <span className="flex items-center gap-2 text-[13px] text-gray-700"><Calendar className="w-4 h-4 text-gray-400" /> Bloquear horários pontuais (feriados, fechos)</span>
                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
                 </Link>
               </div>
