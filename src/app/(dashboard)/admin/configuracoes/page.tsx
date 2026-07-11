@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WeeklyHoursEditor } from '@/components/weekly-hours-editor'
+import { ClosedDaysManager } from '@/components/closed-days-manager'
 import { cn } from '@/lib/utils'
 import { studioConfigApi } from '@/lib/api'
 
@@ -165,8 +166,14 @@ export default function ConfiguracoesPage() {
                   <p className={hint}>O resto do slot ({data.slotDurationMinutes - classDuration} min) é a folga do PT entre alunos.</p>
                 </div>
 
+                <div className="border-t border-gray-50 pt-4">
+                  <label className={field}>DIAS FECHADOS & FERIADOS</label>
+                  <ClosedDaysManager />
+                  <p className={hint}>Fecha o estúdio o dia inteiro numa data específica. A agenda mostra o dia como fechado e não aceita reservas.</p>
+                </div>
+
                 <Link href="/admin/schedule" className="flex items-center justify-between rounded-lg border border-gray-100 px-3 h-11 hover:bg-gray-50 transition-colors group">
-                  <span className="flex items-center gap-2 text-[13px] text-gray-700"><Calendar className="w-4 h-4 text-gray-400" /> Bloquear horários pontuais (feriados, fechos)</span>
+                  <span className="flex items-center gap-2 text-[13px] text-gray-700"><Calendar className="w-4 h-4 text-gray-400" /> Bloquear horários pontuais na agenda</span>
                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
                 </Link>
               </div>

@@ -256,11 +256,17 @@ export default function AdminSchedulePage() {
                     const dateStr = localDate(day)
                     const daySlots = schedule.filter(s => s.date === dateStr)
                     const dayReleases = daySlots.reduce((acc, s) => acc + s.releases.length, 0)
+                    const dayClosed = daySlots.length > 0 && daySlots.every(s => s.blocked)
+                    const closedReason = dayClosed ? daySlots.find(s => s.blocked)?.blockReason : undefined
                     return (
-                      <th key={d} className="px-2 py-2.5 text-center font-medium border-b border-gray-100 min-w-[90px] bg-gray-50/50">
-                        <div className="text-gray-600 font-semibold capitalize">{format(day, 'EEE', { locale: ptBR })}</div>
+                      <th key={d} className={cn('px-2 py-2.5 text-center font-medium border-b border-gray-100 min-w-[90px]', dayClosed ? 'bg-red-50/60' : 'bg-gray-50/50')}>
+                        <div className={cn('font-semibold capitalize', dayClosed ? 'text-red-400' : 'text-gray-600')}>{format(day, 'EEE', { locale: ptBR })}</div>
                         <div className="text-gray-400 font-normal text-[10px]">{format(day, 'd/MM')}</div>
-                        {dayReleases > 0 && <div className="text-[9px] text-emerald-600 font-semibold">{dayReleases} slots</div>}
+                        {dayClosed ? (
+                          <div title={closedReason} className="text-[9px] text-red-500 font-semibold">Fechado</div>
+                        ) : dayReleases > 0 ? (
+                          <div className="text-[9px] text-emerald-600 font-semibold">{dayReleases} slots</div>
+                        ) : null}
                       </th>
                     )
                   })}
