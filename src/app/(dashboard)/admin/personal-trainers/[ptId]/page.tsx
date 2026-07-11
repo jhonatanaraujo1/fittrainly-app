@@ -263,7 +263,7 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
 
       {/* Profile card */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className={`bg-white rounded-2xl border shadow-sm p-5 sm:p-6 ${pt.inadimplente ? 'border-red-200' : 'border-gray-100'}`}
+        className={`bg-white rounded-2xl p-5 sm:p-6 ${pt.inadimplente ? 'border border-red-200 shadow-sm' : 'led-gold'}`}
       >
         <div className="flex items-start gap-4 flex-wrap">
           {/* Avatar */}
@@ -426,7 +426,7 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
           { label: 'Sessões/mês', value: String(sessionsThisMonth), icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-50' },
           { label: 'Valor a pagar', value: ptBilling ? formatCurrency(ptBilling.value) : '—', icon: Receipt, color: 'text-emerald-600', bg: 'bg-emerald-50' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
+          <div key={label} className="bg-white rounded-xl led-gold px-4 py-3.5 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
               <Icon className={`w-4.5 h-4.5 ${color}`} />
             </div>
@@ -439,7 +439,7 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl led-gold overflow-hidden">
         <div className="flex border-b border-gray-100">
           {[
             { key: 'alunos', label: `Alunos (${alunos.length})` },

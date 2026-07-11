@@ -133,7 +133,7 @@ export default function ModalidadesPage() {
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
         </div>
       ) : modalidades.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-20 bg-white rounded-xl led-gold">
           <Layers className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Nenhuma modalidade cadastrada</p>
           <p className="text-sm text-gray-400 mt-0.5">Adiciona as atividades que o estúdio oferece</p>
@@ -143,7 +143,7 @@ export default function ModalidadesPage() {
           {categorias.map(cat => (
             <div key={cat}>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 px-1">{cat}</p>
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-xl led-gold overflow-hidden">
                 {grouped[cat].map((m, i) => (
                   <motion.div
                     key={m.id}

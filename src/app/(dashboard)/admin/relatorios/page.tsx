@@ -181,7 +181,7 @@ export default function RelatoriosPage() {
             key={label}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
+            className="bg-white rounded-xl led-gold p-4"
           >
             <div className="flex items-start justify-between mb-2">
               <p className="text-xs text-gray-400 font-medium">{label}</p>
@@ -214,7 +214,7 @@ export default function RelatoriosPage() {
       {tab === 'semana' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           {/* Chart */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-xl led-gold p-5">
             <p className="text-sm font-bold text-gray-900 mb-4">Sessões Esta Semana vs Semana Passada</p>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart
@@ -240,7 +240,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-xl led-gold overflow-x-auto">
             <table className="w-full text-sm min-w-[520px]">
               <thead>
                 <tr className="border-b border-gray-100" style={{ background: '#f9fafb' }}>
@@ -298,7 +298,7 @@ export default function RelatoriosPage() {
       {tab === 'mes' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           {/* Chart */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-xl led-gold p-5">
             <p className="text-sm font-bold text-gray-900 mb-4">Sessões Este Mês vs Mês Passado</p>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart
@@ -324,7 +324,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-xl led-gold overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-gray-100" style={{ background: '#f9fafb' }}>
@@ -383,7 +383,7 @@ export default function RelatoriosPage() {
       {tab === 'comparativo' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           {/* Line chart */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-xl led-gold p-5">
             <p className="text-sm font-bold text-gray-900 mb-1">Evolução de Sessões — Últimas 4 Semanas</p>
             <p className="text-xs text-gray-400 mb-4">Cada linha representa um Personal Trainer</p>
             <ResponsiveContainer width="100%" height={240}>
@@ -412,7 +412,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Comparative table */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-xl led-gold overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-100" style={{ background: '#f9fafb' }}>

@@ -51,7 +51,7 @@ export default function AdminPTAlunosPage({ params }: { params: Promise<{ ptId: 
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
         </div>
       ) : alunos.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-20 bg-white rounded-xl led-gold">
           <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500 font-medium text-sm">Nenhum aluno associado a este PT</p>
         </div>
@@ -69,7 +69,7 @@ export default function AdminPTAlunosPage({ params }: { params: Promise<{ ptId: 
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-xl border border-gray-100 px-4 py-4 flex items-center gap-4"
+                className="bg-white rounded-xl led-gold px-4 py-4 flex items-center gap-4"
               >
                 {/* Avatar */}
                 <div

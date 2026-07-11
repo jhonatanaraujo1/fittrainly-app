@@ -238,7 +238,7 @@ export default function PTAvailabilityPage() {
           { label: 'Confirmações', value: confirmedCount, icon: <Users className="w-3.5 h-3.5 text-blue-500" /> },
           { label: 'Vagas por slot', value: '4', icon: <Users className="w-3.5 h-3.5 text-gray-400" /> },
         ].map(({ label, value, icon }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
+          <div key={label} className="bg-white rounded-xl led-gold px-3 py-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">{icon}</div>
             <p className="text-xl sm:text-2xl font-black text-gray-900">{value}</p>
             <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 leading-tight">{label}</p>
@@ -295,7 +295,7 @@ export default function PTAvailabilityPage() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
         </div>
       ) : grid.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-xl led-gold">
           <p className="text-gray-400 text-sm">Sem slots disponíveis para esta semana</p>
           <p className="text-gray-300 text-xs mt-1">Sábado e domingo podem não ter horários definidos</p>
         </div>

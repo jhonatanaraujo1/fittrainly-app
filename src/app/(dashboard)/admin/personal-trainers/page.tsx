@@ -515,7 +515,7 @@ export default function PersonalTrainersPage() {
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)}
         </div>
       ) : displayed.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-xl led-gold">
           <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Nenhum PT encontrado</p>
           <p className="text-sm text-gray-400 mt-0.5">Tenta outro filtro</p>
@@ -527,8 +527,8 @@ export default function PersonalTrainersPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: i * 0.04 }}
-              className={`bg-white rounded-xl p-5 shadow-sm border flex flex-col gap-3 ${
-                pt.inadimplente ? 'border-red-200' : 'border-gray-100'
+              className={`bg-white rounded-xl p-5 flex flex-col gap-3 ${
+                pt.inadimplente ? 'border border-red-200 shadow-sm' : 'led-gold'
               }`}>
 
               {/* Top row: avatar + name + status badges */}

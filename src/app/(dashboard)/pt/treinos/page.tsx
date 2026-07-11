@@ -44,11 +44,11 @@ export default function PTTreinosPage() {
 
       {/* Stats strip */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+        <div className="bg-white rounded-xl led-gold px-4 py-3 text-center">
           <p className="text-2xl font-bold text-gray-900">{comPlano}</p>
           <p className="text-[11px] text-gray-400 mt-0.5">Com plano de treino</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+        <div className="bg-white rounded-xl led-gold px-4 py-3 text-center">
           <p className="text-2xl font-bold text-gray-900">{total - comPlano}</p>
           <p className="text-[11px] text-gray-400 mt-0.5">Sem plano ainda</p>
         </div>
@@ -70,7 +70,7 @@ export default function PTTreinosPage() {
             >
               <Link
                 href={`/pt/treinos/${a.id}`}
-                className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 px-4 py-3.5 hover:border-gray-200 hover:shadow-sm transition-all group"
+                className="flex items-center gap-4 bg-white rounded-xl led-gold px-4 py-3.5 hover:shadow-sm transition-all group"
               >
                 {/* Avatar */}
                 <div
@@ -109,7 +109,7 @@ export default function PTTreinosPage() {
 
       {/* Empty state */}
       {!loading && alunos.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-xl led-gold">
           <Dumbbell className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-400 text-sm">Nenhum aluno associado</p>
         </div>

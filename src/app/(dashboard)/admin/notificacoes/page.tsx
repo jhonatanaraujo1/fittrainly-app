@@ -55,8 +55,8 @@ function NotificationCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className={[
-        'relative bg-white rounded-xl border p-5 flex flex-col gap-3 transition-opacity duration-300',
-        config.enabled ? 'border-gray-100 shadow-sm' : 'border-gray-100 opacity-60',
+        'relative bg-white rounded-xl p-5 flex flex-col gap-3 transition-opacity duration-300',
+        config.enabled ? 'led-gold' : 'led-gold opacity-60',
       ].join(' ')}
     >
       {/* Toggle — top right */}

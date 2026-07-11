@@ -28,7 +28,7 @@ function Row({ label, value }: { label: string; value?: string | number | boolea
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-white rounded-xl led-gold p-5">
       <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em] mb-3">{title}</p>
       {children}
     </div>

@@ -515,7 +515,7 @@ export default function AlunosPage() {
           { label: 'Ativos',          value: stats.ativos,   color: 'text-emerald-600' },
           { label: 'Inativos / Susp', value: stats.inativos, color: 'text-amber-600' },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4 text-center">
+          <div key={s.label} className="bg-white rounded-xl led-gold p-3 sm:p-4 text-center">
             <p className={`text-xl sm:text-2xl font-black ${s.color}`}>{s.value}</p>
             <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 leading-tight">{s.label}</p>
           </div>
@@ -571,7 +571,7 @@ export default function AlunosPage() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 rounded-xl" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-20 bg-white rounded-xl led-gold">
           <UserX className="w-12 h-12 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-600 font-semibold">
             {search || statusFilter !== 'todos' || ptFilter !== 'todos' ? 'Nenhum aluno encontrado' : 'Ainda sem alunos registados'}
@@ -602,7 +602,7 @@ export default function AlunosPage() {
               >
                 <Link
                   href={`/admin/alunos/${aluno.id}`}
-                  className="block bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:border-gray-300 hover:shadow-md transition-all group"
+                  className="block bg-white rounded-xl led-gold p-5 hover:shadow-md transition-all group"
                 >
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`w-10 h-10 rounded-full ${avatarColor(aluno.name)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>

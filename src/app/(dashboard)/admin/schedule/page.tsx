@@ -214,7 +214,7 @@ export default function AdminSchedulePage() {
           { label: 'Confirmações', value: totalConfirmed },
           { label: 'PTs ativos', value: activePts.length },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
+          <div key={label} className="bg-white rounded-xl led-gold px-3 py-3 text-center">
             <p className="text-xl sm:text-2xl font-black text-gray-900">{value}</p>
             <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 leading-tight">{label}</p>
           </div>
@@ -238,12 +238,12 @@ export default function AdminSchedulePage() {
       {isLoading ? (
         <Skeleton className="h-96 rounded-xl" />
       ) : schedule.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100 text-gray-400 text-sm">
+        <div className="text-center py-16 bg-white rounded-xl led-gold text-gray-400 text-sm">
           Sem slots definidos para esta semana
         </div>
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          className="bg-white rounded-xl led-gold overflow-x-auto">
           <div className="min-w-[560px]">
             <table className="w-full text-xs border-collapse">
               <thead>

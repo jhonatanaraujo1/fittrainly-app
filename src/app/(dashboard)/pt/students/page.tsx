@@ -157,7 +157,7 @@ export default function PTStudentsPage() {
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
         </div>
       ) : students.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-2xl led-gold">
           <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-600 font-semibold">Ainda sem alunos</p>
           <p className="text-sm text-gray-400 mb-4">Adiciona o teu primeiro aluno agora</p>
@@ -178,7 +178,7 @@ export default function PTStudentsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: i * 0.04 }}
               onClick={() => router.push(`/pt/students/${s.id}`)}
-              className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer hover:border-gray-200 hover:shadow-md transition-all"
+              className="bg-white rounded-xl p-5 led-gold flex flex-col gap-3 cursor-pointer hover:shadow-md transition-all"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full ${avatarColor(s.name)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>

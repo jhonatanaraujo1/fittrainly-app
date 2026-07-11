@@ -47,7 +47,7 @@ function TierMonthlySummary({ ptList, month }: { ptList: { ptId: string; ptName:
   })
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl led-gold overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[520px]">
           <thead>
@@ -254,7 +254,7 @@ export default function BillingPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto"
+        className="bg-white rounded-xl led-gold overflow-x-auto"
       >
         {isLoading ? (
           <div className="p-5 space-y-3">

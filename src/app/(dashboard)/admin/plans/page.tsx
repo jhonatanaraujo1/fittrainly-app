@@ -119,7 +119,7 @@ export default function PlansPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.05 }}
-                className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3"
+                className="bg-white rounded-xl p-5 led-gold flex flex-col gap-3"
               >
                 <div className="flex items-start justify-between">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${planTypeBadge(plan.type)} border`}>
@@ -153,7 +153,7 @@ export default function PlansPage() {
       {/* Cobrança por hora progressiva (TIERED_HOURLY) — antes numa tela
           Configurações à parte, agora aqui dentro de Planos de Aluguel. */}
       {!isLoading && tieredConfig && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-5 led-gold">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-violet-50 text-violet-600 border border-violet-100 flex-shrink-0">
               <Clock className="w-4 h-4" />

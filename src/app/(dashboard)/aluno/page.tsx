@@ -194,14 +194,14 @@ function AgendaSection() {
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
       ) : (view === 'agenda' ? slots.length === 0 : sortedDays.length === 0) ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-16 bg-white rounded-xl led-gold">
           <p className="text-gray-500 text-sm font-semibold">Sem sessões {weekOffset < 0 ? 'nesta semana' : 'disponíveis'}</p>
           <p className="text-gray-300 text-xs mt-1">
             {weekOffset < 0 ? 'Nenhum registo para esta semana' : `${myPt?.name} ainda não tem horários para esta semana`}
           </p>
         </div>
       ) : view === 'agenda' ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl led-gold overflow-hidden">
           <div className="overflow-x-auto">
             <div className="min-w-[560px] p-3">
               {/* Day headers */}
@@ -323,7 +323,7 @@ function AgendaSection() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: di * 0.05 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+                className="bg-white rounded-xl led-gold overflow-hidden"
               >
                 <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                   <p className="text-xs font-black text-gray-700 capitalize">{dayLabel}</p>
@@ -517,7 +517,7 @@ export default function AlunoDashboardPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+          className="bg-white rounded-xl led-gold overflow-hidden"
         >
           <h2 className="text-sm font-semibold text-gray-900 px-5 py-4 border-b border-gray-50">Últimas Sessões</h2>
           <div className="divide-y divide-gray-50">

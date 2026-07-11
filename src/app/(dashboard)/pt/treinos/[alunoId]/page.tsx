@@ -394,7 +394,7 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 8 }}
                       transition={{ delay: i * 0.03 }}
-                      className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-start gap-3 group"
+                      className="bg-white rounded-xl led-gold px-4 py-3 flex items-start gap-3 group"
                     >
                       <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-400 bg-gray-50 border border-gray-100">
                         {i + 1}
@@ -444,7 +444,7 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
           ) : (
             // Novo plano sem exercícios ainda
             <div className="space-y-3">
-              <div className="bg-white rounded-xl border border-gray-100 p-5 text-center">
+              <div className="bg-white rounded-xl led-gold p-5 text-center">
                 <Dumbbell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
                 <p className="text-sm font-medium text-gray-700">{activeLabel} ainda não tem exercícios</p>
                 <p className="text-xs text-gray-400 mt-1">Adiciona o primeiro exercício abaixo</p>

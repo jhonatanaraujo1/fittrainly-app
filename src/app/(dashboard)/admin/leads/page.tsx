@@ -477,7 +477,7 @@ function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert }: {
       layout
       initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.18 }}
-      className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 relative"
+      className="bg-white rounded-xl led-gold p-4 flex flex-col gap-3 relative"
     >
       {/* Staleness stripe */}
       {staleness.level && (
@@ -1022,8 +1022,8 @@ export default function LeadsPage() {
           { label: 'Inscritos mês',   value: inscritoThisMonthCount,     icon: null },
           { label: 'Follow-ups',      value: followUpsHoje,              icon: AlertCircle, urgent: followUpsHoje > 0 },
         ].map(({ label, value, urgent }) => (
-          <div key={label} className={`bg-white rounded-xl border shadow-sm px-3 py-3 flex flex-col gap-0.5 ${
-            urgent && value > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-100'
+          <div key={label} className={`bg-white rounded-xl px-3 py-3 flex flex-col gap-0.5 ${
+            urgent && value > 0 ? 'border border-amber-200 bg-amber-50 shadow-sm' : 'led-gold'
           }`}>
             <p className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide leading-tight ${
               urgent && value > 0 ? 'text-amber-600' : 'text-gray-400'
