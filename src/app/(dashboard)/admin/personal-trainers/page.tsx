@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Users, Loader2, AlertTriangle, CheckCircle2, Lock, Eye, EyeOff, Shield, ChevronRight } from 'lucide-react'
+import { Plus, Users, Loader2, AlertTriangle, CheckCircle2, Lock, Shield, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,7 @@ interface NovoPTSheetProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   plans: RentalPlan[]
-  onCreate: (data: { name: string; email: string; password: string; phone: string; specialty: string; bio: string; planId: string; teefNumber: string; teefValidUntil: string; insuranceValidUntil: string }) => void
+  onCreate: (data: { name: string; email: string; phone: string; specialty: string; bio: string; planId: string; teefNumber: string; teefValidUntil: string; insuranceValidUntil: string }) => void
   isPending: boolean
 }
 
@@ -43,8 +43,7 @@ const SPECIALTIES = [
 
 function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTSheetProps) {
   const [step, setStep] = useState(1)
-  const [showPass, setShowPass] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }))
@@ -54,25 +53,25 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
     name: touched.name && !form.name ? 'Nome obrigatório' : '',
     email: touched.email && !form.email ? 'Email obrigatório'
       : touched.email && form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) ? 'Email inválido' : '',
-    password: touched.password && !form.password ? 'Password obrigatória'
-      : touched.password && form.password && form.password.length < 6 ? 'Mínimo 6 caracteres' : '',
   }
 
   const step1Valid = form.name && form.email && !errors.name && !errors.email
-  const step2Valid = form.password && !errors.password
+  // Passo 2 só tem campos opcionais (plano, TEEF, bio) — a password é gerada
+  // no servidor e enviada por email, portanto não há campo obrigatório aqui.
+  const step2Valid = true
 
   function handleClose() {
     onOpenChange(false)
     setTimeout(() => {
       setStep(1)
-      setForm({ name: '', email: '', password: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
+      setForm({ name: '', email: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
       setTouched({})
     }, 300)
   }
 
   function handleSubmit() {
-    setTouched({ name: true, email: true, password: true })
-    if (!step2Valid) return
+    setTouched({ name: true, email: true })
+    if (!step1Valid) return
     onCreate(form)
     handleClose()
   }
@@ -196,49 +195,20 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-                  <p className="text-[11px] text-emerald-700 font-semibold">Passo 2 de 2 — Credenciais de Acesso e Plano</p>
+                  <p className="text-[11px] text-emerald-700 font-semibold">Passo 2 de 2 — Plano e Credenciais</p>
                 </div>
 
-                {/* Security notice */}
+                {/* Password auto-gerada — notice */}
                 <div className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-100 bg-gray-50">
                   <Shield className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[11px] font-bold text-gray-600">Armazenamento seguro</p>
+                    <p className="text-[11px] font-bold text-gray-600">Password gerada automaticamente</p>
                     <p className="text-[10px] text-gray-400 leading-relaxed mt-0.5">
-                      Password encriptada com bcrypt (cost factor 12) antes de ser armazenada.
-                      Nunca armazenamos passwords em texto simples.
+                      O sistema cria uma password segura e envia-a por email ao PT. Ela também é
+                      mostrada aqui uma única vez, para poderes repassar. Encriptada com bcrypt —
+                      nunca guardamos passwords em texto simples.
                     </p>
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Password de acesso *</Label>
-                  <div className="relative">
-                    <Input
-                      type={showPass ? 'text' : 'password'}
-                      placeholder="Mínimo 6 caracteres"
-                      value={form.password}
-                      onChange={e => set('password', e.target.value)}
-                      onBlur={() => touch('password')}
-                      className={`h-11 pr-10 ${errors.password ? 'border-red-300 bg-red-50/30' : form.password && !errors.password ? 'border-emerald-300' : ''}`}
-                    />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-700" tabIndex={-1}>
-                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {errors.password
-                    ? <p className="text-xs text-red-500">{errors.password}</p>
-                    : form.password && (
-                      <div className="flex items-center gap-1">
-                        <div className={`h-1 flex-1 rounded-full transition-colors ${form.password.length >= 6 ? 'bg-emerald-400' : 'bg-red-300'}`} />
-                        <div className={`h-1 flex-1 rounded-full transition-colors ${form.password.length >= 8 ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-                        <div className={`h-1 flex-1 rounded-full transition-colors ${form.password.length >= 12 ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-                        <span className="text-[10px] text-gray-400 ml-1">
-                          {form.password.length >= 12 ? 'Forte' : form.password.length >= 8 ? 'Boa' : 'Fraca'}
-                        </span>
-                      </div>
-                    )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -400,8 +370,8 @@ export default function PersonalTrainersPage() {
       setOpen(false)
       // A senha é GERADA no backend e enviada por email ao PT. O backend
       // devolve essa senha inicial (temporaryPassword) só na criação, para o
-      // admin poder repassar. Em modo mock, cai na senha do próprio mock.
-      const tempPw = (created as { temporaryPassword?: string }).temporaryPassword ?? variables.password
+      // admin poder repassar. O mock também gera e devolve temporaryPassword.
+      const tempPw = (created as { temporaryPassword?: string }).temporaryPassword ?? ''
       setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: tempPw, emailSent: true })
     },
     onError: () => toast.error('Erro ao criar Personal Trainer. Verifica os dados e tente novamente.'),

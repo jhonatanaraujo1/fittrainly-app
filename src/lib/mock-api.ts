@@ -283,12 +283,15 @@ export const ptApi = {
     return { ...pt, plan: p ? { id: p.id, name: p.name, type: p.type } : undefined }
   },
 
+  // Password é GERADA aqui (não vem do form) e devolvida como temporaryPassword,
+  // espelhando o backend real. O PT recebe por email; o admin vê só esta 1ª vez.
   create: async (data: {
-    name: string; email: string; password: string; phone?: string; specialty?: string; bio?: string; planId?: string
+    name: string; email: string; phone?: string; specialty?: string; bio?: string; planId?: string
     teefNumber?: string; teefValidUntil?: string; insuranceValidUntil?: string
   }) => {
     await delay(500)
-    const newUser = { id: 'u-' + uid(), email: data.email, password: data.password, name: data.name, role: 'PERSONAL_TRAINER' as const }
+    const tempPassword = generateTempPassword()
+    const newUser = { id: 'u-' + uid(), email: data.email, password: tempPassword, name: data.name, role: 'PERSONAL_TRAINER' as const }
     const newPT = {
       id: 'pt-' + uid(), userId: newUser.id, name: data.name, email: data.email, phone: data.phone, specialty: data.specialty, bio: data.bio,
       active: true, inadimplente: false, planId: data.planId, alunoCount: 0, hoursThisMonth: 0, billingCycleAnchorDay: new Date().getDate(),
@@ -298,7 +301,8 @@ export const ptApi = {
     }
     db.users.push(newUser)
     db.pts.push(newPT)
-    return { ...newPT, plan: getPlanById(data.planId) ?? null }
+    await sendCredentialsEmail({ to: data.email, name: data.name, password: tempPassword, isReset: false })
+    return { ...newPT, plan: getPlanById(data.planId) ?? null, temporaryPassword: tempPassword }
   },
 
   update: async (id: string, data: object) => {

@@ -304,8 +304,9 @@ export const ptApi = {
     apiFetch<Array<Record<string, unknown>>>('/api/v1/personal-trainers')
       .then(list => list.map(pt => ({ sessionsThisMonth: pt.hoursThisMonth ?? 0, alunoCount: pt.studentCount ?? 0, ...pt }))),
   me: async () => apiFetch('/api/v1/personal-trainers/me'),
-  create: async (data: { name: string; email: string; password: string; phone?: string; specialty?: string; bio?: string; planId?: string }) =>
-    apiFetch('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(data) }),
+  // Password é gerada no servidor; o backend devolve temporaryPassword na criação.
+  create: async (data: { name: string; email: string; phone?: string; specialty?: string; bio?: string; planId?: string; teefNumber?: string; teefValidUntil?: string; insuranceValidUntil?: string }) =>
+    apiFetch<{ temporaryPassword?: string } & Record<string, unknown>>('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(data) }),
   update: async (id: string, data: object) =>
     apiFetch(`/api/v1/personal-trainers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   // Confirmado live 07/jul: POST /personal-trainers/{id}/reset-password
