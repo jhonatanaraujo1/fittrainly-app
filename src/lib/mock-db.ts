@@ -36,6 +36,8 @@ export interface MockStudioScheduleDay {
   dayOfWeek: number // 0=Sun .. 6=Sat
   openTime: string | null  // "HH:mm", null = closed
   closeTime: string | null
+  lunchStart?: string | null // pausa de almoço opcional
+  lunchEnd?: string | null
 }
 
 export const studioSchedule: MockStudioScheduleDay[] = [
@@ -87,8 +89,13 @@ export function getSlotTimesForDay(date: Date): string[] {
   if (!day || !day.openTime || !day.closeTime) return []
 
   const times: string[] = []
-  // Step by the cadence (60), include a start only if a full class fits.
-  for (let t = timeToMinutes(day.openTime); t + mockStudioConfig.classDurationMinutes <= timeToMinutes(day.closeTime); t += SLOT_STEP) {
+  const cls = mockStudioConfig.classDurationMinutes
+  const ls = day.lunchStart ? timeToMinutes(day.lunchStart) : null
+  const le = day.lunchEnd ? timeToMinutes(day.lunchEnd) : null
+  // Step by the cadence, include a start only if a full class fits AND the
+  // slot doesn't touch the lunch break.
+  for (let t = timeToMinutes(day.openTime); t + cls <= timeToMinutes(day.closeTime); t += SLOT_STEP) {
+    if (ls !== null && le !== null && t < le && ls < t + cls) continue // cai no almoço
     times.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`)
   }
   return times

@@ -144,10 +144,13 @@ function addMinutesToTime(time: string, mins: number): string {
 // Slot start times within [open, close): step by the studio cadence
 // (slotStep, locked at 60), including a start only if a full class fits
 // before close. Matches mock-db.getSlotTimesForDay so cell keys line up.
-function slotTimesForHours(open: string | null, close: string | null, slotStep: number, classDuration: number): string[] {
+function slotTimesForHours(open: string | null, close: string | null, slotStep: number, classDuration: number, lunchStart: string | null = null, lunchEnd: string | null = null): string[] {
   if (!open || !close) return []
+  const ls = lunchStart ? timeToMinutes(lunchStart) : null
+  const le = lunchEnd ? timeToMinutes(lunchEnd) : null
   const out: string[] = []
   for (let t = timeToMinutes(open); t + classDuration <= timeToMinutes(close); t += slotStep) {
+    if (ls !== null && le !== null && t < le && ls < t + classDuration) continue // cai na pausa de almoço
     out.push(minutesToTime(t))
   }
   return out
@@ -625,7 +628,7 @@ export const adminScheduleApi = {
       apiFetch<RealAvailability[]>(
         `/api/v1/admin/schedule?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
       ).catch(() => [] as RealAvailability[]),
-      studioScheduleApi.getWeeklyHours().catch(() => [] as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null }>),
+      studioScheduleApi.getWeeklyHours().catch(() => [] as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; lunchStart: string | null; lunchEnd: string | null }>),
       studioScheduleApi.listBlocks(startDate, endDate).catch(() => [] as Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>),
       fetchStudioConfig(),
     ])
@@ -645,8 +648,10 @@ export const adminScheduleApi = {
     // "HH:mm:ss"). Falls back to the shared defaults for any day the tenant
     // hasn't configured — so a brand-new studio still gets a full grid.
     const hoursByDow = new Map<number, [string | null, string | null]>()
+    const lunchByDow = new Map<number, [string | null, string | null]>()
     for (const w of weekly) {
       hoursByDow.set(w.dayOfWeek, [w.openTime ? w.openTime.slice(0, 5) : null, w.closeTime ? w.closeTime.slice(0, 5) : null])
+      lunchByDow.set(w.dayOfWeek, [w.lunchStart ? w.lunchStart.slice(0, 5) : null, w.lunchEnd ? w.lunchEnd.slice(0, 5) : null])
     }
 
     // Materialize the full week grid: one cell per studio-hour slot per day,
@@ -661,7 +666,8 @@ export const adminScheduleApi = {
     for (const date of eachDateStr(startDate, endDate)) {
       const dow = dowOf(date)
       const hours = hoursByDow.get(dow) ?? DEFAULT_STUDIO_HOURS[dow] ?? [null, null]
-      for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes)) {
+      const lunch = lunchByDow.get(dow) ?? [null, null]
+      for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes, lunch[0], lunch[1])) {
         const group = byCell.get(`${date}-${time}`) ?? []
         const first = group[0]
         const blk = slotBlock(blocks, date, time, config.classDurationMinutes)
@@ -711,14 +717,14 @@ export const adminScheduleApi = {
 // Confirmed live 07/jul against StudioScheduleController — all ADMIN-only.
 export const studioScheduleApi = {
   getWeeklyHours: async () =>
-    apiFetch<Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null }>>(
+    apiFetch<Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; lunchStart: string | null; lunchEnd: string | null }>>(
       '/api/v1/admin/studio-schedule/weekly-hours',
     ),
 
-  updateWeeklyHours: async (dayOfWeek: number, openTime: string | null, closeTime: string | null) =>
+  updateWeeklyHours: async (dayOfWeek: number, openTime: string | null, closeTime: string | null, lunchStart: string | null = null, lunchEnd: string | null = null) =>
     apiFetch(`/api/v1/admin/studio-schedule/weekly-hours/${dayOfWeek}`, {
       method: 'PATCH',
-      body: JSON.stringify({ openTime, closeTime }),
+      body: JSON.stringify({ openTime, closeTime, lunchStart, lunchEnd }),
     }),
 
   listBlocks: async (startDate: string, endDate: string) =>

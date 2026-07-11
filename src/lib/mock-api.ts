@@ -670,12 +670,14 @@ export const adminScheduleApi = {
 export const studioScheduleApi = {
   getWeeklyHours: async () => { await delay(150); return [...studioSchedule] },
 
-  updateWeeklyHours: async (dayOfWeek: number, openTime: string | null, closeTime: string | null) => {
+  updateWeeklyHours: async (dayOfWeek: number, openTime: string | null, closeTime: string | null, lunchStart: string | null = null, lunchEnd: string | null = null) => {
     await delay(250)
     const day = studioSchedule.find(d => d.dayOfWeek === dayOfWeek)
     if (!day) throw new Error('Dia inválido')
     day.openTime = openTime
     day.closeTime = closeTime
+    day.lunchStart = openTime === null ? null : lunchStart
+    day.lunchEnd = openTime === null ? null : lunchEnd
     return day
   },
 
