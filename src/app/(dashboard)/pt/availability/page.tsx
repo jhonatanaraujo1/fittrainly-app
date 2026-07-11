@@ -48,8 +48,8 @@ function SlotCell({
       label = `${slot.myBookings} aluno${slot.myBookings > 1 ? 's' : ''}`
       sublabel = `${slot.studioCount}/${slot.studioMax} estúdio`
     } else if (studioFull) {
-      bg = 'bg-[#1F3864] border-[#162c52] text-white/80 cursor-pointer'
-      dot = 'bg-blue-300'
+      bg = 'bg-gray-900 border-black text-white/80 cursor-pointer'
+      dot = 'bg-gray-500'
       label = 'Lotado'
       sublabel = `${slot.studioCount}/${slot.studioMax}`
     } else {
@@ -280,7 +280,7 @@ export default function PTAvailabilityPage() {
           { color: 'bg-gray-900', label: 'Bloqueado / não liberado' },
           { color: 'bg-emerald-500', label: 'Ativo · sem reservas' },
           { color: 'bg-blue-600', label: 'Com os meus alunos' },
-          { color: 'bg-[#1F3864]', label: 'Estúdio lotado' },
+          { color: 'bg-gray-900', label: 'Estúdio lotado' },
         ].map(({ color, label }) => (
           <span key={label} className="flex items-center gap-1.5">
             <span className={cn('w-2.5 h-2.5 rounded-sm inline-block flex-shrink-0', color)} />
@@ -364,7 +364,7 @@ export default function PTAvailabilityPage() {
       )}
 
       {/* Info */}
-      <div className="bg-[#1F3864]/5 border border-[#1F3864]/10 rounded-xl px-4 py-3 text-xs text-[#1F3864]/70 leading-relaxed">
+      <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-xl px-4 py-3 text-xs text-[#7D6229] leading-relaxed">
         Slots com 🔒 têm alunos confirmados — cancela as reservas antes de remover. O estúdio tem <strong>4 vagas simultâneas</strong> partilhadas entre todos os PTs.
       </div>
 

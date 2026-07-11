@@ -183,11 +183,11 @@ export default function NotificacoesPage() {
     <div className="p-5 lg:p-7 space-y-6 max-w-6xl mx-auto">
 
       {/* Automation banner */}
-      <div className="bg-[#1F3864]/5 border border-[#1F3864]/10 rounded-xl px-4 py-3 flex items-start gap-3">
-        <Zap className="w-4 h-4 text-[#1F3864]/60 mt-0.5 flex-shrink-0" />
+      <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-xl px-4 py-3 flex items-start gap-3">
+        <Zap className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-semibold text-[#1F3864]">Motor de automação configurado</p>
-          <p className="text-xs text-[#1F3864]/60 mt-0.5 leading-relaxed">
+          <p className="text-sm font-semibold text-[#7D6229]">Motor de automação configurado</p>
+          <p className="text-xs text-[#7D6229]/80 mt-0.5 leading-relaxed">
             As notificações activadas são enviadas automaticamente pelo sistema com base em eventos do estúdio —
             reservas, avaliações, aniversários e alertas de retenção. Configure aqui o que é disparado.
           </p>

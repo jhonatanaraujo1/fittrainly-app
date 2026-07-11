@@ -17,7 +17,7 @@ function AuthLoadingScreen() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-[#F8F9FA]">
       <div className="flex flex-col items-center gap-3">
-        <Dumbbell className="w-8 h-8 text-[#1F3864] animate-pulse" />
+        <Dumbbell className="w-8 h-8 text-[#C9A84C] animate-pulse" />
         <p className="text-sm text-gray-400">A carregar…</p>
       </div>
     </div>

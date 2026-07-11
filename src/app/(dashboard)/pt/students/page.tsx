@@ -58,7 +58,7 @@ function NewStudentDialog({ onClose, onCreated }: { onClose: () => void; onCreat
               value={form.name}
               onChange={set('name')}
               placeholder="Nome completo"
-              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 focus:border-[#1F3864] transition-colors"
+              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#111111]/20 focus:border-[#111111] transition-colors"
             />
           </div>
 
@@ -69,7 +69,7 @@ function NewStudentDialog({ onClose, onCreated }: { onClose: () => void; onCreat
               value={form.email}
               onChange={set('email')}
               placeholder="email@exemplo.com"
-              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 focus:border-[#1F3864] transition-colors"
+              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#111111]/20 focus:border-[#111111] transition-colors"
             />
           </div>
 
@@ -80,7 +80,7 @@ function NewStudentDialog({ onClose, onCreated }: { onClose: () => void; onCreat
               value={form.phone}
               onChange={set('phone')}
               placeholder="+351 9XX XXX XXX"
-              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 focus:border-[#1F3864] transition-colors"
+              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#111111]/20 focus:border-[#111111] transition-colors"
             />
           </div>
 
@@ -90,13 +90,13 @@ function NewStudentDialog({ onClose, onCreated }: { onClose: () => void; onCreat
               value={form.objetivo}
               onChange={set('objetivo')}
               placeholder="Ex: Perda de peso, hipertrofia…"
-              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 focus:border-[#1F3864] transition-colors"
+              className="w-full h-11 rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#111111]/20 focus:border-[#111111] transition-colors"
             />
           </div>
 
           {error && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
 
-          <div className="bg-[#1F3864]/5 rounded-xl p-3 text-xs text-[#1F3864]/70">
+          <div className="bg-[#C9A84C]/10 rounded-xl p-3 text-xs text-[#7D6229]">
             Uma password de acesso é gerada automaticamente e enviada ao aluno.
           </div>
         </div>
@@ -108,7 +108,7 @@ function NewStudentDialog({ onClose, onCreated }: { onClose: () => void; onCreat
           <button
             onClick={() => create.mutate()}
             disabled={create.isPending || !form.name.trim() || !form.email.trim()}
-            className="flex-1 h-11 rounded-xl bg-[#1F3864] text-white text-sm font-semibold hover:bg-[#162c52] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 h-11 rounded-xl bg-[#111111] text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {create.isPending ? (
               <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>
@@ -145,7 +145,7 @@ export default function PTStudentsPage() {
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#1F3864] text-white text-sm font-semibold rounded-xl hover:bg-[#162c52] transition-colors shadow-sm min-h-[44px]"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#111111] text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors shadow-sm min-h-[44px]"
         >
           <UserPlus className="w-4 h-4" />
           Novo Aluno
@@ -163,7 +163,7 @@ export default function PTStudentsPage() {
           <p className="text-sm text-gray-400 mb-4">Adiciona o teu primeiro aluno agora</p>
           <button
             onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1F3864] text-white text-sm font-semibold rounded-xl hover:bg-[#162c52] transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#111111] text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors min-h-[44px]"
           >
             <UserPlus className="w-4 h-4" />
             Adicionar Aluno
@@ -209,7 +209,7 @@ export default function PTStudentsPage() {
 
               <button
                 onClick={(e) => { e.stopPropagation(); router.push(`/pt/treinos/${s.id}`) }}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#1F3864] hover:text-white text-gray-600 text-xs font-semibold transition-colors group min-h-[40px]"
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-[#111111] hover:text-white text-gray-600 text-xs font-semibold transition-colors group min-h-[40px]"
               >
                 <span className="flex items-center gap-1.5">
                   <Dumbbell className="w-3.5 h-3.5 flex-shrink-0" />

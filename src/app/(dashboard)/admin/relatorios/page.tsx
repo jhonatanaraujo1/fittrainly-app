@@ -30,7 +30,7 @@ function weekLabel(date: Date) {
   return format(startOfWeek(date, { weekStartsOn: 1 }), 'd MMM', { locale: pt })
 }
 
-const PT_COLORS = ['#1F3864', '#2E75B6', '#C9A84C', '#375623', '#e11d48']
+const PT_COLORS = ['#111111', '#2E75B6', '#C9A84C', '#375623', '#e11d48']
 
 type Tab = 'semana' | 'mes' | 'comparativo'
 

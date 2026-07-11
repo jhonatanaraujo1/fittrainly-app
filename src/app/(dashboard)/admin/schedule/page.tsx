@@ -332,7 +332,7 @@ export default function AdminSchedulePage() {
                               className={cn(
                                 'min-h-[48px] rounded-md border p-1 flex flex-col gap-1 transition-colors',
                                 slot.releases.length === 0 ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
-                                studioFull && 'bg-[#1F3864]/5 border-[#1F3864]/20',
+                                studioFull && 'bg-gray-900/5 border-gray-900/20',
                                 blockMode && 'cursor-pointer hover:bg-red-50 hover:border-red-200',
                               )}>
                               {/* PT release chips */}

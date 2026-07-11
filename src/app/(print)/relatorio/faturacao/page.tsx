@@ -85,7 +85,7 @@ export default function RelatorioFaturacaoPage() {
                   <div className="flex items-center gap-2.5">
                     <div
                       className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                      style={{ background: '#1F3864', color: '#C9A84C' }}
+                      style={{ background: '#111111', color: '#C9A84C' }}
                     >
                       {entry.pt.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>

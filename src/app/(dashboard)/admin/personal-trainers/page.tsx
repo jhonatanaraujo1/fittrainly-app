@@ -595,10 +595,10 @@ export default function PersonalTrainersPage() {
                   className="text-center group hover:bg-gray-50 rounded-lg transition-colors py-1 -mx-1 px-1"
                   title="Ver alunos"
                 >
-                  <p className="text-base font-black text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <p className="text-base font-black text-gray-900 group-hover:text-[#C9A84C] transition-colors">
                     {pt.alunoCount}
                   </p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5 group-hover:text-blue-400 transition-colors">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5 group-hover:text-[#C9A84C]/70 transition-colors">
                     Alunos ↗
                   </p>
                 </Link>

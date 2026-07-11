@@ -86,7 +86,7 @@ export function TierEditor({ planId }: { planId: string }) {
       ))}
       <div className="flex gap-2">
         <Button type="button" variant="outline" size="sm" onClick={addRow}>+ Faixa</Button>
-        <Button type="button" size="sm" className="bg-[#1F3864] hover:bg-[#162c52] text-white" disabled={save.isPending} onClick={() => save.mutate()}>
+        <Button type="button" size="sm" className="bg-[#111111] hover:bg-gray-800 text-white" disabled={save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Guardar faixas'}
         </Button>
       </div>

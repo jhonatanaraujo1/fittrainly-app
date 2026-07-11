@@ -222,7 +222,7 @@ export function PTAgendaViewer() {
                         className={cn(
                           'h-8 rounded-md flex items-center justify-center px-1',
                           slot.myBookings > 0
-                            ? 'bg-[#1F3864] text-white cursor-pointer hover:opacity-80 transition-opacity'
+                            ? 'bg-blue-600 text-white cursor-pointer hover:opacity-80 transition-opacity'
                             : 'bg-emerald-100 text-emerald-700',
                         )}
                       >
@@ -244,7 +244,7 @@ export function PTAgendaViewer() {
             {/* Legend */}
             <div className="flex gap-4 mt-2 px-1">
               {[
-                { color: 'bg-[#1F3864]', label: 'Com aluno' },
+                { color: 'bg-blue-600', label: 'Com aluno' },
                 { color: 'bg-emerald-100', label: 'Livre' },
               ].map(({ color, label }) => (
                 <span key={label} className="flex items-center gap-1 text-[9px] text-gray-400">

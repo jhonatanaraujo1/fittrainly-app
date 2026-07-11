@@ -96,7 +96,7 @@ export default function RelatorioHorasPage() {
                 <td className="py-2 px-2">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black flex-shrink-0"
-                      style={{ background: '#1F3864' }}>
+                      style={{ background: '#111111' }}>
                       {getInitials(pt.name)}
                     </div>
                     <span className="font-semibold text-gray-900">{pt.name}</span>

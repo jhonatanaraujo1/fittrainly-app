@@ -99,7 +99,7 @@ export default function PlansPage() {
         </div>
         <Button
           onClick={() => setCreateOpen(true)}
-          className="bg-[#1F3864] hover:bg-[#162c52] text-white gap-2 h-9 text-sm"
+          className="bg-[#111111] hover:bg-gray-800 text-white gap-2 h-9 text-sm"
         >
           <Plus className="w-4 h-4" /> Novo Plano
         </Button>
@@ -134,7 +134,7 @@ export default function PlansPage() {
                 </div>
                 <div>
                   <p className="font-bold text-gray-900">{plan.name}</p>
-                  <p className="text-2xl font-bold text-[#1F3864] mt-1">{planPrice(plan)}</p>
+                  <p className="text-2xl font-bold text-[#111111] mt-1">{planPrice(plan)}</p>
                   {plan.description && (
                     <p className="text-xs text-gray-400 mt-2 leading-relaxed">{plan.description}</p>
                   )}
@@ -212,7 +212,7 @@ export default function PlansPage() {
               <Label className="text-xs">Descrição</Label>
               <Input placeholder="Inclui acesso ilimitado..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             </div>
-            <Button type="submit" disabled={createPlan.isPending} className="w-full bg-[#1F3864] hover:bg-[#162c52] text-white h-9 text-sm">
+            <Button type="submit" disabled={createPlan.isPending} className="w-full bg-[#111111] hover:bg-gray-800 text-white h-9 text-sm">
               {createPlan.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Criar Plano'}
             </Button>
           </form>
@@ -233,7 +233,7 @@ export default function PlansPage() {
                 <Label className="text-xs">Descrição</Label>
                 <Input value={editPlan.description ?? ''} onChange={e => setEditPlan(p => p ? ({ ...p, description: e.target.value }) : null)} />
               </div>
-              <Button type="submit" disabled={updatePlan.isPending} className="w-full bg-[#1F3864] hover:bg-[#162c52] text-white h-9 text-sm">
+              <Button type="submit" disabled={updatePlan.isPending} className="w-full bg-[#111111] hover:bg-gray-800 text-white h-9 text-sm">
                 {updatePlan.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
               </Button>
             </form>

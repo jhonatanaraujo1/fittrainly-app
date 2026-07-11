@@ -26,9 +26,9 @@ const DEMO = [
     emoji: '💪',
     email: 'joao@fittrainly.com',
     password: 'demo123',
-    bg: '#1F3864',
+    bg: '#1F1F1F',
     color: '#ffffff',
-    accent: '#2E75B6',
+    accent: '#C9A84C',
   },
   {
     label: 'Aluno — Carlos',
@@ -405,7 +405,7 @@ export default function LoginPage() {
                     type="email"
                     autoComplete="email"
                     inputMode="email"
-                    placeholder="admin@mgstudio.com"
+                    placeholder="admin@fittrainly.com"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setContactHint(null) }}
                     onBlur={() => setTouched(t => ({ ...t, email: true }))}
