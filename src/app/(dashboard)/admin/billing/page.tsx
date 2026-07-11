@@ -218,9 +218,9 @@ export default function BillingPage() {
           <h1 className="text-xl font-black text-gray-900">Faturação</h1>
           <p className="text-sm text-gray-400 mt-0.5">Valores calculados por plano de aluguel</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Select value={selectedMonth} onValueChange={(v) => v && setSelectedMonth(v)}>
-            <SelectTrigger className="w-44 h-9 text-sm">
+            <SelectTrigger className="w-40 sm:w-44 h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -329,11 +329,11 @@ export default function BillingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="bg-[#1F3864] rounded-xl px-5 py-4 flex items-center justify-between"
+          className="led-gold bg-[#141414] rounded-xl px-5 py-4 flex items-center justify-between"
         >
           <span className="text-white/70 text-sm font-medium">Total do período</span>
           <div className="text-right">
-            <span className="text-white text-xl font-bold">{formatCurrency(total)}</span>
+            <span className="text-[#C9A84C] text-xl font-bold">{formatCurrency(total)}</span>
             <p className="text-white/50 text-xs mt-0.5">c/ IVA (23%): {formatCurrency(withIVA(total).total)}</p>
           </div>
         </motion.div>

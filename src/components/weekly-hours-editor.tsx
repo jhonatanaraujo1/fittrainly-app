@@ -83,7 +83,7 @@ export function WeeklyHoursEditor() {
         const isOpen = !!l.open && !!l.close
         return (
           <div key={dow} className="py-2.5">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-x-3 gap-y-2 flex-wrap">
               <span className="w-20 text-[13px] font-medium text-gray-700 flex-shrink-0">{label}</span>
               <Switch checked={isOpen} onCheckedChange={(v) => toggleOpen(dow, v)} aria-label={`${label} aberto`} />
               {isOpen ? (
@@ -101,8 +101,8 @@ export function WeeklyHoursEditor() {
               )}
             </div>
             {isOpen && (
-              <div className="flex items-center gap-1.5 mt-1.5 pl-[92px]">
-                <span className="text-[11px] text-gray-400 w-24 flex-shrink-0">Pausa almoço</span>
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mt-2 pl-0 sm:pl-[92px]">
+                <span className="text-[11px] text-gray-400 w-full sm:w-24 sm:flex-shrink-0">Pausa almoço</span>
                 <input type="time" value={l.lunchStart}
                   onChange={e => setLocal(p => ({ ...p, [dow]: { ...l, lunchStart: e.target.value } }))}
                   onBlur={e => commit(dow, { ...l, lunchStart: e.target.value })} className={inpSm} placeholder="--:--" />

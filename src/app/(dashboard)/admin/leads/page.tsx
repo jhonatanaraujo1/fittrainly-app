@@ -968,8 +968,8 @@ export default function LeadsPage() {
       </div>
 
       {/* Search + Period filter */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           <input
             type="text"
@@ -986,10 +986,11 @@ export default function LeadsPage() {
             </button>
           )}
         </div>
+        <div className="flex gap-2">
         <select
           value={periodFilter}
           onChange={e => setPeriodFilter(e.target.value)}
-          className="flex-shrink-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
+          className="flex-1 sm:flex-none min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
         >
           <option value="all">Todos os períodos</option>
           <option value="30d">Últimos 30 dias</option>
@@ -1004,12 +1005,13 @@ export default function LeadsPage() {
         <select
           value={monthFilter}
           onChange={e => setMonthFilter(e.target.value)}
-          className="flex-shrink-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
+          className="flex-1 sm:flex-none min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
           title="Filtrar por mês específico (combina com o ano escolhido ao lado)"
         >
           <option value="all">Todos os meses</option>
           {MONTH_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
+        </div>
       </div>
 
       {/* Quick stats */}
