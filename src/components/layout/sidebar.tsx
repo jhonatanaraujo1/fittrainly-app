@@ -13,6 +13,7 @@ import {
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { ChangePasswordDialog } from '@/components/change-password-dialog'
+import { ThemeToggle } from '@/components/theme-toggle'
 import type { UserRole } from '@/types'
 
 type NavLink = { href: string; label: string; icon: React.ElementType }
@@ -168,6 +169,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             <p className="text-white/35 text-[11px] truncate">{user.email}</p>
           </div>
         </div>
+        <ThemeToggle />
         <button
           onClick={() => setChangePasswordOpen(true)}
           className="w-full flex items-center gap-2.5 px-2 py-2.5 rounded-md text-white/40 hover:text-white hover:bg-white/[0.07] transition-all text-xs font-medium min-h-[44px]"

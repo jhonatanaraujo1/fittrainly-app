@@ -92,6 +92,60 @@
   --sidebar-ring: #C9A84C;
 }
 
+/* ── TEMA ESCURO ─────────────────────────────────────────────────────────
+   Valores dos tokens shadcn no escuro (preto+dourado). A sidebar já é preta
+   sempre, então não muda. */
+.dark {
+  --background: #0a0a0a;
+  --foreground: oklch(0.97 0 0);
+  --card: #141414;
+  --card-foreground: oklch(0.97 0 0);
+  --popover: #161616;
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: #C9A84C;
+  --primary-foreground: #111111;
+  --secondary: rgba(255,255,255,0.06);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: rgba(255,255,255,0.05);
+  --muted-foreground: rgba(255,255,255,0.45);
+  --accent: rgba(255,255,255,0.06);
+  --accent-foreground: oklch(0.97 0 0);
+  --border: rgba(255,255,255,0.08);
+  --input: rgba(255,255,255,0.14);
+  --ring: #C9A84C;
+  --chart-1: #C9A84C;
+  color-scheme: dark;
+}
+
+/* Retrofit: as telas usam utilities HARDCODED (bg-white, text-gray-*,
+   border-gray-*). Em vez de editar 25 páginas, mapeamos essas classes para
+   o tema escuro quando .dark está ativo. Assim a plataforma inteira vira
+   dark de uma vez, e o toggle volta pro claro removendo a classe. */
+.dark .bg-white { background-color: #141414 !important; }
+.dark .bg-gray-50 { background-color: #0f0f0f !important; }
+.dark .bg-gray-100 { background-color: rgba(255,255,255,0.05) !important; }
+.dark .bg-\[\#F8F9FA\] { background-color: #0a0a0a !important; }
+
+.dark .text-gray-900 { color: rgba(255,255,255,0.92) !important; }
+.dark .text-gray-800 { color: rgba(255,255,255,0.85) !important; }
+.dark .text-gray-700 { color: rgba(255,255,255,0.72) !important; }
+.dark .text-gray-600 { color: rgba(255,255,255,0.58) !important; }
+.dark .text-gray-500 { color: rgba(255,255,255,0.46) !important; }
+.dark .text-gray-400 { color: rgba(255,255,255,0.38) !important; }
+.dark .text-gray-300 { color: rgba(255,255,255,0.24) !important; }
+
+.dark .border-gray-50,
+.dark .border-gray-100,
+.dark .border-gray-200 { border-color: rgba(255,255,255,0.08) !important; }
+.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06) !important; }
+
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: rgba(255,255,255,0.04) !important; }
+
+/* Sombras somem no escuro (não fazem sentido sobre preto) */
+.dark .shadow-sm, .dark .shadow, .dark .shadow-md, .dark .shadow-lg { box-shadow: none !important; }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
