@@ -48,15 +48,18 @@ function SlotCell({
       label = `${slot.myBookings} aluno${slot.myBookings > 1 ? 's' : ''}`
       sublabel = `${slot.studioCount}/${slot.studioMax} estúdio`
     } else if (studioFull) {
+      // Estúdio cheio (4/4 no estúdio): cinza, "Cheio" + a ocupação.
       bg = 'bg-gray-900 border-black text-white/80 cursor-pointer'
       dot = 'bg-gray-500'
-      label = 'Lotado'
-      sublabel = `${slot.studioCount}/${slot.studioMax}`
+      label = `${slot.studioCount}/${slot.studioMax} · Cheio`
+      sublabel = 'estúdio lotado'
     } else {
+      // Livre: mostra SEMPRE a ocupação do estúdio (ex.: 0/4, 2/4) — 4 vagas
+      // partilhadas entre os PTs. Verde enquanto houver vaga.
       bg = 'bg-emerald-500 border-emerald-600 text-white cursor-pointer hover:bg-emerald-600'
       dot = 'bg-emerald-200'
-      label = slot.studioCount > 0 ? `${slot.studioCount}/${slot.studioMax}` : 'Livre'
-      sublabel = slot.studioCount > 0 ? 'no estúdio' : ''
+      label = `${slot.studioCount}/${slot.studioMax}`
+      sublabel = slot.studioCount > 0 ? `${slot.studioMax - slot.studioCount} livre${slot.studioMax - slot.studioCount > 1 ? 's' : ''}` : 'livre'
     }
   }
 

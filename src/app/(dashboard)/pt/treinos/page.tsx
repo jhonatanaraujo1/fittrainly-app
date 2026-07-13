@@ -5,10 +5,8 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Dumbbell, ChevronRight, CheckCircle2, Clock } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { workoutApi } from '@/lib/api'
+import { workoutApi, ptApi } from '@/lib/api'
 import { getInitials, avatarColor } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import { db } from '@/lib/mock-db'
 
 interface AlunoItem {
   id: string; name: string; email: string
@@ -17,17 +15,27 @@ interface AlunoItem {
 }
 
 export default function PTTreinosPage() {
-  const { user } = useAuthStore()
   const [alunos, setAlunos] = useState<AlunoItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
-    workoutApi.ptAlunos(pt.id).then(data => {
-      setAlunos(data as AlunoItem[])
-      setLoading(false)
-    })
-  }, [user])
+    let cancelled = false
+    ;(async () => {
+      try {
+        // Resolve o PT autenticado pela API (nunca pelo `db` mock, vazio em
+        // produção → `pt.id` de undefined crashava a página).
+        const pt = (await ptApi.me()) as { id: string }
+        const data = (await workoutApi.ptAlunos(pt.id)) as AlunoItem[]
+        if (cancelled) return
+        setAlunos(data)
+      } catch {
+        if (!cancelled) setAlunos([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const total = alunos.length
   const comPlano = alunos.filter(a => a.planCount > 0).length
