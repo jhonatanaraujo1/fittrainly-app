@@ -22,15 +22,21 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
+        // O backend emite o papel do aluno como STUDENT; o frontend inteiro
+        // (proxy, sidebar, bottom-nav, ROLE_HOME, tipos) usa ALUNO. Normaliza
+        // aqui, no único ponto de ingestão, para não espalhar o alias — assim
+        // cookie e store ficam sempre em ALUNO e tudo a jusante funciona.
+        const normalizedRole = (user.role as string) === 'STUDENT' ? 'ALUNO' : user.role
+        const normalizedUser = { ...user, role: normalizedRole } as AuthUser
         Cookies.set('fittrainly-refresh', refreshToken, {
           expires: 90,
           sameSite: 'Strict',
         })
-        Cookies.set('fittrainly-role', user.role, {
+        Cookies.set('fittrainly-role', normalizedRole, {
           expires: 90,
           sameSite: 'Strict',
         })
-        set({ user, accessToken, isAuthenticated: true })
+        set({ user: normalizedUser, accessToken, isAuthenticated: true })
       },
 
       setAccessToken: (token) => set({ accessToken: token }),

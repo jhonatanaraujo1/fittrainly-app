@@ -5,6 +5,10 @@ const ROLE_HOME: Record<string, string> = {
   ADMIN: '/admin',
   PERSONAL_TRAINER: '/pt',
   ALUNO: '/aluno',
+  // O backend emite o papel do aluno como STUDENT; o resto do frontend usa
+  // ALUNO. Aceitar ambos aqui evita que um cookie STUDENT caia no fallback e
+  // faça /login → /login em loop (ERR_TOO_MANY_REDIRECTS).
+  STUDENT: '/aluno',
 }
 
 export function proxy(request: NextRequest) {
@@ -16,7 +20,11 @@ export function proxy(request: NextRequest) {
   // aberta a visitantes sem sessão, tal como o login.
   if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/api') || pathname.startsWith('/l/')) {
     if (refresh && role && pathname === '/login') {
-      return NextResponse.redirect(new URL(ROLE_HOME[role] ?? '/login', request.url))
+      const home = ROLE_HOME[role]
+      // Só redireciona se o papel for conhecido. Papel desconhecido/legado NÃO
+      // pode redirecionar para /login (loop infinito) — deixa a página de login
+      // carregar para o utilizador reautenticar.
+      if (home) return NextResponse.redirect(new URL(home, request.url))
     }
     return NextResponse.next()
   }

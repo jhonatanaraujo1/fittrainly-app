@@ -45,6 +45,7 @@ const ROLE_HOME: Record<string, string> = {
   ADMIN: '/admin',
   PERSONAL_TRAINER: '/pt',
   ALUNO: '/aluno',
+  STUDENT: '/aluno', // backend emite STUDENT; frontend usa ALUNO
 }
 
 // Trust signals for left panel
