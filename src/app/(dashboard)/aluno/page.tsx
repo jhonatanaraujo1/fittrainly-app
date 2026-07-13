@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale'
 import { StatCard } from '@/components/ui/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CancelBookingDialog } from '@/components/cancel-booking-dialog'
+import { ConfirmBookingDialog } from '@/components/confirm-booking-dialog'
 import { dashboardApi, bookingApi, alunoApi, availabilityApi, ptApi } from '@/lib/api'
 import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
@@ -44,6 +45,7 @@ function AgendaSection() {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<{ bookingId: string; availId: string; startTime: string; endTime: string } | null>(null)
+  const [confirmBook, setConfirmBook] = useState<{ availId: string; startTime: string; endTime: string } | null>(null)
 
   const monday = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
   const startDate = format(monday, "yyyy-MM-dd'T'00:00:00'Z'")
@@ -263,7 +265,7 @@ function AgendaSection() {
                             if (confirmed) {
                               bookingId && setConfirmCancel({ bookingId, availId: slot.id, startTime: slot.startTime, endTime: slot.endTime })
                             } else if (!full) {
-                              handleConfirm(slot.id)
+                              setConfirmBook({ availId: slot.id, startTime: slot.startTime, endTime: slot.endTime })
                             }
                           }}
                           className={cn(
@@ -406,7 +408,7 @@ function AgendaSection() {
                                 key="confirm"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                onClick={() => handleConfirm(slot.id)}
+                                onClick={() => setConfirmBook({ availId: slot.id, startTime: slot.startTime, endTime: slot.endTime })}
                                 disabled={isLoadingThis}
                                 className="min-w-[110px] sm:min-w-[130px] min-h-[44px] text-xs font-black text-white rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 active:scale-95"
                                 style={{ background: '#111111' }}
@@ -438,6 +440,18 @@ function AgendaSection() {
           ptName={myPt?.name}
           isPending={cancellingId === confirmCancel.availId}
           onConfirm={() => handleMarkAbsent(confirmCancel.bookingId, confirmCancel.availId)}
+        />
+      )}
+
+      {confirmBook && (
+        <ConfirmBookingDialog
+          open={!!confirmBook}
+          onOpenChange={(o) => !o && setConfirmBook(null)}
+          startTime={confirmBook.startTime}
+          endTime={confirmBook.endTime}
+          ptName={myPt?.name}
+          isPending={loadingId === confirmBook.availId}
+          onConfirm={async () => { const id = confirmBook.availId; await handleConfirm(id); setConfirmBook(null) }}
         />
       )}
     </div>
