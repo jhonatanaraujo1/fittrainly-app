@@ -485,11 +485,6 @@ export default function AlunoDashboardPage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-black text-gray-900 tracking-tight">Olá, {user?.name?.split(' ')[0]} 👋</h1>
-        {data?.ptBillingCycleDay && (
-          <p className="text-xs text-gray-300 mt-1">
-            Ciclo de pagamento do teu PT com o estúdio fecha todo dia <strong className="text-gray-400">{data.ptBillingCycleDay}</strong> — não afeta as tuas sessões
-          </p>
-        )}
       </motion.div>
 
       {/* Next session banner */}
