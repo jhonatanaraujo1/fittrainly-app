@@ -7,9 +7,9 @@ import { ArrowLeft, Plus, Trash2, Dumbbell, Save, X, Calendar, AlertTriangle, Ch
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DatePicker } from '@/components/ui/date-picker'
-import { workoutApi } from '@/lib/api'
+import { workoutApi, adminApi } from '@/lib/api'
 import { getInitials, avatarColor } from '@/lib/utils'
-import { db, uid } from '@/lib/mock-db'
+import type { MockAluno } from '@/lib/mock-db'
 import { gerarProtocolos, SEVERIDADE_CONFIG } from '@/lib/clinical-protocols'
 import type { WorkoutPlan, Exercise } from '@/types'
 
@@ -110,8 +110,7 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
   const { alunoId } = use(params)
   const router = useRouter()
 
-  const aluno = db.alunos.find(a => a.id === alunoId) ?? db.alunos[0]
-
+  const [aluno, setAluno] = useState<MockAluno | null>(null)
   const [plans, setPlans] = useState<WorkoutPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [activeLabel, setActiveLabel] = useState('Treino A')
@@ -122,6 +121,10 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
   const [validityDate, setValidityDate] = useState('')
 
   useEffect(() => {
+    // Aluno resolvido pela API real (nunca pelo `db` mock, vazio em produção).
+    adminApi.alunoById(alunoId)
+      .then(r => setAluno(r.aluno as MockAluno))
+      .catch(() => setAluno(null))
     workoutApi.plans(alunoId).then(data => {
       setPlans(data as WorkoutPlan[])
       if (data.length > 0) setActiveLabel(data[0].label)
@@ -139,10 +142,10 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
       setSaving(true)
       try {
         const novo = await workoutApi.savePlan({
-          alunoId, alunoName: aluno.name,
-          ptId: db.pts.find(p => p.id === aluno.personalTrainerId)?.id ?? '',
+          alunoId, alunoName: (aluno?.name ?? ''),
+          ptId: aluno?.personalTrainerId ?? '',
           label: activeLabel, focus: newFocus || activeLabel,
-          exercises: [{ ...exercise, id: 'ex-' + uid() }],
+          exercises: [{ ...exercise, id: 'ex-' + crypto.randomUUID() }],
         }) as WorkoutPlan
         setPlans(prev => [...prev, novo])
         toast.success('Plano criado!')
@@ -199,7 +202,7 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
 
   async function handleDeletePlan() {
     if (!activePlan) return
-    if (!confirm(`Apagar "${activePlan.label}" de ${aluno.name}?`)) return
+    if (!confirm(`Apagar "${activePlan.label}" de ${(aluno?.name ?? '')}?`)) return
     try {
       await workoutApi.deletePlan(activePlan.id)
       const remaining = plans.filter(p => p.id !== activePlan.id)
@@ -209,12 +212,12 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
     } catch { toast.error('Erro ao apagar plano') }
   }
 
-  const protocolos = gerarProtocolos({
+  const protocolos = aluno ? gerarProtocolos({
     doencas: aluno.doencas,
     doencasOutras: aluno.doencasOutras,
     cirurgias: aluno.cirurgias,
     limitacoesFisicas: aluno.limitacoesFisicas,
-  })
+  }) : []
 
   return (
     <div className="p-5 lg:p-7 max-w-2xl mx-auto space-y-5">
@@ -228,13 +231,13 @@ export default function TreinoBuilderPage({ params }: { params: Promise<{ alunoI
         </button>
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-          style={{ background: avatarColor(aluno.name) }}
+          style={{ background: avatarColor((aluno?.name ?? '')) }}
         >
-          {getInitials(aluno.name)}
+          {getInitials((aluno?.name ?? ''))}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-gray-900">Treino de {aluno.name}</h1>
-          <p className="text-xs text-gray-400">{aluno.personalTrainerName}</p>
+          <h1 className="text-lg font-bold text-gray-900">Treino de {(aluno?.name ?? '')}</h1>
+          <p className="text-xs text-gray-400">{aluno?.personalTrainerName ?? ''}</p>
         </div>
         <a
           href={`/relatorio/treino/${alunoId}`}
