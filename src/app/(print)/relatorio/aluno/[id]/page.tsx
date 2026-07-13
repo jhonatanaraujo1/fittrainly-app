@@ -1,14 +1,15 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
-import { db } from '@/lib/mock-db'
+import { use } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { adminApi } from '@/lib/api'
 import { gerarProtocolos, SEVERIDADE_CONFIG } from '@/lib/clinical-protocols'
 import { format, parseISO } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import {
   ReportLayout, ReportHeader, ReportSection, ReportRow, ReportFooter,
 } from '@/components/ui/report-layout'
-import type { MockAluno, MockBooking, MockPack, MockAvaliacao } from '@/lib/mock-db'
+import type { MockAluno, MockBooking, MockPack } from '@/lib/mock-db'
 
 const DOENCAS_LABELS: Record<string, string> = {
   HIPERTENSAO: 'Hipertensão', DIABETES: 'Diabetes', CARDIOPATIA: 'Cardiopatia',
@@ -26,31 +27,27 @@ function fmtDateTime(iso?: string) {
   try { return format(parseISO(iso), "d MMM yyyy 'às' HH:mm", { locale: pt }) } catch { return iso }
 }
 
-interface PageData {
-  aluno: MockAluno
-  bookings: MockBooking[]
-  packs: MockPack[]
-  avaliacoes: MockAvaliacao[]
-}
+// 100% backend real: adminApi.alunoById devolve { aluno, bookings, packs, ... }
+// já mapeados. O histórico de reservas visto pelo admin ainda não tem endpoint
+// dedicado no backend (myBookings é STUDENT-only) → bookings vem vazio e a
+// secção de historial simplesmente não aparece, em vez de mostrar dados falsos.
 
 export default function RelatorioAlunoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const [data, setData] = useState<PageData | null>(null)
 
-  useEffect(() => {
-    const aluno = db.alunos.find(a => a.id === id)
-    if (!aluno) return
-    const bookings = db.bookings.filter(b => b.alunoId === id).sort(
-      (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-    ).slice(0, 12)
-    const packs = db.packs.filter(p => p.alunoId === id)
-    const avaliacoes = db.avaliacoes?.filter(av => av.alunoId === id) ?? []
-    setData({ aluno, bookings, packs, avaliacoes })
-  }, [id])
+  const { data, isLoading } = useQuery({
+    queryKey: ['aluno-detail', id],
+    queryFn: () => adminApi.alunoById(id) as Promise<{
+      aluno: MockAluno; bookings: MockBooking[]; packs: MockPack[]
+    }>,
+  })
 
-  if (!data) return <div className="flex items-center justify-center h-screen text-gray-400 text-sm">A carregar...</div>
+  if (isLoading) return <div className="flex items-center justify-center h-screen text-gray-400 text-sm">A carregar...</div>
+  if (!data?.aluno) return <div className="flex items-center justify-center h-screen text-gray-400 text-sm">Aluno não encontrado</div>
 
-  const { aluno, bookings, packs } = data
+  const aluno = data.aluno
+  const bookings = (data.bookings ?? []).slice(0, 12)
+  const packs = data.packs ?? []
   const activePack = packs.find(p => p.status === 'ACTIVE')
   const protocolos = gerarProtocolos({
     doencas: aluno.doencas,

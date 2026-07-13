@@ -1,7 +1,8 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
-import { db } from '@/lib/mock-db'
+import { use } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { adminApi, workoutApi } from '@/lib/api'
 import { gerarProtocolos } from '@/lib/clinical-protocols'
 import { format, parseISO } from 'date-fns'
 import { pt } from 'date-fns/locale'
@@ -18,25 +19,29 @@ function fmtDate(iso?: string) {
   try { return format(parseISO(iso), "d 'de' MMMM 'de' yyyy", { locale: pt }) } catch { return iso }
 }
 
-interface PageData {
-  aluno: MockAluno
-  plans: MockWorkoutPlan[]
-}
+// 100% backend real: aluno via adminApi.alunoById, planos de treino via
+// workoutApi.plans(alunoId) (/api/v1/workout-plans?studentId=). Sem mock.
 
 export default function RelatorioTreinoPage({ params }: { params: Promise<{ alunoId: string }> }) {
   const { alunoId } = use(params)
-  const [data, setData] = useState<PageData | null>(null)
 
-  useEffect(() => {
-    const aluno = db.alunos.find(a => a.id === alunoId)
-    if (!aluno) return
-    const plans = db.workoutPlans.filter(p => p.alunoId === alunoId)
-    setData({ aluno, plans })
-  }, [alunoId])
+  const alunoQ = useQuery({
+    queryKey: ['aluno-detail', alunoId],
+    queryFn: () => adminApi.alunoById(alunoId) as Promise<{ aluno: MockAluno }>,
+  })
+  const plansQ = useQuery({
+    queryKey: ['workout-plans', alunoId],
+    queryFn: () => workoutApi.plans(alunoId) as unknown as Promise<MockWorkoutPlan[]>,
+  })
 
-  if (!data) return <div className="flex items-center justify-center h-screen text-gray-400 text-sm">A carregar...</div>
+  if (alunoQ.isLoading || plansQ.isLoading) {
+    return <div className="flex items-center justify-center h-screen text-gray-400 text-sm">A carregar...</div>
+  }
 
-  const { aluno, plans } = data
+  const aluno = alunoQ.data?.aluno
+  const plans = plansQ.data ?? []
+  if (!aluno) return <div className="flex items-center justify-center h-screen text-gray-400 text-sm">Aluno não encontrado</div>
+
   if (!plans.length) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-2 text-gray-400">
