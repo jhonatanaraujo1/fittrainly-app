@@ -4,9 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dumbbell, Clock, RotateCcw, CheckCircle2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { workoutApi } from '@/lib/api'
-import { useAuthStore } from '@/store/auth'
-import { db } from '@/lib/mock-db'
+import { workoutApi, alunoApi } from '@/lib/api'
 import type { WorkoutPlan } from '@/types'
 
 const MUSCLE_COLORS: Record<string, string> = {
@@ -23,21 +21,31 @@ function muscleColor(group: string) {
 }
 
 export default function AlunoTreinoPage() {
-  const { user } = useAuthStore()
   const [plans, setPlans] = useState<WorkoutPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [activeLabel, setActiveLabel] = useState('')
   const [done, setDone] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    const aluno = db.alunos.find(a => a.userId === user?.id) ?? db.alunos[0]
-    workoutApi.plans(aluno.id).then(data => {
-      const p = data as WorkoutPlan[]
-      setPlans(p)
-      if (p.length > 0) setActiveLabel(p[0].label)
-      setLoading(false)
-    })
-  }, [user])
+    let cancelled = false
+    ;(async () => {
+      try {
+        // O aluno autenticado resolve o próprio id pela API (nunca pelo `db`
+        // mock, que em produção está vazio → `aluno.id` de undefined crashava
+        // a página). Depois busca os planos de treino dele.
+        const me = (await alunoApi.me()) as { id: string }
+        const data = (await workoutApi.plans(me.id)) as WorkoutPlan[]
+        if (cancelled) return
+        setPlans(data)
+        if (data.length > 0) setActiveLabel(data[0].label)
+      } catch {
+        if (!cancelled) setPlans([]) // falha → estado vazio, nunca crash
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   function toggleDone(exerciseId: string) {
     setDone(prev => ({ ...prev, [exerciseId]: !prev[exerciseId] }))
