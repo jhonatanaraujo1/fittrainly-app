@@ -3,25 +3,35 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Users, Mail, Dumbbell, CalendarCheck } from 'lucide-react'
+import { ArrowLeft, Users, Mail } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { adminApi } from '@/lib/api'
-import { db } from '@/lib/mock-db'
+import { adminApi, ptApi } from '@/lib/api'
 import { getInitials, avatarColor } from '@/lib/utils'
+
+type Aluno = { id: string; name: string; email: string }
+type PtLite = { id: string; name: string; specialty?: string }
 
 export default function AdminPTAlunosPage({ params }: { params: Promise<{ ptId: string }> }) {
   const { ptId } = use(params)
   const router = useRouter()
 
-  const pt = db.pts.find(p => p.id === ptId)
-  const [alunos, setAlunos] = useState<typeof db.alunos>([])
+  const [ptName, setPtName] = useState('Personal Trainer')
+  const [ptSpecialty, setPtSpecialty] = useState('')
+  const [alunos, setAlunos] = useState<Aluno[]>([])
   const [loading, setLoading] = useState(true)
 
+  // 100% backend real: alunos do PT + nome/especialidade do PT (via lista de
+  // PTs). Sem qualquer leitura de mock.
   useEffect(() => {
-    adminApi.alunosByPt(ptId).then(data => {
-      setAlunos(data)
+    Promise.all([
+      adminApi.alunosByPt(ptId),
+      ptApi.list().catch(() => [] as PtLite[]),
+    ]).then(([data, pts]) => {
+      setAlunos(data as Aluno[])
+      const pt = (pts as PtLite[]).find(p => p.id === ptId)
+      if (pt) { setPtName(pt.name); setPtSpecialty(pt.specialty ?? '') }
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [ptId])
 
   return (
@@ -35,12 +45,10 @@ export default function AdminPTAlunosPage({ params }: { params: Promise<{ ptId: 
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Alunos de {pt?.name ?? 'Personal Trainer'}
-          </h1>
+          <h1 className="text-xl font-bold text-gray-900">Alunos de {ptName}</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             {loading ? '—' : alunos.length} aluno{alunos.length !== 1 ? 's' : ''} associado{alunos.length !== 1 ? 's' : ''}
-            {pt?.specialty ? ` · ${pt.specialty}` : ''}
+            {ptSpecialty ? ` · ${ptSpecialty}` : ''}
           </p>
         </div>
       </div>
@@ -57,59 +65,32 @@ export default function AdminPTAlunosPage({ params }: { params: Promise<{ ptId: 
         </div>
       ) : (
         <div className="space-y-2">
-          {alunos.map((aluno, i) => {
-            const planCount = db.workoutPlans.filter(p => p.alunoId === aluno.id).length
-            const sessionCount = db.bookings.filter(
-              b => b.alunoId === aluno.id && b.status === 'COMPLETED'
-            ).length
-
-            return (
-              <motion.div
-                key={aluno.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-xl led-gold px-4 py-4 flex items-center gap-4"
+          {alunos.map((aluno, i) => (
+            <motion.div
+              key={aluno.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="bg-white rounded-xl led-gold px-4 py-4 flex items-center gap-4"
+            >
+              {/* Avatar */}
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                style={{ background: avatarColor(aluno.name) }}
               >
-                {/* Avatar */}
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                  style={{ background: avatarColor(aluno.name) }}
-                >
-                  {getInitials(aluno.name)}
-                </div>
+                {getInitials(aluno.name)}
+              </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{aluno.name}</p>
-                  <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-400">
-                    <Mail className="w-3 h-3" />
-                    <span className="truncate">{aluno.email}</span>
-                  </div>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{aluno.name}</p>
+                <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-400">
+                  <Mail className="w-3 h-3" />
+                  <span className="truncate">{aluno.email}</span>
                 </div>
-
-                {/* Stats */}
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  <div className="text-center">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Dumbbell className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="font-semibold text-gray-900">{planCount}</span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {planCount === 1 ? 'plano' : 'planos'}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <CalendarCheck className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="font-semibold text-gray-900">{sessionCount}</span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5">sessões</p>
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       )}
     </div>

@@ -25,7 +25,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ptApi, adminApi, billingApi, planApi } from '@/lib/api'
-import { db } from '@/lib/mock-db'
 import {
   getInitials, avatarColor, formatCurrency, formatDate,
   planTypeLabel, planTypeBadge, bookingStatusLabel, bookingStatusColor, docStatus,
@@ -185,14 +184,11 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
 
   const ptBilling = billing?.entries.find(e => e.ptId === ptId)
 
-  const recentBookings: MockBooking[] = db.bookings
-    .filter(b => b.personalTrainerId === ptId)
-    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-    .slice(0, 15)
-
-  const sessionsThisMonth = db.bookings.filter(b =>
-    b.personalTrainerId === ptId && b.status !== 'CANCELLED'
-  ).length
+  // Sessões do mês: da faturação REAL do backend (sessionsCount). A lista de
+  // sessões recentes ainda não tem endpoint dedicado — fica vazia (a aba mostra
+  // o empty state) em vez de ler dados fake do mock.
+  const recentBookings: MockBooking[] = []
+  const sessionsThisMonth = ptBilling?.sessionsCount ?? 0
 
   const toggleInadimplente = useMutation({
     mutationFn: (value: boolean) => ptApi.update(ptId, { inadimplente: value }),
@@ -470,10 +466,9 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
               </div>
             ) : alunos.map(aluno => {
               const badge = statusBadge(aluno.status)
-              const completedCount = db.bookings.filter(b => b.alunoId === aluno.id && b.status === 'COMPLETED').length
-              const nextSession = db.bookings.find(b =>
-                b.alunoId === aluno.id && b.status === 'CONFIRMED' && new Date(b.startTime) > new Date()
-              )
+              // Stats por-aluno (sessões feitas / próxima) precisam de endpoint
+              // dedicado no backend — por agora neutros, nunca lidos do mock.
+              const completedCount = 0
               return (
                 <Link key={aluno.id} href={`/admin/alunos/${aluno.id}`}
                   className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
@@ -495,10 +490,7 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
                     </div>
                     <div>
                       <p className="text-xs font-medium text-gray-600">
-                        {nextSession
-                          ? format(parseISO(nextSession.startTime), "d MMM HH'h'mm", { locale: ptLocale })
-                          : <span className="text-gray-300">—</span>
-                        }
+                        <span className="text-gray-300">—</span>
                       </p>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide">próx. sessão</p>
                     </div>
