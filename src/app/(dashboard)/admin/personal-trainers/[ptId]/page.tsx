@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PtDocuments } from '@/components/pt-documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -378,6 +379,9 @@ export default function PTDetailPage({ params }: { params: Promise<{ ptId: strin
           </div>
         </div>
       </motion.div>
+
+      {/* Documentos do PT — o admin vê e baixa (compliance); só leitura */}
+      <PtDocuments ptId={ptId} canManage={false} />
 
       {/* Resultado do reset de senha — sempre mostra a password + WhatsApp,
           nunca depende só do email real ter funcionado */}

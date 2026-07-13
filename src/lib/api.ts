@@ -45,6 +45,8 @@ function withPersistence<T extends object>(api: T): T {
 export const authApi         = USE_REAL.auth ? (real.authApi as unknown as typeof mock.authApi) : withPersistence(mock.authApi)
 export const dashboardApi    = USE_REAL.dashboard ? (real.dashboardApi as unknown as typeof mock.dashboardApi) : withPersistence(mock.dashboardApi)
 export const ptApi           = USE_REAL.personalTrainers ? (real.ptApi as unknown as typeof mock.ptApi) : withPersistence(mock.ptApi)
+export const ptDocumentApi   = USE_REAL.personalTrainers ? (real.ptDocumentApi as unknown as typeof mock.ptDocumentApi) : mock.ptDocumentApi
+export type { PtDocument } from './real-api'
 export const alunoApi        = USE_REAL.aluno ? (real.alunoApi as unknown as typeof mock.alunoApi) : withPersistence(mock.alunoApi)
 export const availabilityApi = USE_REAL.availability ? (real.availabilityApi as unknown as typeof mock.availabilityApi) : withPersistence(mock.availabilityApi)
 export const adminScheduleApi = USE_REAL.adminSchedule ? (real.adminScheduleApi as unknown as typeof mock.adminScheduleApi) : withPersistence(mock.adminScheduleApi)

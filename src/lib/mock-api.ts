@@ -1136,6 +1136,49 @@ export const notificationInboxApi = {
   },
 }
 
+// ── Documentos do PT (mock) ───────────────────────────────────────────────────
+interface MockPtDoc {
+  id: string; type: 'SEGURO' | 'TEEF' | 'OUTRO'; fileName: string
+  contentType: string; sizeBytes: number; validUntil: string | null; uploadedAt: string
+}
+const mockPtDocs: Record<string, MockPtDoc[]> = {}
+function seedPtDocs(ptId: string): MockPtDoc[] {
+  if (!mockPtDocs[ptId]) {
+    const iso = (daysFromNow: number) => new Date(Date.now() + daysFromNow * 864e5).toISOString()
+    mockPtDocs[ptId] = [
+      { id: 'doc-' + uid(), type: 'SEGURO', fileName: 'seguro_2026.pdf', contentType: 'application/pdf', sizeBytes: 240_000, validUntil: iso(40).slice(0, 10), uploadedAt: iso(-5) },
+      { id: 'doc-' + uid(), type: 'TEEF', fileName: 'cedula_teef.pdf', contentType: 'application/pdf', sizeBytes: 180_000, validUntil: iso(18).slice(0, 10), uploadedAt: iso(-30) },
+    ]
+  }
+  return mockPtDocs[ptId]
+}
+export const ptDocumentApi = {
+  list: async (ptId: string) => {
+    await delay(200)
+    return [...seedPtDocs(ptId)].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+  },
+  upload: async (ptId: string, data: { type: string; file: File; validUntil?: string | null }) => {
+    await delay(400)
+    const doc: MockPtDoc = {
+      id: 'doc-' + uid(), type: data.type as MockPtDoc['type'], fileName: data.file.name,
+      contentType: data.file.type || 'application/octet-stream', sizeBytes: data.file.size,
+      validUntil: data.validUntil ?? null, uploadedAt: new Date().toISOString(),
+    }
+    seedPtDocs(ptId).unshift(doc)
+    return doc
+  },
+  download: async (_ptId: string, docId: string) => {
+    await delay(200)
+    return new Blob([`Documento de demonstração (${docId}).`], { type: 'text/plain' })
+  },
+  remove: async (ptId: string, docId: string) => {
+    await delay(200)
+    const arr = seedPtDocs(ptId)
+    const i = arr.findIndex(d => d.id === docId)
+    if (i >= 0) arr.splice(i, 1)
+  },
+}
+
 // ── Workout Plans ─────────────────────────────────────────────────────────────
 export const workoutApi = {
   ptAlunos: async (ptId: string) => {

@@ -318,6 +318,46 @@ export const ptApi = {
     }),
 }
 
+// ── Documentos do PT (seguro / TEEF / outros) ─────────────────────────────────
+export interface PtDocument {
+  id: string; type: 'SEGURO' | 'TEEF' | 'OUTRO'; fileName: string
+  contentType: string; sizeBytes: number; validUntil: string | null; uploadedAt: string
+}
+export const ptDocumentApi = {
+  list: async (ptId: string) =>
+    apiFetch<PtDocument[]>(`/api/v1/personal-trainers/${ptId}/documents`),
+  // Upload é multipart → não passa pelo apiFetch (que força JSON). Fetch cru
+  // com o token, deixando o browser pôr o boundary do multipart.
+  upload: async (ptId: string, data: { type: string; file: File; validUntil?: string | null }) => {
+    const fd = new FormData()
+    fd.append('type', data.type)
+    fd.append('file', data.file)
+    if (data.validUntil) fd.append('validUntil', data.validUntil)
+    const token = useAuthStore.getState().accessToken
+    const res = await fetch(`${API_BASE_URL}/api/v1/personal-trainers/${ptId}/documents`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: fd,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      throw new Error(body?.message ?? `Erro ${res.status} ao enviar o documento`)
+    }
+    return res.json() as Promise<PtDocument>
+  },
+  // Endpoint autenticado → não dá para usar <a href> direto; puxa como blob.
+  download: async (ptId: string, docId: string) => {
+    const token = useAuthStore.getState().accessToken
+    const res = await fetch(`${API_BASE_URL}/api/v1/personal-trainers/${ptId}/documents/${docId}/download`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+    if (!res.ok) throw new Error(`Erro ${res.status} ao abrir o documento`)
+    return res.blob()
+  },
+  remove: async (ptId: string, docId: string) =>
+    apiFetch<void>(`/api/v1/personal-trainers/${ptId}/documents/${docId}`, { method: 'DELETE' }),
+}
+
 // ── Billing ───────────────────────────────────────────────────────────────────
 export const billingApi = {
   byMonth: async (month?: string) => {
