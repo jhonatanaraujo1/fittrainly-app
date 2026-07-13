@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, MoreHorizontal, ChevronDown, Loader2, UserPlus,
   Phone, Mail, Share2, Globe, Users, X, TrendingUp, Check,
-  Search, MessageCircle, Calendar, AlertCircle, Clock, ChevronRight,
+  Search, MessageCircle, Calendar, AlertCircle, Clock, ChevronRight, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -392,11 +392,12 @@ function ConvertDialog({ lead, onClose, onConverted }: {
 
 // ── Status Picker Menu ─────────────────────────────────────────────────────────
 
-function StatusPickerMenu({ lead, onMoveTo, onClose, onConvert }: {
+function StatusPickerMenu({ lead, onMoveTo, onClose, onConvert, onDelete }: {
   lead: MockLead
   onMoveTo: (status: LeadStatus) => void
   onClose: () => void
   onConvert: () => void
+  onDelete: () => void
 }) {
   return (
     <>
@@ -448,6 +449,14 @@ function StatusPickerMenu({ lead, onMoveTo, onClose, onConvert }: {
             </div>
           </>
         )}
+        <div className="h-px bg-gray-100 my-1.5 mx-3" />
+        <div className="px-1">
+          <button onClick={() => { onClose(); onDelete() }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-red-600 hover:bg-red-50 transition-colors rounded-lg min-h-[40px]">
+            <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="text-xs font-semibold">Excluir lead</span>
+          </button>
+        </div>
       </motion.div>
     </>
   )
@@ -455,11 +464,12 @@ function StatusPickerMenu({ lead, onMoveTo, onClose, onConvert }: {
 
 // ── Lead Card ─────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert }: {
+function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert, onDelete }: {
   lead: MockLead
   onOpenDialog: (lead: MockLead, targetStatus: LeadStatus) => void
   isAdvancing: boolean
   onConvert: (lead: MockLead) => void
+  onDelete: (lead: MockLead) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const SourceIcon = lead.source ? (SOURCE_ICON[lead.source] ?? Globe) : Globe
@@ -551,6 +561,7 @@ function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert }: {
                   onMoveTo={status => { setMenuOpen(false); onOpenDialog(lead, status) }}
                   onClose={() => setMenuOpen(false)}
                   onConvert={() => { setMenuOpen(false); onConvert(lead) }}
+                  onDelete={() => { setMenuOpen(false); onDelete(lead) }}
                 />
               )}
             </AnimatePresence>
@@ -684,13 +695,14 @@ function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert }: {
 
 // ── Kanban Column ─────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge, onConvert }: {
+function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge, onConvert, onDelete }: {
   status: LeadStatus
   leads: MockLead[]
   onOpenDialog: (lead: MockLead, targetStatus: LeadStatus) => void
   advancingId: string | null
   badge?: string
   onConvert: (lead: MockLead) => void
+  onDelete: (lead: MockLead) => void
 }) {
   const meta = COLUMN_META[status]
   return (
@@ -705,7 +717,7 @@ function KanbanColumn({ status, leads, onOpenDialog, advancingId, badge, onConve
       <div className="flex flex-col gap-3 min-h-[100px]">
         <AnimatePresence initial={false}>
           {leads.map(lead => (
-            <LeadCard key={lead.id} lead={lead} onOpenDialog={onOpenDialog} isAdvancing={advancingId === lead.id} onConvert={onConvert} />
+            <LeadCard key={lead.id} lead={lead} onOpenDialog={onOpenDialog} isAdvancing={advancingId === lead.id} onConvert={onConvert} onDelete={onDelete} />
           ))}
         </AnimatePresence>
         {leads.length === 0 && (
@@ -877,6 +889,7 @@ export default function LeadsPage() {
   const [mobileTab, setMobileTab]         = useState<LeadStatus>('NOVO')
   const [activeDialog, setActiveDialog]   = useState<ActiveDialog>(null)
   const [convertLead, setConvertLead]     = useState<MockLead | null>(null)
+  const [deleteTarget, setDeleteTarget]   = useState<MockLead | null>(null)
   const [search, setSearch]               = useState('')
   const [periodFilter, setPeriodFilter]   = useState('all')
   const [monthFilter, setMonthFilter]     = useState('all')
@@ -916,6 +929,20 @@ export default function LeadsPage() {
 
   function handleConverted() {
     qc.invalidateQueries({ queryKey: ['leads'] })
+  }
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => leadApi.delete(id),
+    onSuccess: (_res, id) => {
+      qc.setQueryData<MockLead[]>(['leads'], prev => prev?.filter(l => l.id !== id) ?? prev)
+      toast.success('Lead excluído')
+      setDeleteTarget(null)
+    },
+    onError: () => toast.error('Não foi possível excluir o lead'),
+  })
+
+  function handleDeleteLead(lead: MockLead) {
+    setDeleteTarget(lead)
   }
 
   // ── Filter + group ────────────────────────────────────────────────────────
@@ -1087,7 +1114,7 @@ export default function LeadsPage() {
             <div className="flex flex-col gap-3 mt-3">
               <AnimatePresence initial={false}>
                 {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).map(lead => (
-                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
+                  <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} onDelete={handleDeleteLead} />
                 ))}
               </AnimatePresence>
               {(mobileTab === 'INSCRITO' ? inscritoThisMonth : (byStatus[mobileTab] ?? [])).length === 0 && (
@@ -1110,6 +1137,7 @@ export default function LeadsPage() {
                   advancingId={advancingId}
                   badge={status === 'INSCRITO' && byStatus.INSCRITO.length > inscritoThisMonth.length ? 'este mês' : undefined}
                   onConvert={handleConvertLead}
+                  onDelete={handleDeleteLead}
                 />
               ))}
             </div>
@@ -1123,7 +1151,7 @@ export default function LeadsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {byStatus.NAO_DEU_FEEDBACK.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
+                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} onDelete={handleDeleteLead} />
                   ))}
                 </div>
               )}
@@ -1135,7 +1163,7 @@ export default function LeadsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {byStatus.PERDIDO.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
+                    <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} onDelete={handleDeleteLead} />
                   ))}
                 </div>
               )}
@@ -1151,7 +1179,7 @@ export default function LeadsPage() {
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 capitalize">{label}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {leads.map(lead => (
-                          <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} />
+                          <LeadCard key={lead.id} lead={lead} onOpenDialog={handleOpenDialog} isAdvancing={advancingId === lead.id} onConvert={handleConvertLead} onDelete={handleDeleteLead} />
                         ))}
                       </div>
                     </div>
@@ -1185,6 +1213,44 @@ export default function LeadsPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Excluir lead — confirmação. Sem AnimatePresence de propósito: no
+          React 19/Next 16 o exit de AnimatePresence prende o modal aberto
+          (mesmo gotcha já visto nas tabs). Render condicional simples fecha na hora. */}
+      {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+            >
+              <div className="px-6 pt-6 pb-2">
+                <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-base font-black text-gray-900">Excluir lead?</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  <strong className="text-gray-700">{deleteTarget.name}</strong> será removido do CRM. Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              <div className="px-6 py-4 flex gap-2 justify-end">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleteMutation.isPending}
+                  className="min-h-[40px] px-4 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                  disabled={deleteMutation.isPending}
+                  className="min-h-[40px] px-4 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5">
+                  {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Excluir
+                </button>
+              </div>
+            </motion.div>
+          </div>
+      )}
     </div>
   )
 }
