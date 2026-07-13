@@ -1109,6 +1109,33 @@ export const notificationApi = {
   },
 }
 
+// ── Sino do estúdio (inbox in-app) ────────────────────────────────────────────
+interface MockInboxNotification {
+  id: string; type: string; title: string; body: string | null; link: string | null; createdAt: string; read: boolean
+}
+const mockInbox: MockInboxNotification[] = [
+  { id: 'ntf-1', type: 'NEW_LEAD', title: 'Novo lead: Luísa Ferreira', body: 'Chegou pelo site. Contacta antes que esfrie.', link: '/admin/leads', createdAt: new Date(Date.now() - 6 * 3600e3).toISOString(), read: false },
+  { id: 'ntf-2', type: 'PT_SLOT_RELEASED', title: 'João Silva marcou um horário', body: 'Agenda 15/07 às 08:00.', link: '/admin/schedule', createdAt: new Date(Date.now() - 9 * 3600e3).toISOString(), read: false },
+  { id: 'ntf-3', type: 'NEW_LEAD', title: 'Novo lead: André Pereira', body: 'Chegou pelo site. Contacta antes que esfrie.', link: '/admin/leads', createdAt: new Date(Date.now() - 26 * 3600e3).toISOString(), read: true },
+]
+export const notificationInboxApi = {
+  inbox: async () => {
+    await delay(200)
+    const items = [...mockInbox].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return { items, unreadCount: items.filter(n => !n.read).length }
+  },
+  unreadCount: async () => {
+    await delay(120)
+    return mockInbox.filter(n => !n.read).length
+  },
+  markAllRead: async () => {
+    await delay(180)
+    let updated = 0
+    mockInbox.forEach(n => { if (!n.read) { n.read = true; updated++ } })
+    return { updated }
+  },
+}
+
 // ── Workout Plans ─────────────────────────────────────────────────────────────
 export const workoutApi = {
   ptAlunos: async (ptId: string) => {

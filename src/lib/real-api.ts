@@ -984,6 +984,19 @@ export const notificationApi = {
     apiFetch(`/api/v1/notification-configs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 }
 
+// Sino do estúdio (inbox in-app) — separado do config acima.
+export interface InboxNotificationItem {
+  id: string; type: string; title: string; body: string | null; link: string | null; createdAt: string; read: boolean
+}
+export const notificationInboxApi = {
+  inbox: async () =>
+    apiFetch<{ items: InboxNotificationItem[]; unreadCount: number }>('/api/v1/notifications'),
+  unreadCount: async () =>
+    (await apiFetch<{ unreadCount: number }>('/api/v1/notifications/unread-count')).unreadCount,
+  markAllRead: async () =>
+    apiFetch<{ updated: number }>('/api/v1/notifications/mark-read', { method: 'POST' }),
+}
+
 // ── Admin — gestão de alunos ──────────────────────────────────────────────────
 // O backend fala inglês (StudentResponse/CreateStudentRequest), o frontend
 // espera o shape MockAluno em português. Estes mapas fazem a tradução

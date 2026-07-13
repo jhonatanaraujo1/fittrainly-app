@@ -41,5 +41,6 @@ export const USE_REAL = {
   ptPayment: on(process.env.NEXT_PUBLIC_REAL_PT_PAYMENT),
   workout: on(process.env.NEXT_PUBLIC_REAL_WORKOUT),
   notifications: on(process.env.NEXT_PUBLIC_REAL_NOTIFICATIONS),
+  notificationInbox: on(process.env.NEXT_PUBLIC_REAL_NOTIFICATIONS),
   admin: on(process.env.NEXT_PUBLIC_REAL_ADMIN),
 } as const

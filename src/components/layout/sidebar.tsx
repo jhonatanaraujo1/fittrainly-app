@@ -10,7 +10,9 @@ import {
   Dumbbell, LogOut, Layers, ClipboardList,
   Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, KeyRound, Settings2,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { cn, getInitials } from '@/lib/utils'
+import { notificationInboxApi } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
 import { ChangePasswordDialog } from '@/components/change-password-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -73,6 +75,17 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+
+  const isAdmin = user?.role === 'ADMIN'
+  // Badge do sino: contador de não-lidas. Só o admin tem inbox; revalida a
+  // cada 60s e sempre que a query é invalidada (ex: ao abrir /admin/notificacoes).
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ['notif-unread'],
+    queryFn: notificationInboxApi.unreadCount,
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
 
   if (!user) return null
   const sections = NAV[user.role] ?? []
@@ -146,7 +159,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       className="w-4 h-4 flex-shrink-0"
                       style={{ color: active ? '#C9A84C' : undefined }}
                     />
-                    {label}
+                    <span className="flex-1">{label}</span>
+                    {href === '/admin/notificacoes' && unreadCount > 0 && (
+                      <span
+                        className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0"
+                        style={{ background: '#C9A84C', color: '#111' }}
+                        aria-label={`${unreadCount} não lidas`}
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 )
               })}
