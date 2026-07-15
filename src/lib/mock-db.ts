@@ -205,7 +205,7 @@ export interface MockBooking {
   alunoId: string; alunoName: string
   personalTrainerId: string; personalTrainerName: string
   startTime: string; endTime: string  // ISO
-  sessionDuration: 30 | 60
+  sessionDuration: number
   status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'
   createdAt: string
 }
@@ -235,7 +235,7 @@ export interface MockAvaliacao {
 export interface MockPack {
   id: string; alunoId: string; alunoName: string
   total: number; used: number
-  sessionDuration: 30 | 60
+  sessionDuration: number
   expiresAt?: string
   status: 'ACTIVE' | 'EXPIRED' | 'DEPLETED'
   createdAt: string
@@ -307,7 +307,7 @@ function makeBooking(
   ptId: string, ptName: string,
   alunoId: string, alunoName: string,
   status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED',
-  sessionDuration: 30 | 60 = 60,
+  sessionDuration: number = 60,
   createdAt?: string,
 ): MockBooking {
   const key = makeSlotKey(date, time)

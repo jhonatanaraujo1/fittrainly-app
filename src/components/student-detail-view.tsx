@@ -573,7 +573,7 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
 
   // ── Pack form ────────────────────────────────────────────────────────────────
   const [packTotal, setPackTotal]         = useState('10')
-  const [packDuration, setPackDuration]   = useState<'30' | '60'>('60')
+  const [packDuration, setPackDuration]   = useState('60')
   const [packExpires, setPackExpires]     = useState('')
 
   // ── Data ─────────────────────────────────────────────────────────────────────
@@ -627,6 +627,20 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
       .filter(p => p.status === 'ACTIVE')
       .sort((a, b) => (b.total - b.used) - (a.total - a.used))[0]
   }, [data])
+
+  // Feedback da cliente: "9 de 10 restantes" dá a entender que fez 1 aula.
+  // Separar os 3 estados do pack: concluídas (aula já dada), agendadas
+  // (marcada, ainda não deu) e por marcar (crédito livre). used = concluídas +
+  // agendadas; remaining = por marcar.
+  const packBreakdown = useMemo(() => {
+    if (!activePack) return null
+    const bookings = data?.bookings ?? []
+    const completed = bookings.filter(b => b.status === 'COMPLETED').length
+    const concluidas = Math.min(completed, activePack.used)
+    const agendadas = Math.max(0, activePack.used - concluidas)
+    const porMarcar = activePack.total - activePack.used
+    return { concluidas, agendadas, porMarcar, total: activePack.total }
+  }, [activePack, data])
 
   const lastBookings = useMemo(() =>
     (data?.bookings ?? [])
@@ -685,10 +699,15 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
   // ── Submit pack ──────────────────────────────────────────────────────────────
   function handlePackSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const total = parseInt(packTotal, 10)
+    if (!Number.isFinite(total) || total < 1) {
+      toast.error('Indica um número de sessões válido (mínimo 1)')
+      return
+    }
     createPack.mutate({
       alunoId:         id,
-      total:           parseInt(packTotal),
-      sessionDuration: parseInt(packDuration) as 30 | 60,
+      total,
+      sessionDuration: parseInt(packDuration, 10),
       expiresAt:       packExpires || undefined,
     })
   }
@@ -817,24 +836,27 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
                 <form onSubmit={handlePackSubmit} className="space-y-4 pt-2">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Total de sessões *</Label>
-                    <Select value={packTotal} onValueChange={v => setPackTotal(v ?? '10')}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['5', '10', '20'].map(v => (
-                          <SelectItem key={v} value={v}>{v} sessões</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={packTotal}
+                      onChange={e => setPackTotal(e.target.value)}
+                      placeholder="Ex: 12"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Duração por sessão *</Label>
-                    <Select value={packDuration} onValueChange={v => setPackDuration(v as '30' | '60')}>
+                    <Select value={packDuration} onValueChange={v => setPackDuration(v ?? '60')}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="30">30 minutos</SelectItem>
+                        <SelectItem value="40">40 minutos</SelectItem>
+                        <SelectItem value="45">45 minutos</SelectItem>
                         <SelectItem value="60">60 minutos</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-[11px] text-gray-400">Tem de coincidir com a duração dos slots do estúdio.</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Data de validade</Label>
@@ -925,18 +947,32 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
                   <>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">
-                        {activePack.total - activePack.used} de {activePack.total} sessões restantes
+                        Pack de {activePack.total} sessões
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${packStatusCls(activePack.status)}`}>
                         {packStatusLabel(activePack.status)}
                       </span>
                     </div>
                     {/* Progress bar */}
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all bg-emerald-500"
-                        style={{ width: `${((activePack.total - activePack.used) / Math.max(1, activePack.total)) * 100}%` }}
-                      />
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                      <div className="h-full bg-gray-400 transition-all" style={{ width: `${((packBreakdown?.concluidas ?? 0) / Math.max(1, activePack.total)) * 100}%` }} />
+                      <div className="h-full bg-blue-500 transition-all" style={{ width: `${((packBreakdown?.agendadas ?? 0) / Math.max(1, activePack.total)) * 100}%` }} />
+                      <div className="h-full bg-emerald-500 transition-all" style={{ width: `${((packBreakdown?.porMarcar ?? 0) / Math.max(1, activePack.total)) * 100}%` }} />
+                    </div>
+                    {/* 3 estados: concluídas · agendadas · por marcar */}
+                    <div className="grid grid-cols-3 gap-2 mt-3">
+                      <div className="text-center">
+                        <p className="text-base font-black text-gray-700">{packBreakdown?.concluidas ?? 0}<span className="text-[11px] font-medium text-gray-400">/{activePack.total}</span></p>
+                        <p className="text-[10px] text-gray-400 leading-tight">Concluídas</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-base font-black text-blue-600">{packBreakdown?.agendadas ?? 0}<span className="text-[11px] font-medium text-gray-400">/{activePack.total}</span></p>
+                        <p className="text-[10px] text-gray-400 leading-tight">Agendadas</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-base font-black text-emerald-600">{packBreakdown?.porMarcar ?? 0}<span className="text-[11px] font-medium text-gray-400">/{activePack.total}</span></p>
+                        <p className="text-[10px] text-gray-400 leading-tight">Por marcar</p>
+                      </div>
                     </div>
                     {activePack.expiresAt && (
                       <p className="text-[11px] text-gray-400 mt-1.5">
@@ -1277,24 +1313,27 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
                 <form onSubmit={handlePackSubmit} className="space-y-4 pt-2">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Total de sessões *</Label>
-                    <Select value={packTotal} onValueChange={v => setPackTotal(v ?? '10')}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['5', '10', '20'].map(v => (
-                          <SelectItem key={v} value={v}>{v} sessões</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={packTotal}
+                      onChange={e => setPackTotal(e.target.value)}
+                      placeholder="Ex: 12"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Duração por sessão *</Label>
-                    <Select value={packDuration} onValueChange={v => setPackDuration(v as '30' | '60')}>
+                    <Select value={packDuration} onValueChange={v => setPackDuration(v ?? '60')}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="30">30 minutos</SelectItem>
+                        <SelectItem value="40">40 minutos</SelectItem>
+                        <SelectItem value="45">45 minutos</SelectItem>
                         <SelectItem value="60">60 minutos</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-[11px] text-gray-400">Tem de coincidir com a duração dos slots do estúdio.</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Data de validade</Label>

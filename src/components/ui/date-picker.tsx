@@ -56,14 +56,20 @@ function usePopupStyle(triggerRef: React.RefObject<HTMLElement | null>, open: bo
     const el = triggerRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const minW = Math.max(rect.width, 288)
+    // A largura nunca pode passar a viewport (senão o calendário abre cortado
+    // no canto — feedback da cliente sobre o pack). Preso a 288px ou menos em
+    // ecrãs estreitos, com 8px de margem de cada lado.
+    const minW = Math.min(Math.max(rect.width, 288), window.innerWidth - 16)
     const spaceBelow = window.innerHeight - rect.bottom - 8
     const spaceAbove = rect.top - 8
+    // Alinha à esquerda do gatilho, mas empurra para dentro se transbordar à
+    // direita (ou à esquerda), garantindo que fica sempre inteiro no ecrã.
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - minW - 8))
 
     if (spaceBelow < 340 && spaceAbove > spaceBelow) {
-      setStyle({ position: 'fixed', left: rect.left, bottom: window.innerHeight - rect.top + 4, width: minW, zIndex: 9999 })
+      setStyle({ position: 'fixed', left, bottom: window.innerHeight - rect.top + 4, width: minW, zIndex: 9999 })
     } else {
-      setStyle({ position: 'fixed', left: rect.left, top: rect.bottom + 4, width: minW, zIndex: 9999 })
+      setStyle({ position: 'fixed', left, top: rect.bottom + 4, width: minW, zIndex: 9999 })
     }
   }, [triggerRef])
 

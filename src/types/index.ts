@@ -95,7 +95,7 @@ export interface Availability {
   confirmedCount: number      // total studio bookings in this slot
   availableSlots: number
   isBooked?: boolean          // has this aluno already booked?
-  sessionDuration?: 30 | 60  // from aluno's active pack
+  sessionDuration?: number  // from aluno's active pack
   packRemaining?: number
 }
 
@@ -148,7 +148,7 @@ export interface Booking {
   personalTrainerName: string
   startTime: string
   endTime: string
-  sessionDuration: 30 | 60
+  sessionDuration: number
   status: BookingStatus
   createdAt: string
 }
@@ -218,7 +218,7 @@ export interface PackSummary {
   total: number
   used: number
   remaining: number
-  sessionDuration: 30 | 60
+  sessionDuration: number
   expiresAt?: string
 }
 
@@ -282,7 +282,7 @@ export interface Pack {
   alunoName: string
   total: number
   used: number
-  sessionDuration: 30 | 60
+  sessionDuration: number
   expiresAt?: string
   status: 'ACTIVE' | 'EXPIRED' | 'DEPLETED'
   createdAt: string

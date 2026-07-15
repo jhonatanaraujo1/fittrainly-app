@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, CheckCircle2, Loader2, X, Flame, Star, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, CheckCircle2, Loader2, X, Flame, Star, LayoutGrid, List, ChevronLeft, ChevronRight, Ticket } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns'
@@ -508,13 +508,23 @@ export default function AlunoDashboardPage() {
 
       {/* Stats */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4">
-          {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <StatCard title="Sessões Agendadas" value={data?.upcomingCount ?? 0} icon={Calendar} iconColor="#C9A84C" delay={0.1} />
           <StatCard title="Sessões Realizadas" value={data?.completedCount ?? 0} icon={CheckCircle2} iconColor="#C9A84C" delay={0.15} />
+          {/* Feedback da cliente: falta quantas sessões ainda há "por agendar"
+              dentro do pack já pago. remaining = crédito ainda não marcado. */}
+          <StatCard
+            title="Por Agendar (pack)"
+            value={data?.pack?.remaining ?? 0}
+            subtitle={data?.pack ? `de ${data.pack.total} sessões` : 'sem pack ativo'}
+            icon={Ticket}
+            iconColor="#C9A84C"
+            delay={0.2}
+          />
         </div>
       )}
 

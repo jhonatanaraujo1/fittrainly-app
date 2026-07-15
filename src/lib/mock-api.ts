@@ -1017,7 +1017,7 @@ export const packApi = {
     return db.packs.filter(p => p.alunoId === alunoId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   },
   allActive: async () => { await delay(250); return db.packs.filter(p => p.status === 'ACTIVE') },
-  create: async (data: { alunoId: string; total: number; sessionDuration: 30 | 60; expiresAt?: string }) => {
+  create: async (data: { alunoId: string; total: number; sessionDuration: number; expiresAt?: string }) => {
     await delay(350)
     const aluno = db.alunos.find(a => a.id === data.alunoId)
     if (!aluno) throw new Error('Aluno não encontrado')

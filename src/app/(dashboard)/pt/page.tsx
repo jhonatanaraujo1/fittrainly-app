@@ -37,7 +37,7 @@ export default function PTDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard title="Meus Alunos" value={data?.stats.totalAlunos ?? 0} icon={Users} iconColor="#C9A84C" delay={0.05} />
           <StatCard title="Sessões Esta Semana" value={data?.stats.sessionsThisWeek ?? 0} icon={Calendar} iconColor="#C9A84C" delay={0.1} />
-          <StatCard title="Horas Este Mês" value={`${data?.stats.hoursThisMonth ?? 0}h`} icon={Clock} iconColor="#C9A84C" delay={0.15} />
+          <StatCard title="Horas Este Mês" value={(() => { const h = data?.stats.hoursThisMonth ?? 0; return `${Number.isInteger(h) ? h : h.toFixed(1).replace('.', ',')}h` })()} icon={Clock} iconColor="#C9A84C" delay={0.15} />
           <StatCard
             title="A Pagar"
             value={formatCurrency(data?.stats.amountDue ?? 0)}

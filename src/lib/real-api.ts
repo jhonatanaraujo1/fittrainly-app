@@ -450,7 +450,7 @@ export const packApi = {
   allActive: async (): Promise<unknown[]> => {
     throw new Error('packApi.allActive: endpoint ainda não existe no backend real')
   },
-  create: async (data: { alunoId: string; total: number; sessionDuration: 30 | 60; expiresAt?: string }) =>
+  create: async (data: { alunoId: string; total: number; sessionDuration: number; expiresAt?: string }) =>
     apiFetch('/api/v1/session-packs', {
       method: 'POST',
       body: JSON.stringify({ studentId: data.alunoId, total: data.total, sessionDuration: data.sessionDuration, expiresAt: data.expiresAt }),
