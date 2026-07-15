@@ -874,12 +874,15 @@ export const dashboardApi = {
 // Mix of StudentController (own profile) + availabilityApi/bookingApi (own
 // PT's slots + booking). Confirmed live 07/jul.
 export const alunoApi = {
+  // BUG FIX: /students/me devolve o StudentResponse COMPLETO (mesmo
+  // findResponseById que /students/{id} usa), com a anamnese em nomes ingleses
+  // (medicalConditions, intakeFormSignedAt, gender…). Sem passar pelo
+  // studentToMock, a página "Minha Anamnese" lia aluno.doencas/genero/
+  // anamneseAssinadaEm como undefined → mostrava sempre "não preenchida" e
+  // nunca o badge de assinatura. studentToMock é function (hoisted), chamável
+  // aqui mesmo estando definido mais abaixo.
   me: async () =>
-    apiFetch<{
-      id: string; userId: string; name: string; email: string; phone?: string
-      personalTrainerId: string; personalTrainerName: string
-      nextSession?: string; completedSessions: number; status: string; enrollmentDate: string
-    }>('/api/v1/students/me'),
+    studentToMock(await apiFetch<RealStudent>('/api/v1/students/me')),
 
   // Alias kept for pages built against the mock's `assinarAnamnese`/intake
   // form naming — backend route is /students/me/intake-form/sign.
