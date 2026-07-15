@@ -186,6 +186,10 @@ export interface MockAluno {
   // Assinatura digital da anamnese
   anamneseAssinadaEm?: string    // ISO datetime
   anamneseAssinadaNome?: string  // Nome confirmado pelo aluno
+
+  // Dados fiscais (para emissão de fatura)
+  nif?: string
+  morada?: string
 }
 
 // PT releases a studio slot for their alunos to book

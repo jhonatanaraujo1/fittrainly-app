@@ -224,6 +224,8 @@ function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void
     prazoObjetivo:     aluno.prazoObjetivo ?? '',
     disponibilidadeSemanal: aluno.disponibilidadeSemanal !== undefined ? String(aluno.disponibilidadeSemanal) : '',
     observacoesGerais: aluno.observacoesGerais ?? '',
+    nif:               aluno.nif ?? '',
+    morada:            aluno.morada ?? '',
   })
 
   const set = <K extends keyof typeof draft>(k: K, v: typeof draft[K]) => setDraft(d => ({ ...d, [k]: v }))
@@ -248,6 +250,8 @@ function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void
       prazoObjetivo:     draft.prazoObjetivo || undefined,
       disponibilidadeSemanal: draft.disponibilidadeSemanal ? parseInt(draft.disponibilidadeSemanal) : undefined,
       observacoesGerais: draft.observacoesGerais || undefined,
+      nif:               draft.nif || undefined,
+      morada:            draft.morada || undefined,
     }),
     onSuccess: () => {
       toast.success('Anamnese actualizada ✅')
@@ -287,6 +291,8 @@ function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void
             <Row label="Objetivo" value={aluno.objetivo} />
             <Row label="Prazo" value={aluno.prazoObjetivo} />
             <Row label="Disponibilidade" value={aluno.disponibilidadeSemanal !== undefined ? `${aluno.disponibilidadeSemanal}×/semana` : undefined} />
+            <Row label="NIF" value={aluno.nif} />
+            <Row label="Morada" value={aluno.morada} />
           </div>
 
           {/* Saúde */}
@@ -392,6 +398,17 @@ function AnamneseTab({ aluno, onSaved }: { aluno: MockAluno; onSaved: () => void
                   {['1', '2', '3', '4', '5', '6'].map(d => <SelectItem key={d} value={d}>{d}×/semana</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          {/* Dados fiscais — necessários para emitir fatura (opcionais) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">NIF</Label>
+              <input value={draft.nif} onChange={e => set('nif', e.target.value)} placeholder="Contribuinte" className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Morada</Label>
+              <input value={draft.morada} onChange={e => set('morada', e.target.value)} placeholder="Morada de faturação" className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
             </div>
           </div>
         </div>
@@ -634,8 +651,11 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
   // agendadas; remaining = por marcar.
   const packBreakdown = useMemo(() => {
     if (!activePack) return null
-    const bookings = data?.bookings ?? []
-    const completed = bookings.filter(b => b.status === 'COMPLETED').length
+    // completedSessions vem do aluno (contagem do backend); data.bookings pode
+    // vir vazio para o admin (ainda sem endpoint de histórico), por isso usamos
+    // o agregado do aluno como fonte de verdade das aulas já dadas.
+    const bookingCompleted = (data?.bookings ?? []).filter(b => b.status === 'COMPLETED').length
+    const completed = Math.max(bookingCompleted, data?.aluno?.completedSessions ?? 0)
     const concluidas = Math.min(completed, activePack.used)
     const agendadas = Math.max(0, activePack.used - concluidas)
     const porMarcar = activePack.total - activePack.used

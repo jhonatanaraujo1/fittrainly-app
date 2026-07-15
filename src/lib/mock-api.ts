@@ -787,6 +787,38 @@ export const bookingApi = {
     return booking
   },
 
+  // Admin/PT marcam POR um aluno específico (desconta do pack do aluno).
+  createForStudent: async (availabilityId: string, studentId: string) => {
+    await delay(400)
+    const aluno = db.alunos.find(a => a.id === studentId)
+    if (!aluno) throw new Error('Aluno não encontrado')
+    const date = availabilityId.slice(0, 10)
+    const slotTime = availabilityId.slice(11)
+    if (isSlotBlocked(date, slotTime)) throw new Error('Este horário está bloqueado pelo estúdio')
+    const studioCount = getStudioSlotCount(date, slotTime)
+    if (studioCount >= STUDIO_MAX_SPOTS) throw new Error('Slot lotado — 4/4 vagas do estúdio preenchidas')
+    const already = db.bookings.some(b => b.slotKey === availabilityId && b.alunoId === aluno.id && b.status === 'CONFIRMED')
+    if (already) throw new Error('O aluno já tem uma reserva neste horário')
+    const pack = db.packs.find(p => p.alunoId === aluno.id && p.status === 'ACTIVE')
+    if (!pack || pack.total - pack.used <= 0) throw new Error('O aluno não tem pack ativo com sessões disponíveis')
+    const { start, end } = slotKeyToISO(date, slotTime)
+    const booking = {
+      id: 'bk-' + uid(),
+      slotKey: availabilityId, availabilityId,
+      alunoId: aluno.id, alunoName: aluno.name,
+      personalTrainerId: aluno.personalTrainerId,
+      personalTrainerName: aluno.personalTrainerName,
+      startTime: start, endTime: end,
+      sessionDuration: pack.sessionDuration,
+      status: 'CONFIRMED' as const,
+      createdAt: new Date().toISOString(),
+    }
+    db.bookings.push(booking)
+    pack.used++
+    if (pack.total - pack.used === 0) pack.status = 'DEPLETED'
+    return booking
+  },
+
   // Cancel with role-based time enforcement
   // Aluno: >= 24h | PT: >= 12h | Admin: always
   cancel: async (bookingId: string) => {
@@ -883,6 +915,7 @@ export const adminApi = {
     praticouAtividade: boolean; atividadeAnterior: string; tempoSemAtividade: string
     nivelAtividade: 'SEDENTARIO' | 'POUCO_ATIVO' | 'ATIVO' | 'MUITO_ATIVO'
     horasSono: number; nivelEstresse: 'BAIXO' | 'MEDIO' | 'ALTO'; observacoesGerais: string
+    nif: string; morada: string
   }>) => {
     await delay(300)
     const aluno = db.alunos.find(a => a.id === id)

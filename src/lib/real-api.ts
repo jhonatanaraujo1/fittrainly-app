@@ -804,6 +804,14 @@ export const bookingApi = {
       body: JSON.stringify({ availabilityId }),
     }),
 
+  // Admin/PT marcam POR um aluno específico (desconta do pack do aluno). O
+  // aluno passa a ter uma reserva real (Confirmada), não uma disponibilidade.
+  createForStudent: async (availabilityId: string, studentId: string) =>
+    apiFetch('/api/v1/bookings/for-student', {
+      method: 'POST',
+      body: JSON.stringify({ availabilityId, studentId }),
+    }),
+
   cancel: async (bookingId: string) =>
     apiFetch<void>(`/api/v1/bookings/${bookingId}`, { method: 'DELETE' }),
 }
@@ -1097,6 +1105,8 @@ function studentToMock(s: RealStudent) {
     observacoesGerais: (s.generalNotes as string) ?? undefined,
     anamneseAssinadaEm: (s.intakeFormSignedAt as string) ?? undefined,
     anamneseAssinadaNome: (s.intakeFormSignedName as string) ?? undefined,
+    nif: (s.taxId as string) ?? undefined,
+    morada: (s.address as string) ?? undefined,
   }
 }
 
@@ -1148,6 +1158,7 @@ function mockToStudentPayload(d: Record<string, unknown>): Record<string, unknow
   put('stressLevel', d.nivelEstresse ? STRESS_PT2EN[d.nivelEstresse as string] : undefined)
   put('generalNotes', d.observacoesGerais)
   put('status', d.status ? STATUS_PT2EN[d.status as string] : undefined)
+  put('taxId', d.nif); put('address', d.morada)
   return out
 }
 
