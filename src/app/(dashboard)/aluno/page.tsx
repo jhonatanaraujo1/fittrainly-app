@@ -87,7 +87,11 @@ function AgendaSection() {
       qc.invalidateQueries({ queryKey: ['aluno-dashboard'] })
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      // apiFetch lança Error(message) com a mensagem do backend — não é
+      // axios, então err.response.data.message era sempre undefined e o
+      // aluno via só o genérico. Usar err.message para mostrar o motivo real
+      // ("slot lotado", "exige pacote ativo", etc.).
+      const msg = err instanceof Error ? err.message : undefined
       toast.error(msg ?? 'Erro ao confirmar presença')
     },
   })

@@ -46,7 +46,8 @@ export default function ModalidadesPage() {
       setForm(EMPTY_FORM)
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      // apiFetch lança Error(message) do backend — não axios. Ler e.message.
+      const msg = e instanceof Error ? e.message : undefined
       toast.error(msg ?? 'Erro ao criar modalidade')
     },
   })
