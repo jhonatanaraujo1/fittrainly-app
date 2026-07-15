@@ -102,8 +102,11 @@ export default function AdminSchedulePage() {
   })
 
   const { data: sessionAttendees = [] } = useQuery({
-    queryKey: ['session-attendees', selectedSession?.ptId, selectedSession?.slotKey],
-    queryFn: () => adminScheduleApi.attendees(selectedSession!.ptId, selectedSession!.slotKey),
+    // BUG PROD (500): o backend espera o UUID da availability, não o slotKey
+    // "data-hora". Passar slotKey fazia o parse de UUID falhar → 500 ao clicar
+    // no chip do PT para ver o aluno. availabilityId = rel.releaseId (o UUID).
+    queryKey: ['session-attendees', selectedSession?.ptId, selectedSession?.availabilityId],
+    queryFn: () => adminScheduleApi.attendees(selectedSession!.ptId, selectedSession!.availabilityId),
     enabled: !!selectedSession,
   })
 
