@@ -1,6 +1,7 @@
 'use client'
 
-import { X, Loader2, Mail, Phone } from 'lucide-react'
+import { useState } from 'react'
+import { X, Loader2, Mail, Phone, UserPlus } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
@@ -23,11 +24,17 @@ interface Props {
   students: SessionDetailStudent[]
   onCancelBooking?: (bookingId: string) => void
   cancellingId?: string | null
+  // #2 — admin marca um aluno do PT neste horário (desconta do pack + fatura).
+  bookableStudents?: { id: string; name: string }[]
+  onBookStudent?: (studentId: string) => void
+  booking?: boolean
 }
 
 export function SessionDetailDialog({
   open, onOpenChange, startTime, endTime, ptName, students, onCancelBooking, cancellingId,
+  bookableStudents, onBookStudent, booking,
 }: Props) {
+  const [pick, setPick] = useState('')
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -84,6 +91,33 @@ export function SessionDetailDialog({
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* #2 — marcar aluno neste horário (admin) */}
+        {onBookStudent && (
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+            <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" /> Marcar aluno neste horário
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={pick}
+                onChange={e => setPick(e.target.value)}
+                className="flex-1 min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+              >
+                <option value="">Escolher aluno…</option>
+                {(bookableStudents ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <Button
+                disabled={!pick || booking}
+                onClick={() => { if (pick) { onBookStudent(pick); setPick('') } }}
+                className="flex-shrink-0"
+              >
+                {booking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Marcar'}
+              </Button>
+            </div>
+            <p className="text-[11px] text-gray-400">Desconta do pack do aluno e entra na faturação.</p>
           </div>
         )}
       </DialogContent>

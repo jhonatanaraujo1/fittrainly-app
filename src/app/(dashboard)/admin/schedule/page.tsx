@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SessionDetailDialog } from '@/components/session-detail-dialog'
-import { adminScheduleApi, ptApi, bookingApi, studioScheduleApi, studioConfigApi } from '@/lib/api'
+import { adminScheduleApi, adminApi, ptApi, bookingApi, studioScheduleApi, studioConfigApi } from '@/lib/api'
 import { cn, getInitials } from '@/lib/utils'
 import type { AdminScheduleSlot, PersonalTrainer } from '@/types'
 
@@ -32,7 +32,7 @@ export default function AdminSchedulePage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [popover, setPopover] = useState<PopoverPos | null>(null)
   const [ptSearch, setPtSearch] = useState('')
-  const [selectedSession, setSelectedSession] = useState<{ ptId: string; ptName: string; slotKey: string; startTime: string; endTime: string } | null>(null)
+  const [selectedSession, setSelectedSession] = useState<{ ptId: string; ptName: string; slotKey: string; startTime: string; endTime: string; availabilityId: string } | null>(null)
   const [blockMode, setBlockMode] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [durationInput, setDurationInput] = useState('')
@@ -113,6 +113,24 @@ export default function AdminSchedulePage() {
       toast.success('Sessão cancelada')
     },
     onError: (e: Error) => toast.error(e.message || 'Erro ao cancelar sessão'),
+  })
+
+  // #2 — alunos do PT do slot selecionado (para o admin marcar por eles).
+  const { data: ptStudents = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['pt-students-admin', selectedSession?.ptId],
+    queryFn: () => adminApi.alunosByPt(selectedSession!.ptId) as Promise<Array<{ id: string; name: string }>>,
+    enabled: !!selectedSession,
+  })
+
+  const bookForStudent = useMutation({
+    mutationFn: ({ availabilityId, studentId }: { availabilityId: string; studentId: string }) =>
+      bookingApi.createForStudent(availabilityId, studentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-schedule'] })
+      qc.invalidateQueries({ queryKey: ['session-attendees'] })
+      toast.success('Aluno marcado ✓ — desconta do pack e entra na faturação')
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Erro ao marcar o aluno'),
   })
 
   const createBlock = useMutation({
@@ -340,14 +358,14 @@ export default function AdminSchedulePage() {
                                 const ptName = activePts.find(p => p.id === rel.ptId)?.name ?? 'PT'
                                 return (
                                   <div key={rel.releaseId}
-                                    onClick={() => rel.confirmedCount > 0 && setSelectedSession({
+                                    onClick={() => setSelectedSession({
                                       ptId: rel.ptId, ptName, slotKey: `${dateStr}-${time}`,
                                       startTime: slot.startTime, endTime: slot.endTime,
+                                      availabilityId: rel.releaseId,
                                     })}
                                     className={cn(
-                                      'flex items-center justify-between rounded px-1.5 py-1 min-h-[20px] text-white text-[9px] font-semibold group',
+                                      'flex items-center justify-between rounded px-1.5 py-1 min-h-[20px] text-white text-[9px] font-semibold group cursor-pointer hover:opacity-80 transition-opacity',
                                       ptColor(rel.ptId),
-                                      rel.confirmedCount > 0 && 'cursor-pointer hover:opacity-80 transition-opacity',
                                     )}>
                                     <span className="truncate">{ptName.split(' ')[0]}</span>
                                     {rel.confirmedCount === 0 ? (
@@ -475,6 +493,9 @@ export default function AdminSchedulePage() {
           students={sessionAttendees.map(a => ({ bookingId: a.bookingId, name: a.alunoName, email: a.email, phone: a.phone }))}
           onCancelBooking={(bookingId) => cancelBooking.mutate(bookingId)}
           cancellingId={cancelBooking.isPending ? cancelBooking.variables ?? null : null}
+          bookableStudents={ptStudents}
+          onBookStudent={(studentId) => bookForStudent.mutate({ availabilityId: selectedSession.availabilityId, studentId })}
+          booking={bookForStudent.isPending}
         />
       )}
 
