@@ -283,6 +283,28 @@ export const ptApi = {
     return { ...pt, plan: p ? { id: p.id, name: p.name, type: p.type } : undefined }
   },
 
+  // Self-service: o PT edita o próprio perfil (contacto + fiscal). Não toca em
+  // plano/estado. Espelha o PATCH /personal-trainers/me do backend.
+  updateOwnProfile: async (data: {
+    name?: string; email?: string; phone?: string; specialty?: string; bio?: string
+    taxId?: string; address?: string
+  }) => {
+    await delay(300)
+    const user = getCurrentUser()
+    const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
+    Object.assign(pt, {
+      name: data.name ?? pt.name,
+      email: data.email ?? pt.email,
+      phone: data.phone ?? pt.phone,
+      specialty: data.specialty ?? pt.specialty,
+      bio: data.bio ?? pt.bio,
+      taxId: data.taxId ?? (pt as { taxId?: string }).taxId,
+      address: data.address ?? (pt as { address?: string }).address,
+    })
+    const p = getPlanById(pt.planId)
+    return { ...pt, plan: p ? { id: p.id, name: p.name, type: p.type } : undefined }
+  },
+
   // Password é GERADA aqui (não vem do form) e devolvida como temporaryPassword,
   // espelhando o backend real. O PT recebe por email; o admin vê só esta 1ª vez.
   create: async (data: {

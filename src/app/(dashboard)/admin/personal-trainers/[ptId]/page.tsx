@@ -62,6 +62,8 @@ function EditSheet({ pt, plans, onClose }: {
     teefNumber:          pt.teefNumber ?? '',
     teefValidUntil:      pt.teefValidUntil ?? '',
     insuranceValidUntil: pt.insuranceValidUntil ?? '',
+    taxId:               (pt as { taxId?: string }).taxId ?? '',
+    address:             (pt as { address?: string }).address ?? '',
   })
 
   const update = useMutation({
@@ -122,6 +124,16 @@ function EditSheet({ pt, plans, onClose }: {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Validade Seguro</Label>
               <Input type="date" value={form.insuranceValidUntil} onChange={e => setForm(f => ({ ...f, insuranceValidUntil: e.target.value }))} className="min-h-[44px]" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">NIF</Label>
+              <Input value={form.taxId} onChange={e => setForm(f => ({ ...f, taxId: e.target.value }))} placeholder="Contribuinte" className="min-h-[44px]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Morada</Label>
+              <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Morada fiscal" className="min-h-[44px]" />
             </div>
           </div>
           <div className="space-y-1.5">

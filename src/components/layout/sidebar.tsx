@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, CreditCard, Receipt,
   Calendar, UserCheck, History,
   Dumbbell, LogOut, Layers, ClipboardList,
-  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, KeyRound, Settings2, FileText,
+  Bell, TrendingUp, Users2, X, ClipboardCheck, BarChart3, KeyRound, Settings2, FileText, UserCog,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { cn, getInitials } from '@/lib/utils'
@@ -54,6 +54,7 @@ const NAV: Record<UserRole, NavSection[]> = {
       { href: '/pt/students',     label: 'Meus Alunos',  icon: UserCheck },
       { href: '/pt/treinos',      label: 'Treinos',      icon: ClipboardList },
       { href: '/pt/documentos',   label: 'Documentos',   icon: FileText },
+      { href: '/pt/perfil',       label: 'Meu Perfil',   icon: UserCog },
     ] },
   ],
   ALUNO: [

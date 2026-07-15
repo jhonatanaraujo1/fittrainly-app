@@ -316,6 +316,12 @@ export const ptApi = {
     apiFetch<{ tempPassword: string; emailSent: boolean }>(`/api/v1/personal-trainers/${id}/reset-password`, {
       method: 'POST',
     }),
+  // Self-service: PATCH /personal-trainers/me (PERSONAL_TRAINER-only). O PT
+  // edita contacto + fiscal do próprio perfil, nunca plano/estado.
+  updateOwnProfile: async (data: {
+    name?: string; email?: string; phone?: string; specialty?: string; bio?: string
+    taxId?: string; address?: string
+  }) => apiFetch('/api/v1/personal-trainers/me', { method: 'PATCH', body: JSON.stringify(data) }),
 }
 
 // ── Documentos do PT (seguro / TEEF / outros) ─────────────────────────────────
