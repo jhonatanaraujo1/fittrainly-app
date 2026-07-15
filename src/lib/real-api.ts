@@ -522,11 +522,13 @@ export const availabilityApi = {
   studioGrid: async (startDate: string, endDate: string) => {
     const start = new Date(startDate).toISOString()
     const end = new Date(endDate).toISOString()
-    const [mine, config] = await Promise.all([
+    const [mine, config, blocks] = await Promise.all([
       apiFetch<RealAvailability[]>(
         `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
       ),
       fetchStudioConfig(),
+      // #10 — fechos do estúdio (rota PT-readable). Degrada para [] se falhar.
+      studioScheduleApi.listBlocksReadonly(startDate, endDate).catch(() => [] as Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>),
     ])
 
     // Index the PT's own releases by cell key (backend UTC slice).
@@ -542,17 +544,21 @@ export const availabilityApi = {
       date: string; slotTime: string; startTime: string; endTime: string
       released: boolean; releaseId?: string
       studioCount: number; myBookings: number; studioMax: number; alunoNames: string[]
+      blocked: boolean; blockReason?: string
     }> = []
     for (const date of eachDateStr(startDate, endDate)) {
       const hours = DEFAULT_STUDIO_HOURS[dowOf(date)] ?? [null, null]
       for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes)) {
         const a = mineByCell.get(`${date}-${time}`)
+        const blk = slotBlock(blocks, date, time, config.classDurationMinutes)
         out.push({
           date, slotTime: time,
           startTime: a ? a.startTime : `${date}T${time}:00Z`,
           endTime: a ? a.endTime : `${date}T${addMinutesToTime(time, config.classDurationMinutes)}:00Z`,
           released: !!a,
           releaseId: a?.id,
+          blocked: !!blk,
+          blockReason: blk?.reason,
           // Cross-PT studio occupancy isn't visible to a PERSONAL_TRAINER —
           // only their own confirmedCount is known here. The studio-wide cap
           // is still enforced server-side regardless of what the UI displays.
@@ -779,6 +785,13 @@ export const studioScheduleApi = {
   listBlocks: async (startDate: string, endDate: string) =>
     apiFetch<Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>>(
       `/api/v1/admin/studio-schedule/blocks?startDate=${startDate}&endDate=${endDate}`,
+    ),
+
+  // Leitura acessível ao PT (rota fora de /admin) — para mostrar os fechos do
+  // estúdio na agenda do PT (#10). Mutações continuam admin-only.
+  listBlocksReadonly: async (startDate: string, endDate: string) =>
+    apiFetch<Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>>(
+      `/api/v1/studio-schedule/blocks?startDate=${startDate}&endDate=${endDate}`,
     ),
 
   createBlock: async (data: { date: string; startTime: string; endTime: string; reason: string }) =>

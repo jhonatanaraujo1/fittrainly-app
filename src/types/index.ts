@@ -111,6 +111,9 @@ export interface StudioSlot {
   myBookings: number
   studioMax: number
   alunoNames?: string[]
+  // #10 — estúdio fechado pelo admin (feriado/fecho) nesse horário.
+  blocked?: boolean
+  blockReason?: string
 }
 
 // PT release record

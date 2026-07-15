@@ -43,6 +43,26 @@ function SlotCell({
   let label = ''
   let sublabel = ''
 
+  // #10 — estúdio fechado pelo admin (feriado/fecho). Preto sólido, não
+  // clicável, mostra o motivo. Não dá para libertar nem marcar aqui.
+  if (slot.blocked) {
+    return (
+      <div
+        title={slot.blockReason ? `Estúdio fechado: ${slot.blockReason}` : 'Estúdio fechado'}
+        className="relative w-full min-h-[56px] sm:min-h-[64px] rounded-lg border border-black bg-black text-gray-500 px-2 py-1.5 flex flex-col justify-between cursor-not-allowed select-none"
+      >
+        <span className="text-[10px] sm:text-xs font-bold leading-none">{slot.slotTime}</span>
+        <span className="flex items-center gap-1 mt-0.5">
+          <Lock className="w-3 h-3 shrink-0" />
+          <span className="text-[9px] sm:text-[10px] font-semibold leading-tight truncate">Fechado</span>
+        </span>
+        {slot.blockReason && (
+          <span className="text-[8px] sm:text-[9px] leading-none opacity-70 truncate">{slot.blockReason}</span>
+        )}
+      </div>
+    )
+  }
+
   if (slot.released) {
     if (hasMyBookings) {
       bg = 'bg-blue-600 border-blue-700 text-white cursor-not-allowed opacity-90'
