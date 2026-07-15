@@ -72,15 +72,17 @@ export default function AdminSchedulePage() {
   const slotDuration = studioConfig?.slotDurationMinutes ?? 30
   const classDuration = studioConfig?.classDurationMinutes ?? 30
 
-  const updateClassDuration = useMutation({
-    mutationFn: studioConfigApi.update,
+  // #4/#7 — configura a CADÊNCIA do slot (30/40/45/60). A aula acompanha a
+  // cadência (sem folga) — resolve "os slots são de 40, não 30".
+  const updateSlotCadence = useMutation({
+    mutationFn: (minutes: number) => studioConfigApi.updateSettings({ slotDurationMinutes: minutes, classDurationMinutes: minutes }),
     onSuccess: () => {
-      toast.success('Duração da aula atualizada')
+      toast.success('Cadência do slot atualizada')
       qc.invalidateQueries({ queryKey: ['studio-config'] })
       qc.invalidateQueries({ queryKey: ['admin-schedule'] })
       setConfigOpen(false)
     },
-    onError: (e: Error) => toast.error(e.message || 'Erro ao atualizar a duração'),
+    onError: (e: Error) => toast.error(e.message || 'Erro ao atualizar a cadência'),
   })
 
   const addRelease = useMutation({
@@ -188,11 +190,11 @@ export default function AdminSchedulePage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setDurationInput(String(classDuration)); setConfigOpen(true) }}
+            onClick={() => { setDurationInput(String(slotDuration)); setConfigOpen(true) }}
             className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-colors min-h-[44px] bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
           >
             <Clock className="w-4 h-4" />
-            Aula: {classDuration}min
+            Slot: {slotDuration}min
           </button>
           <button
             onClick={() => setBlockMode(b => !b)}
@@ -537,38 +539,55 @@ export default function AdminSchedulePage() {
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Duração da aula</DialogTitle>
+            <DialogTitle>Duração do slot</DialogTitle>
             <DialogDescription>
-              Quanto tempo dura cada aula dentro do slot de {slotDuration} min. A folga ({slotDuration} − aula = {slotDuration - classDuration} min) fica entre alunos para o PT preparar a próxima. Igual ao slot = sem folga.
+              De quanto em quanto tempo começa uma aula na agenda. Ex.: 40 → a grade fica 08:00, 08:40, 09:20… Cada aula ocupa o slot inteiro (sem folga).
             </DialogDescription>
           </DialogHeader>
-          <div className="py-1">
-            <label htmlFor="class-duration" className="text-sm font-semibold text-gray-700">Minutos por aula</label>
-            <input
-              id="class-duration"
-              type="number"
-              min={1}
-              max={slotDuration}
-              value={durationInput}
-              onChange={(e) => setDurationInput(e.target.value)}
-              className="mt-1.5 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-gray-900"
-            />
-            <p className="text-xs text-gray-400 mt-1.5">Entre 1 e {slotDuration} minutos (não pode passar o slot).</p>
+          <div className="py-1 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {[30, 40, 45, 60].map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setDurationInput(String(preset))}
+                  className={cn(
+                    'px-3 py-2 rounded-lg border text-sm font-semibold transition-colors min-h-[44px]',
+                    durationInput === String(preset) ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
+                  )}
+                >
+                  {preset} min
+                </button>
+              ))}
+            </div>
+            <div>
+              <label htmlFor="slot-duration" className="text-sm font-semibold text-gray-700">Ou outro valor (min)</label>
+              <input
+                id="slot-duration"
+                type="number"
+                min={15}
+                max={180}
+                value={durationInput}
+                onChange={(e) => setDurationInput(e.target.value)}
+                className="mt-1.5 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-gray-900"
+              />
+              <p className="text-xs text-gray-400 mt-1.5">Entre 15 e 180 minutos.</p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="min-h-[44px]" onClick={() => setConfigOpen(false)} disabled={updateClassDuration.isPending}>
+            <Button variant="outline" className="min-h-[44px]" onClick={() => setConfigOpen(false)} disabled={updateSlotCadence.isPending}>
               Cancelar
             </Button>
             <Button
               className="min-h-[44px]"
-              disabled={updateClassDuration.isPending}
+              disabled={updateSlotCadence.isPending}
               onClick={() => {
                 const n = parseInt(durationInput, 10)
-                if (!Number.isFinite(n) || n < 1 || n > slotDuration) {
-                  toast.error(`A duração tem de estar entre 1 e ${slotDuration} minutos`)
+                if (!Number.isFinite(n) || n < 15 || n > 180) {
+                  toast.error('A cadência tem de estar entre 15 e 180 minutos')
                   return
                 }
-                updateClassDuration.mutate(n)
+                updateSlotCadence.mutate(n)
               }}
             >
               Guardar

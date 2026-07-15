@@ -212,6 +212,7 @@ interface StudioConfig {
   leadCaptureEnabled: boolean
 }
 interface StudioSettingsPatch {
+  slotDurationMinutes?: number
   classDurationMinutes?: number
   name?: string
   privacyPolicyUrl?: string | null

@@ -44,8 +44,17 @@ export const studioConfigApi = {
     mockStudioConfig.classDurationMinutes = classDurationMinutes
     return { ...mockStudioConfig }
   },
-  updateSettings: async (patch: { classDurationMinutes?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean }) => {
+  updateSettings: async (patch: { slotDurationMinutes?: number; classDurationMinutes?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean }) => {
     await delay(200)
+    if (patch.slotDurationMinutes !== undefined) {
+      if (patch.slotDurationMinutes < 15 || patch.slotDurationMinutes > 180) {
+        throw new Error('A cadência do slot deve estar entre 15 e 180 minutos')
+      }
+      mockStudioConfig.slotDurationMinutes = patch.slotDurationMinutes
+      if (mockStudioConfig.classDurationMinutes > patch.slotDurationMinutes) {
+        mockStudioConfig.classDurationMinutes = patch.slotDurationMinutes
+      }
+    }
     if (patch.classDurationMinutes !== undefined) {
       if (patch.classDurationMinutes <= 0 || patch.classDurationMinutes > mockStudioConfig.slotDurationMinutes) {
         throw new Error(`A duração da aula tem de estar entre 1 e ${mockStudioConfig.slotDurationMinutes} minutos`)
