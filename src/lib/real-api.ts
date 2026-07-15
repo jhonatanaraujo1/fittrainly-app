@@ -889,7 +889,12 @@ export const alunoApi = {
   assinarAnamnese: async (nome: string) =>
     apiFetch('/api/v1/students/me/intake-form/sign', { method: 'POST', body: JSON.stringify({ name: nome }) }),
 
-  myStudents: async () => apiFetch('/api/v1/students/my-students'),
+  // /students/my-students devolve List<StudentResponse> (mesmo shape inglês:
+  // status 'ACTIVE', goal...). Sem studentToMock, o card do PT comparava
+  // s.status === 'ATIVO' e mostrava TODOS os alunos ativos como "Suspenso",
+  // e o objetivo (goal) sumia. Mapeado igual aos outros caminhos.
+  myStudents: async () =>
+    apiFetch<RealStudent[]>('/api/v1/students/my-students').then(list => list.map(studentToMock)),
 
   // Backend requires a password on CreateStudentRequest — personalTrainerId
   // is auto-filled server-side when the caller is a PERSONAL_TRAINER (see
