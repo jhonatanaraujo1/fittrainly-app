@@ -471,7 +471,8 @@ export const packApi = {
 // `weight` keep the same unit convention as the mock (cm / kg) — confirmed
 // against mock-db.ts seed data (altura: 178, peso: 84.5, imc: 26.7).
 export const avaliacaoApi = {
-  byAluno: async (alunoId: string) => apiFetch(`/api/v1/assessments?studentId=${alunoId}`),
+  byAluno: async (alunoId: string) =>
+    apiFetch<RealStudent[]>(`/api/v1/assessments?studentId=${alunoId}`).then(l => l.map(assessmentToMock)),
   create: async (data: { alunoId: string; tipo: string; data: string; frequenciaSemanal?: number; peso?: number; altura?: number; percentualGordura?: number; massaMuscular?: number; objetivo?: string; observacoes?: string; proximaAvaliacao?: string }) =>
     apiFetch('/api/v1/assessments', {
       method: 'POST',
@@ -1099,6 +1100,28 @@ function studentToMock(s: RealStudent) {
   }
 }
 
+// AssessmentResponse (backend, inglês) → shape PT que a UI lê (av.tipo/data/
+// peso/altura/imc/...). Sem isto, a secção de Avaliações Físicas no detalhe do
+// aluno renderiza tudo vazio (datas em branco, tipo errado, sem peso/altura).
+// bmi é calculado no backend e devolvido — mapeado para imc.
+function assessmentToMock(a: RealStudent) {
+  return {
+    id: String(a.id ?? ''),
+    alunoId: (a.studentId as string) ?? undefined,
+    tipo: (a.type as string) ?? undefined,
+    data: (a.date as string) ?? undefined,
+    frequenciaSemanal: (a.weeklyFrequency as number) ?? undefined,
+    peso: (a.weight as number) ?? undefined,
+    altura: (a.height as number) ?? undefined,
+    imc: (a.bmi as number) ?? undefined,
+    percentualGordura: (a.bodyFatPercentage as number) ?? undefined,
+    massaMuscular: (a.muscleMass as number) ?? undefined,
+    objetivo: (a.goal as string) ?? undefined,
+    observacoes: (a.notes as string) ?? undefined,
+    proximaAvaliacao: (a.nextAssessmentDate as string) ?? undefined,
+  }
+}
+
 // Traduz o payload PT do form → EN que o backend aceita. Só inclui chaves
 // presentes (undefined não vira null no JSON, graças ao filtro).
 function mockToStudentPayload(d: Record<string, unknown>): Record<string, unknown> {
@@ -1143,7 +1166,9 @@ export const adminApi = {
     // STUDENT-only), então vem vazio por enquanto.
     const [packs, avaliacoes, workoutPlans] = await Promise.all([
       apiFetch<unknown[]>(`/api/v1/session-packs?studentId=${id}`).catch(() => []),
-      apiFetch<unknown[]>(`/api/v1/assessments?studentId=${id}`).catch(() => []),
+      // Assessments vêm em inglês do backend → mapear p/ o shape PT que a UI
+      // lê (av.tipo/data/peso/imc...), senão as avaliações aparecem vazias.
+      apiFetch<RealStudent[]>(`/api/v1/assessments?studentId=${id}`).then(l => l.map(assessmentToMock)).catch(() => []),
       apiFetch<unknown[]>(`/api/v1/workout-plans?studentId=${id}`).catch(() => []),
     ])
     return { aluno, bookings: [] as unknown[], packs, avaliacoes, workoutPlan: (workoutPlans as unknown[])[0] }
