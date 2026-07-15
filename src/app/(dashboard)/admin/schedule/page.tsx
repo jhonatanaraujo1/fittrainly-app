@@ -188,7 +188,7 @@ export default function AdminSchedulePage() {
             Slots de <strong>{slotDuration} min</strong>{classDuration < slotDuration ? <> · aula de <strong>{classDuration} min</strong></> : null} · capacidade máx. <strong>4</strong> em simultâneo
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             onClick={() => { setDurationInput(String(slotDuration)); setConfigOpen(true) }}
             className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-colors min-h-[44px] bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
