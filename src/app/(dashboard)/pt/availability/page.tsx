@@ -12,9 +12,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { availabilityApi } from '@/lib/api'
+import { availabilityApi, alunoApi, bookingApi } from '@/lib/api'
 import { cn, formatTime } from '@/lib/utils'
 import type { StudioSlot } from '@/types'
+
+type MyStudent = { id: string; name: string; email?: string }
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5] // Mon–Sat
 
@@ -102,7 +104,27 @@ export default function PTAvailabilityPage() {
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set())
   const [confirmSlot, setConfirmSlot] = useState<StudioSlot | null>(null)
   const [confirmClearWeek, setConfirmClearWeek] = useState(false)
+  const [studentToBook, setStudentToBook] = useState('')
   const qc = useQueryClient()
+
+  // #15 — o PT marca um dos seus alunos num slot (os mais velhos pedem para o
+  // PT marcar por eles). Lista dos alunos do próprio PT.
+  const { data: myStudents = [] } = useQuery<MyStudent[]>({
+    queryKey: ['pt-students'],
+    queryFn: () => alunoApi.myStudents() as Promise<MyStudent[]>,
+  })
+
+  const bookForStudent = useMutation({
+    mutationFn: ({ availabilityId, studentId }: { availabilityId: string; studentId: string }) =>
+      bookingApi.createForStudent(availabilityId, studentId),
+    onSuccess: () => {
+      toast.success('Aluno marcado ✓ — desconta do pack dele e entra na faturação')
+      setConfirmSlot(null); setStudentToBook('')
+      qc.invalidateQueries({ queryKey: ['studio-grid'] })
+    },
+    // O backend dá o motivo exato (sem pack ativo, duração não bate, lotado…).
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Erro ao marcar o aluno'),
+  })
 
   const monday = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
   const saturday = addDays(monday, 5)
@@ -382,38 +404,73 @@ export default function PTAvailabilityPage() {
         Slots com 🔒 têm alunos confirmados — cancela as reservas antes de remover. O estúdio tem <strong>4 vagas simultâneas</strong> partilhadas entre todos os PTs.
       </div>
 
-      {/* Confirm single-slot toggle */}
-      <Dialog open={!!confirmSlot} onOpenChange={(o) => !o && setConfirmSlot(null)}>
+      {/* Slot liberado → marcar aluno OU remover. Slot fechado → ativar. */}
+      <Dialog open={!!confirmSlot} onOpenChange={(o) => { if (!o) { setConfirmSlot(null); setStudentToBook('') } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirmSlot?.released ? 'Remover este horário?' : 'Ativar este horário?'}
+              {confirmSlot?.released ? 'Horário liberado' : 'Ativar este horário?'}
             </DialogTitle>
             <DialogDescription>
               {confirmSlot && (
                 <>
                   {format(new Date(confirmSlot.startTime), "EEEE, d 'de' MMMM", { locale: ptBR })} às {confirmSlot.slotTime}.
                   {confirmSlot.released
-                    ? ' Os teus alunos deixam de conseguir agendar aqui.'
+                    ? ' Marca um aluno aqui (desconta do pack dele) ou remove o horário.'
                     : ' Os teus alunos vão poder agendar aqui.'}
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Marcar aluno — só quando liberado e com vaga no estúdio */}
+          {confirmSlot?.released && (
+            <div className="space-y-2 py-1">
+              <label className="text-xs font-semibold text-gray-600">Marcar aluno neste horário</label>
+              <select
+                value={studentToBook}
+                onChange={e => setStudentToBook(e.target.value)}
+                className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+              >
+                <option value="">Escolher aluno…</option>
+                {myStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <Button
+                className="w-full"
+                disabled={!studentToBook || bookForStudent.isPending || (confirmSlot.studioCount >= confirmSlot.studioMax)}
+                onClick={() => {
+                  if (confirmSlot?.releaseId && studentToBook) {
+                    bookForStudent.mutate({ availabilityId: confirmSlot.releaseId, studentId: studentToBook })
+                  }
+                }}
+              >
+                {bookForStudent.isPending ? 'A marcar…' : confirmSlot.studioCount >= confirmSlot.studioMax ? 'Estúdio lotado' : 'Marcar aluno'}
+              </Button>
+            </div>
+          )}
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmSlot(null)} disabled={toggle.isPending}>
+            <Button variant="outline" onClick={() => { setConfirmSlot(null); setStudentToBook('') }} disabled={toggle.isPending || bookForStudent.isPending}>
               Voltar
             </Button>
-            <Button
-              variant={confirmSlot?.released ? 'destructive' : 'default'}
-              disabled={toggle.isPending}
-              onClick={() => {
-                if (confirmSlot) toggle.mutate(confirmSlot)
-                setConfirmSlot(null)
-              }}
-            >
-              {confirmSlot?.released ? 'Sim, remover' : 'Sim, ativar'}
-            </Button>
+            {confirmSlot?.released ? (
+              confirmSlot.myBookings === 0 && (
+                <Button
+                  variant="destructive"
+                  disabled={toggle.isPending}
+                  onClick={() => { if (confirmSlot) toggle.mutate(confirmSlot); setConfirmSlot(null) }}
+                >
+                  Remover horário
+                </Button>
+              )
+            ) : (
+              <Button
+                disabled={toggle.isPending}
+                onClick={() => { if (confirmSlot) toggle.mutate(confirmSlot); setConfirmSlot(null) }}
+              >
+                Sim, ativar
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
