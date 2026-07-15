@@ -203,6 +203,9 @@ export default function PTAvailabilityPage() {
     const afternoon = grid.filter(s => s.slotTime >= '15:00')
     bulkCreate.mutate(afternoon)
   }
+  // #11 — disponibilizar em bloco (semana inteira), além de slot-a-slot. Só
+  // ativa os que ainda não estão liberados; reusa o mesmo bulkCreate seguro.
+  const handleBulkAllWeek = () => bulkCreate.mutate(grid.filter(s => !s.released))
   const handleClearWeek = () => setConfirmClearWeek(true)
   const confirmHandleClearWeek = () => {
     const clearable = grid.filter(s => s.released && s.myBookings === 0)
@@ -266,6 +269,14 @@ export default function PTAvailabilityPage() {
         >
           <Sunset className="w-3.5 h-3.5" />
           Tardes (15h–20h)
+        </button>
+        <button
+          onClick={handleBulkAllWeek}
+          disabled={busy || grid.filter(s => !s.released).length === 0}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-gray-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-colors min-h-[44px] disabled:opacity-50"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Semana toda
         </button>
         <button
           onClick={handleClearWeek}
