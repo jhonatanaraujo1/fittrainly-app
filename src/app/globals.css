@@ -4,6 +4,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Mobile: o iOS faz zoom automático ao focar qualquer input com font-size < 16px
+   — jarring e desalinha o layout. Força ≥16px só em telas pequenas; no desktop
+   os componentes mantêm o text-sm (14px) via `md:`. Não altera alturas nem
+   densidade — só o tamanho de fonte dos campos nativos em mobile. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea {
+    font-size: 16px;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
