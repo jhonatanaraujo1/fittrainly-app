@@ -61,6 +61,9 @@ function AgendaSection() {
     enabled: !!myPtId,
   })
   const myPt = pts.find(p => p.id === myPtId)
+  // Um aluno não pode listar PTs (pts vem vazio) → myPt fica undefined e o nome
+  // saía como "undefined" no ecrã. O nome fiável vem do próprio aluno (me).
+  const ptDisplayName = myPt?.name ?? me?.personalTrainerName ?? 'O teu PT'
 
   const { data: slots = [], isLoading: slotsLoading } = useQuery<Availability[]>({
     queryKey: ['aluno-slots', weekOffset, myPtId],
@@ -203,7 +206,7 @@ function AgendaSection() {
         <div className="text-center py-16 bg-white rounded-xl led-gold">
           <p className="text-gray-500 text-sm font-semibold">Sem sessões {weekOffset < 0 ? 'nesta semana' : 'disponíveis'}</p>
           <p className="text-gray-300 text-xs mt-1">
-            {weekOffset < 0 ? 'Nenhum registo para esta semana' : `${myPt?.name} ainda não tem horários para esta semana`}
+            {weekOffset < 0 ? 'Nenhum registo para esta semana' : `${ptDisplayName} ainda não tem horários para esta semana`}
           </p>
         </div>
       ) : view === 'agenda' ? (
@@ -441,7 +444,7 @@ function AgendaSection() {
           onOpenChange={(o) => !o && setConfirmCancel(null)}
           startTime={confirmCancel.startTime}
           endTime={confirmCancel.endTime}
-          ptName={myPt?.name}
+          ptName={ptDisplayName}
           isPending={cancellingId === confirmCancel.availId}
           onConfirm={() => handleMarkAbsent(confirmCancel.bookingId, confirmCancel.availId)}
         />
@@ -453,7 +456,7 @@ function AgendaSection() {
           onOpenChange={(o) => !o && setConfirmBook(null)}
           startTime={confirmBook.startTime}
           endTime={confirmBook.endTime}
-          ptName={myPt?.name}
+          ptName={ptDisplayName}
           isPending={loadingId === confirmBook.availId}
           onConfirm={async () => { const id = confirmBook.availId; await handleConfirm(id); setConfirmBook(null) }}
         />
