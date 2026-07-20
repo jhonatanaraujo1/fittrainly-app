@@ -296,9 +296,14 @@ export function DatePicker({
           inputMode="numeric"
           autoComplete="off"
           value={text}
-          placeholder={placeholder}
+          // Ao focar mostra o formato — o call-site costuma passar
+          // "Selecionar data", que não diz que dá para escrever.
+          placeholder={focused ? 'dd/mm/aaaa' : placeholder}
           onChange={e => setText(e.target.value)}
-          onFocus={() => setFocused(true)}
+          // Selecciona tudo ao focar: sem isto, clicar num campo que já tem
+          // data e escrever INSERE no meio do valor antigo ("30/06/" + novo),
+          // dá inválido e reverte. Assim escreve-se sempre por cima.
+          onFocus={e => { setFocused(true); e.target.select() }}
           onBlur={() => { setFocused(false); commitTyped() }}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); commitTyped(); setOpen(false); inputRef.current?.blur() }
