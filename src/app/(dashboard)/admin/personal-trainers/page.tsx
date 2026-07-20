@@ -8,6 +8,7 @@ import { Plus, Users, Loader2, AlertTriangle, CheckCircle2, Lock, Shield, Chevro
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -244,20 +245,18 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Validade TEEF</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={form.teefValidUntil}
-                      onChange={e => set('teefValidUntil', e.target.value)}
-                      className="h-11"
+                      onChange={v => set('teefValidUntil', v)}
+                      placeholder="Selecionar data"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Validade Seguro</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={form.insuranceValidUntil}
-                      onChange={e => set('insuranceValidUntil', e.target.value)}
-                      className="h-11"
+                      onChange={v => set('insuranceValidUntil', v)}
+                      placeholder="Selecionar data"
                     />
                   </div>
                 </div>

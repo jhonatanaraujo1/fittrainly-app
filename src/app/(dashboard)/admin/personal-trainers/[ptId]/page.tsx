@@ -13,6 +13,7 @@ import { format, parseISO } from 'date-fns'
 import { pt as ptLocale } from 'date-fns/locale'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PtDocuments } from '@/components/pt-documents'
@@ -119,11 +120,11 @@ function EditSheet({ pt, plans, onClose }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Validade TEEF</Label>
-              <Input type="date" value={form.teefValidUntil} onChange={e => setForm(f => ({ ...f, teefValidUntil: e.target.value }))} className="min-h-[44px]" />
+              <DatePicker value={form.teefValidUntil} onChange={v => setForm(f => ({ ...f, teefValidUntil: v }))} placeholder="Selecionar data" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Validade Seguro</Label>
-              <Input type="date" value={form.insuranceValidUntil} onChange={e => setForm(f => ({ ...f, insuranceValidUntil: e.target.value }))} className="min-h-[44px]" />
+              <DatePicker value={form.insuranceValidUntil} onChange={v => setForm(f => ({ ...f, insuranceValidUntil: v }))} placeholder="Selecionar data" />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
