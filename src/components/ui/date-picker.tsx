@@ -116,19 +116,45 @@ function CalendarBody({ value, onSelect, minDate, maxDate, initialView }: Calend
   const todayStr = ymd(new Date())
   const cells = buildGrid(viewYear, viewMonth)
 
+  // Intervalo de anos do select. Respeita minDate/maxDate quando existem
+  // (ex.: avaliação não deixa datas futuras); senão abre o suficiente para
+  // datas de nascimento (passado) e validades de documentos (futuro).
+  const thisYear = new Date().getFullYear()
+  const minYear = minDate ? Number(minDate.slice(0, 4)) : thisYear - 100
+  const maxYear = maxDate ? Number(maxDate.slice(0, 4)) : thisYear + 20
+  const loY = Math.min(minYear, viewYear)
+  const hiY = Math.max(maxYear, viewYear)
+  const yearOptions = Array.from({ length: hiY - loY + 1 }, (_, i) => hiY - i)
+
   return (
     <>
-      {/* Month nav */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <button type="button" onClick={prevMonth}
-          className="p-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center">
+      {/* Month nav — mês e ano são SELECTS, não só setas: com setas, uma
+          validade em 2029 exigia ~40 cliques. Assim salta-se direto. */}
+      <div className="flex items-center gap-1 px-3 pt-3 pb-2">
+        <button type="button" onClick={prevMonth} aria-label="Mês anterior"
+          className="p-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center flex-shrink-0">
           <ChevronLeft className="w-4 h-4 text-gray-600" />
         </button>
-        <span className="text-sm font-bold text-gray-900 select-none">
-          {MONTH_PT[viewMonth]} {viewYear}
-        </span>
-        <button type="button" onClick={nextMonth}
-          className="p-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center gap-1.5">
+          <select
+            aria-label="Mês"
+            value={viewMonth}
+            onChange={e => setViewMonth(Number(e.target.value))}
+            className="text-sm font-bold text-gray-900 bg-transparent rounded-lg px-1.5 py-1 outline-none hover:bg-gray-100 focus:bg-gray-100 cursor-pointer"
+          >
+            {MONTH_PT.map((m, i) => <option key={m} value={i}>{m}</option>)}
+          </select>
+          <select
+            aria-label="Ano"
+            value={viewYear}
+            onChange={e => setViewYear(Number(e.target.value))}
+            className="text-sm font-bold text-gray-900 bg-transparent rounded-lg px-1.5 py-1 outline-none hover:bg-gray-100 focus:bg-gray-100 cursor-pointer tabular-nums"
+          >
+            {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <button type="button" onClick={nextMonth} aria-label="Mês seguinte"
+          className="p-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center flex-shrink-0">
           <ChevronRight className="w-4 h-4 text-gray-600" />
         </button>
       </div>
@@ -192,13 +218,38 @@ export interface DatePickerProps {
   className?: string
 }
 
+// dd/mm/aaaa (ou dd-mm-aaaa, dd.mm.aaaa, ddmmaaaa) → "YYYY-MM-DD".
+// Devolve null se não for uma data real (valida o dia no mês, ex.: 31/02 falha).
+function parseTyped(input: string): string | null {
+  const d = input.replace(/\D/g, '')
+  if (d.length !== 8) return null
+  const day = Number(d.slice(0, 2)), month = Number(d.slice(2, 4)), year = Number(d.slice(4, 8))
+  if (month < 1 || month > 12 || day < 1) return null
+  const dt = new Date(year, month - 1, day)
+  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) return null
+  return ymd(dt)
+}
+
+function toTyped(value: string): string {
+  const d = parseYMD(value)
+  if (!d) return ''
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
+
 export function DatePicker({
-  value, onChange, placeholder = 'Selecionar data', minDate, maxDate, initialView, className,
+  value, onChange, placeholder = 'dd/mm/aaaa', minDate, maxDate, initialView, className,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const popupRef   = useRef<HTMLDivElement>(null)
+  const inputRef   = useRef<HTMLInputElement>(null)
   const popupStyle = usePopupStyle(triggerRef, open)
+
+  // Texto editável do campo. Espelha o value, mas o utilizador pode escrever
+  // livremente — só comita quando a data for válida.
+  const [text, setText] = useState(() => toTyped(value))
+  const [focused, setFocused] = useState(false)
+  useEffect(() => { if (!focused) setText(toTyped(value)) }, [value, focused])
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -211,35 +262,62 @@ export function DatePicker({
 
   function handleSelect(v: string) {
     onChange(v)
+    setText(toTyped(v))
     setOpen(false)
   }
 
-  const displayValue = value
-    ? (() => { try { return format(parseISO(value), "d 'de' MMMM 'de' yyyy", { locale: pt }) } catch { return value } })()
-    : null
+  const outOfRange = (iso: string) => (!!minDate && iso < minDate) || (!!maxDate && iso > maxDate)
+
+  // Comita o que foi escrito. Data inválida ou fora do intervalo → reverte
+  // para o valor anterior, nunca guarda lixo.
+  function commitTyped() {
+    if (text.trim() === '') { onChange(''); return }
+    const iso = parseTyped(text)
+    if (iso && !outOfRange(iso)) { onChange(iso); setText(toTyped(iso)) }
+    else setText(toTyped(value))
+  }
 
   return (
     <div className={cn('relative', className)}>
-      <button
+      <div
         ref={triggerRef}
-        type="button"
-        onClick={() => setOpen(v => !v)}
         className={cn(
-          'flex items-center gap-2.5 w-full rounded-xl border bg-white text-left transition-colors min-h-[44px] px-3.5',
-          open
+          'flex items-center gap-2.5 w-full rounded-xl border bg-white transition-colors min-h-[44px] px-3.5',
+          open || focused
             ? 'border-gray-400 ring-2 ring-gray-200'
             : 'border-gray-200 hover:border-gray-300',
         )}
       >
         <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-        <span className={cn('flex-1 text-base', displayValue ? 'text-gray-900' : 'text-gray-400')}>
-          {displayValue ?? placeholder}
-        </span>
-        <ChevronDown className={cn(
-          'w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200',
-          open && 'rotate-180',
-        )} />
-      </button>
+        {/* inputMode numeric: no telemóvel abre teclado numérico direto */}
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={text}
+          placeholder={placeholder}
+          onChange={e => setText(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => { setFocused(false); commitTyped() }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); commitTyped(); setOpen(false); inputRef.current?.blur() }
+            if (e.key === 'Escape') { setText(toTyped(value)); setOpen(false); inputRef.current?.blur() }
+          }}
+          className="flex-1 min-w-0 text-base bg-transparent outline-none text-gray-900 placeholder:text-gray-400 tabular-nums"
+        />
+        <button
+          type="button"
+          aria-label="Abrir calendário"
+          onClick={() => setOpen(v => !v)}
+          className="p-1 -mr-1 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+        >
+          <ChevronDown className={cn(
+            'w-4 h-4 text-gray-400 transition-transform duration-200',
+            open && 'rotate-180',
+          )} />
+        </button>
+      </div>
 
       <AnimatePresence>
         {open && (
