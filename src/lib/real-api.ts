@@ -300,6 +300,19 @@ export const modalidadeApi = {
 // PTResponse real uses `studentCount` (confirmed live 01/jul, after the
 // English rename from `alunoCount`) — mapped explicitly below so pages built
 // against the mock's `alunoCount` field keep working.
+// Os forms de PT guardam datas vazias como '' (string vazia). No backend estes
+// campos são LocalDate — mandar "" faz o Jackson rebentar com 400. Omitimos as
+// chaves de data vazias em vez de as enviar em branco.
+const PT_DATE_FIELDS = ['teefValidUntil', 'insuranceValidUntil'] as const
+function stripEmptyPtDates<T extends Record<string, unknown>>(data: T): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...data }
+  for (const k of PT_DATE_FIELDS) {
+    const v = out[k]
+    if (v === '' || v === null) delete out[k]
+  }
+  return out
+}
+
 export const ptApi = {
   list: async () =>
     apiFetch<Array<Record<string, unknown>>>('/api/v1/personal-trainers')
@@ -307,9 +320,9 @@ export const ptApi = {
   me: async () => apiFetch('/api/v1/personal-trainers/me'),
   // Password é gerada no servidor; o backend devolve temporaryPassword na criação.
   create: async (data: { name: string; email: string; phone?: string; specialty?: string; bio?: string; planId?: string; teefNumber?: string; teefValidUntil?: string; insuranceValidUntil?: string }) =>
-    apiFetch<{ temporaryPassword?: string } & Record<string, unknown>>('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(data) }),
+    apiFetch<{ temporaryPassword?: string } & Record<string, unknown>>('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(stripEmptyPtDates(data)) }),
   update: async (id: string, data: object) =>
-    apiFetch(`/api/v1/personal-trainers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    apiFetch(`/api/v1/personal-trainers/${id}`, { method: 'PATCH', body: JSON.stringify(stripEmptyPtDates(data as Record<string, unknown>)) }),
   // Confirmado live 07/jul: POST /personal-trainers/{id}/reset-password
   // (ADMIN only) devolve exatamente { tempPassword, emailSent } —
   // mesmo shape do mock (adminResetPassword), sem rename necessário.
