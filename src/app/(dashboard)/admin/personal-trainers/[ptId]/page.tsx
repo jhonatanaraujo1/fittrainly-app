@@ -83,7 +83,7 @@ function EditSheet({ pt, plans, onClose }: {
       <motion.div
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.22 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h3 className="font-bold text-gray-900">Editar Personal Trainer</h3>
@@ -91,7 +91,8 @@ function EditSheet({ pt, plans, onClose }: {
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); update.mutate() }} className="p-6 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); update.mutate() }} className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nome</Label>
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="min-h-[44px]" />
@@ -146,7 +147,18 @@ function EditSheet({ pt, plans, onClose }: {
               className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
             />
           </div>
-          <div className="flex gap-2 pt-1">
+          {/* Documentos (seguro/cédula) — o upload é imediato e independente
+              do "Guardar" acima, por isso vai avisado para não confundir. */}
+          <div className="space-y-1.5 pt-2 border-t border-gray-100">
+            <div className="flex items-baseline justify-between gap-2 pt-3">
+              <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Documentos</Label>
+              <span className="text-[11px] text-gray-400">Guardado ao enviar — não precisa do &ldquo;Guardar&rdquo;</span>
+            </div>
+            <PtDocuments ptId={pt.id} />
+          </div>
+          </div>
+
+          <div className="flex gap-2 p-4 border-t border-gray-100 flex-shrink-0 bg-white">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 min-h-[44px]">
               Cancelar

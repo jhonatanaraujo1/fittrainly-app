@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { FileText, Upload, Download, Trash2, ShieldCheck, BadgeCheck, File as FileIcon, Eye, X, Loader2 } from 'lucide-react'
+import { FileText, Upload, Download, Trash2, ShieldCheck, BadgeCheck, File as FileIcon, Eye, X, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ptDocumentApi, type PtDocument } from '@/lib/api'
@@ -37,12 +37,33 @@ function validity(validUntil: string | null): { label: string; cls: string } {
 const MAX_MB = 10
 const ACCEPT = 'application/pdf,image/jpeg,image/png'
 
+// O estúdio é responsável por só deixar treinar quem tem seguro e cédula
+// (TEEF) válidos. Estes dois são obrigatórios; OUTRO é opcional.
+const REQUIRED: Array<'SEGURO' | 'TEEF'> = ['SEGURO', 'TEEF']
+
+type Pending = { type: 'SEGURO' | 'TEEF'; reason: 'missing' | 'expired' }
+
+// Pendência = não há documento daquele tipo, ou os que há estão todos
+// vencidos. Documento sem validade conta como válido (não expira).
+function pendingDocs(docs: PtDocument[]): Pending[] {
+  const today = new Date().toISOString().slice(0, 10)
+  const out: Pending[] = []
+  for (const type of REQUIRED) {
+    const ofType = docs.filter(d => d.type === type)
+    if (ofType.length === 0) { out.push({ type, reason: 'missing' }); continue }
+    const hasValid = ofType.some(d => !d.validUntil || d.validUntil >= today)
+    if (!hasValid) out.push({ type, reason: 'expired' })
+  }
+  return out
+}
+
 // Lista + upload de documentos de UM PT. O backend garante que o PT só acede
 // aos seus; o admin pode passar o ptId de qualquer PT do estúdio.
 export function PtDocuments({ ptId, canManage = true }: { ptId: string; canManage?: boolean }) {
   const qc = useQueryClient()
   const key = ['pt-documents', ptId]
   const { data: docs = [], isLoading } = useQuery<PtDocument[]>({ queryKey: key, queryFn: () => ptDocumentApi.list(ptId) })
+  const pending = pendingDocs(docs)
 
   const [type, setType] = useState<string>('SEGURO')
   const [validUntil, setValidUntil] = useState('')
@@ -139,6 +160,33 @@ export function PtDocuments({ ptId, canManage = true }: { ptId: string; canManag
         <h2 className="text-sm font-bold text-gray-900">Documentos</h2>
         <span className="text-[11px] text-gray-300 ml-auto">Seguro · TEEF · outros — PDF/JPG/PNG, máx. {MAX_MB} MB</span>
       </div>
+
+      {/* Pendências de compliance — o estúdio precisa de seguro e cédula
+          (TEEF) válidos por PT. Só aparece depois de carregar a lista, para
+          não piscar um alerta falso enquanto ainda não se sabe. */}
+      {!isLoading && (
+        pending.length > 0 ? (
+          <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-[12px] text-amber-900 leading-snug">
+              <span className="font-bold">Documentos pendentes:</span>{' '}
+              {pending.map((p, i) => (
+                <span key={p.type}>
+                  {i > 0 && ', '}
+                  <span className="font-semibold">{typeMeta(p.type).label}</span>
+                  {p.reason === 'missing' ? ' (em falta)' : ' (vencido)'}
+                </span>
+              ))}
+              {canManage && <span className="text-amber-700"> — envia abaixo para regularizar.</span>}
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 py-2 bg-emerald-50/60 border-b border-emerald-100 flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+            <span className="text-[12px] text-emerald-800">Seguro e TEEF em dia.</span>
+          </div>
+        )
+      )}
 
       {canManage && (
         <div className="px-4 py-3 border-b border-gray-50 flex flex-wrap items-end gap-2">
