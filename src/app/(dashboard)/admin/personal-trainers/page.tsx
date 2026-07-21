@@ -371,7 +371,11 @@ export default function PersonalTrainersPage() {
       // devolve essa senha inicial (temporaryPassword) só na criação, para o
       // admin poder repassar. O mock também gera e devolve temporaryPassword.
       const tempPw = (created as { temporaryPassword?: string }).temporaryPassword ?? ''
-      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: tempPw, emailSent: true })
+      // O backend diz se o email SAIU mesmo. Durante a migração
+      // (EMAIL_ENABLED=false) não sai — e o admin tem de saber, senão fica a
+      // pensar que o PT foi avisado. Nunca assumir true.
+      const emailSent = (created as { welcomeEmailSent?: boolean }).welcomeEmailSent ?? false
+      setWelcomeResult({ name: variables.name, email: variables.email, phone: variables.phone, password: tempPw, emailSent })
     },
     onError: () => toast.error('Erro ao criar Personal Trainer. Verifica os dados e tente novamente.'),
   })
@@ -627,7 +631,7 @@ export default function PersonalTrainersPage() {
               {welcomeResult.emailSent ? (
                 <p className="text-sm text-emerald-600">✓ Credenciais enviadas por email para {welcomeResult.email}</p>
               ) : (
-                <p className="text-sm text-gray-500">Não foi possível enviar por email agora — entrega manualmente:</p>
+                <p className="text-sm text-amber-700">Email não enviado — entrega as credenciais manualmente:</p>
               )}
               <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-1">
                 <p className="text-xs text-gray-400">Email de login</p>
