@@ -378,6 +378,45 @@ export const ptDocumentApi = {
     apiFetch<void>(`/api/v1/personal-trainers/${ptId}/documents/${docId}`, { method: 'DELETE' }),
 }
 
+// ── Documentos do aluno ───────────────────────────────────────────────────────
+// Mesmo padrão dos documentos do PT. Por agora só o contrato de anamnese —
+// o backend aceita mais tipos sem migração, basta acrescentar aqui.
+export interface StudentDocument {
+  id: string; type: 'CONTRATO_ANAMNESE'; fileName: string
+  contentType: string; sizeBytes: number; validUntil: string | null; uploadedAt: string
+}
+export const studentDocumentApi = {
+  list: async (studentId: string) =>
+    apiFetch<StudentDocument[]>(`/api/v1/students/${studentId}/documents`),
+  upload: async (studentId: string, data: { type: string; file: File; validUntil?: string | null }) => {
+    const fd = new FormData()
+    fd.append('type', data.type)
+    fd.append('file', data.file)
+    if (data.validUntil) fd.append('validUntil', data.validUntil)
+    const token = useAuthStore.getState().accessToken
+    const res = await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/documents`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: fd,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      throw new Error(body?.message ?? `Erro ${res.status} ao enviar o documento`)
+    }
+    return res.json() as Promise<StudentDocument>
+  },
+  download: async (studentId: string, docId: string) => {
+    const token = useAuthStore.getState().accessToken
+    const res = await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/documents/${docId}/download`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+    if (!res.ok) throw new Error(`Erro ${res.status} ao abrir o documento`)
+    return res.blob()
+  },
+  remove: async (studentId: string, docId: string) =>
+    apiFetch<void>(`/api/v1/students/${studentId}/documents/${docId}`, { method: 'DELETE' }),
+}
+
 // ── Billing ───────────────────────────────────────────────────────────────────
 export const billingApi = {
   byMonth: async (month?: string) => {

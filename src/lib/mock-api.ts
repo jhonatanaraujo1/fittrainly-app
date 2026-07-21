@@ -1243,6 +1243,44 @@ export const ptDocumentApi = {
   },
 }
 
+// ── Documentos do aluno (mock) ────────────────────────────────────────────────
+// Por agora só o contrato de anamnese.
+interface MockStudentDoc {
+  id: string; type: 'CONTRATO_ANAMNESE'; fileName: string
+  contentType: string; sizeBytes: number; validUntil: string | null; uploadedAt: string
+}
+const mockStudentDocs: Record<string, MockStudentDoc[]> = {}
+function seedStudentDocs(studentId: string): MockStudentDoc[] {
+  if (!mockStudentDocs[studentId]) mockStudentDocs[studentId] = []
+  return mockStudentDocs[studentId]
+}
+export const studentDocumentApi = {
+  list: async (studentId: string) => {
+    await delay(200)
+    return [...seedStudentDocs(studentId)].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+  },
+  upload: async (studentId: string, data: { type: string; file: File; validUntil?: string | null }) => {
+    await delay(400)
+    const doc: MockStudentDoc = {
+      id: 'sdoc-' + uid(), type: data.type as MockStudentDoc['type'], fileName: data.file.name,
+      contentType: data.file.type || 'application/octet-stream', sizeBytes: data.file.size,
+      validUntil: data.validUntil ?? null, uploadedAt: new Date().toISOString(),
+    }
+    seedStudentDocs(studentId).unshift(doc)
+    return doc
+  },
+  download: async (_studentId: string, docId: string) => {
+    await delay(200)
+    return new Blob([`Documento de demonstração (${docId}).`], { type: 'text/plain' })
+  },
+  remove: async (studentId: string, docId: string) => {
+    await delay(200)
+    const arr = seedStudentDocs(studentId)
+    const i = arr.findIndex(d => d.id === docId)
+    if (i >= 0) arr.splice(i, 1)
+  },
+}
+
 // ── Workout Plans ─────────────────────────────────────────────────────────────
 export const workoutApi = {
   ptAlunos: async (ptId: string) => {

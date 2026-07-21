@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { alunoApi } from '@/lib/api'
+import { StudentDocuments } from '@/components/student-documents'
 import { format, parseISO } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import { CheckCircle2, FileText, AlertTriangle, Printer } from 'lucide-react'
@@ -230,6 +231,10 @@ export default function AlunoAnamnesePage() {
           </a>
         </div>
       )}
+
+      {/* Contrato de anamnese assinado — o aluno pode enviar o ficheiro
+          (PDF ou foto) além da assinatura digital acima. */}
+      <StudentDocuments studentId={aluno.id} />
     </div>
   )
 }

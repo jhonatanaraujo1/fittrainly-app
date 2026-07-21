@@ -29,6 +29,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
+import { StudentDocuments } from '@/components/student-documents'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -1034,8 +1035,11 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
         </TabsContent>
 
         {/* ── TAB 2: Anamnese ────────────────────────────────────────────── */}
-        <TabsContent value="anamnese" className="mt-4">
+        <TabsContent value="anamnese" className="mt-4 space-y-4">
           <AnamneseTab aluno={aluno} onSaved={() => { qc.invalidateQueries({ queryKey: ['aluno', id] }) }} />
+          {/* Contrato de anamnese assinado (o ficheiro). Distinto da
+              assinatura digital feita pelo aluno dentro da app. */}
+          <StudentDocuments studentId={id} />
         </TabsContent>
 
         {/* ── TAB 3: Protocolo Clínico ───────────────────────────────────── */}
