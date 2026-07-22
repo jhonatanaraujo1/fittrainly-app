@@ -24,7 +24,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { leadApi, ptApi } from '@/lib/api'
+import { leadApi, ptApi, leadFormApi } from '@/lib/api'
+import type { LeadFormConfig } from '@/lib/real-api'
 import { CustomSelect } from '@/components/ui/custom-select'
 import type { MockLead } from '@/lib/mock-db'
 import type { LeadStatus } from '@/types'
@@ -789,6 +790,29 @@ const EMPTY_FORM: NewLeadForm = {
 function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewLeadForm>(EMPTY_FORM)
+  // Respostas aos campos que o estúdio configurou no formulário público — a
+  // lead criada à mão responde às MESMAS perguntas, senão metade das leads no
+  // CRM tem a informação e a outra metade não.
+  const [answers, setAnswers] = useState<Record<string, string[]>>({})
+
+  // Só busca a config quando o painel abre (não no load da página).
+  const { data: cfg } = useQuery<LeadFormConfig>({
+    queryKey: ['lead-form-config'],
+    queryFn: leadFormApi.get,
+    enabled: open,
+    staleTime: 60_000,
+  })
+  const customFields = cfg?.fields ?? []
+
+  function setAnswerSingle(fieldId: string, value: string) {
+    setAnswers(a => ({ ...a, [fieldId]: value ? [value] : [] }))
+  }
+  function toggleAnswerMulti(fieldId: string, option: string) {
+    setAnswers(a => {
+      const cur = a[fieldId] ?? []
+      return { ...a, [fieldId]: cur.includes(option) ? cur.filter(o => o !== option) : [...cur, option] }
+    })
+  }
 
   const createMutation = useMutation({
     mutationFn: () => leadApi.create({
@@ -798,18 +822,24 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
       planoInteresse: form.planoInteresse || undefined,
       observacoes: form.observacoes || undefined,
       status: 'NOVO',
+      // Só envia campos com resposta — o backend valida obrigatórios/opções.
+      answers: Object.fromEntries(Object.entries(answers).filter(([, v]) => v.length > 0)),
     }),
     onSuccess: lead => {
       onCreated(lead)
       toast.success(`Lead "${lead.name}" criado!`)
-      setOpen(false); setForm(EMPTY_FORM)
+      setOpen(false); setForm(EMPTY_FORM); setAnswers({})
     },
-    onError: () => toast.error('Erro ao criar lead'),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Erro ao criar lead'),
   })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name || !form.phone) { toast.error('Nome e telefone são obrigatórios'); return }
+    // Valida os obrigatórios configurados antes de enviar (o backend também
+    // valida — isto é só para dar erro imediato e apontar o campo).
+    const faltando = customFields.find(f => f.required && !(answers[f.id]?.length))
+    if (faltando) { toast.error(`Preenche: ${faltando.label}`); return }
     createMutation.mutate()
   }
 
@@ -876,6 +906,60 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
             <textarea placeholder="Notas sobre o contacto..." value={form.observacoes} onChange={e => setField('observacoes', e.target.value)} rows={3}
               className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none" />
           </div>
+
+          {/* Campos que o estúdio configurou no formulário público — a lead
+              manual responde às mesmas perguntas. */}
+          {customFields.length > 0 && (
+            <div className="space-y-4 pt-2 border-t border-gray-100">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pt-2">Perguntas do estúdio</p>
+              {customFields.map(f => {
+                const val = answers[f.id] ?? []
+                return (
+                  <div key={f.id} className="space-y-1.5">
+                    <Label className="text-sm font-semibold">{f.label}{f.required && ' *'}</Label>
+                    {f.type === 'TEXT' && (
+                      <Input value={val[0] ?? ''} placeholder={f.placeholder ?? ''}
+                        onChange={e => setAnswerSingle(f.id, e.target.value)} className="text-base min-h-[44px]" />
+                    )}
+                    {f.type === 'TEXTAREA' && (
+                      <textarea value={val[0] ?? ''} placeholder={f.placeholder ?? ''} rows={3}
+                        onChange={e => setAnswerSingle(f.id, e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none" />
+                    )}
+                    {f.type === 'SELECT' && (
+                      <Select value={val[0] ?? ''} onValueChange={v => setAnswerSingle(f.id, v ?? '')}>
+                        <SelectTrigger className="text-base min-h-[44px]"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                        <SelectContent>{f.options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                      </Select>
+                    )}
+                    {f.type === 'RADIO' && (
+                      <div className="space-y-1.5">
+                        {f.options.map(o => (
+                          <label key={o} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="radio" name={`f_${f.id}`} checked={val[0] === o}
+                              onChange={() => setAnswerSingle(f.id, o)} className="w-4 h-4 accent-[#111111]" />
+                            {o}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {f.type === 'CHECKBOX' && (
+                      <div className="space-y-1.5">
+                        {f.options.map(o => (
+                          <label key={o} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" checked={val.includes(o)}
+                              onChange={() => toggleAnswerMulti(f.id, o)} className="w-4 h-4 accent-[#111111]" />
+                            {o}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => { setOpen(false); setForm(EMPTY_FORM) }}
               className="flex-1 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">

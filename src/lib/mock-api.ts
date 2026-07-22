@@ -1306,9 +1306,16 @@ export const leadFormApi = {
 export const leadApi = {
   list: async () => { await delay(280); return db.leads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()) },
   byStatus: async (status: import('@/lib/mock-db').MockLead['status']) => { await delay(200); return db.leads.filter(l => l.status === status) },
-  create: async (data: Omit<import('@/lib/mock-db').MockLead, 'id' | 'createdAt' | 'updatedAt'>) => {
+  create: async (data: Omit<import('@/lib/mock-db').MockLead, 'id' | 'createdAt' | 'updatedAt'> & { answers?: Record<string, string[]> }) => {
     await delay(350)
-    const novo = { ...data, id: 'lead-' + uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    // Converte as respostas dos campos configurados no formato guardado
+    // (rótulo = id no mock, que não tem a config à mão; em produção o backend
+    // grava o rótulo real). answers não faz parte do MockLead — retira-se.
+    const { answers, ...rest } = data
+    const customAnswers = Object.entries(answers ?? {})
+      .filter(([, v]) => v.length > 0)
+      .map(([fieldId, v]) => ({ fieldId, label: fieldId, value: v.join(', ') }))
+    const novo = { ...rest, customAnswers, id: 'lead-' + uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
     db.leads.push(novo)
     return novo
   },

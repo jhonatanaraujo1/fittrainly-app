@@ -551,8 +551,24 @@ export const leadApi = {
       .then((page) => page.content.map(mapLead)),
   byStatus: async (status: string) =>
     leadApi.list().then((all) => all.filter(l => l.status === status)),
-  create: async (data: { name: string; email?: string; phone?: string; interest?: string; source?: string; assignedTo?: string; interestedPlan?: string; notes?: string }) =>
-    apiFetch('/api/v1/leads', { method: 'POST', body: JSON.stringify(data) }),
+  // O "Novo Lead" chama com nomes PT (interesse/responsavel/planoInteresse/
+  // observacoes), tal como o mock. O backend usa nomes EN — traduzimos aqui
+  // (espelho do mapLead na leitura). Sem isto, esses campos iam com a chave
+  // errada e o Jackson descartava-os em silêncio (data-loss no create manual).
+  // `answers` = respostas aos campos configurados; vai tal-qual (o backend
+  // valida obrigatórios/opções).
+  create: async (data: {
+    name: string; email?: string; phone?: string
+    interesse?: string; source?: string; responsavel?: string
+    planoInteresse?: string; observacoes?: string; status?: string
+    answers?: Record<string, string[]>
+  }) =>
+    apiFetch('/api/v1/leads', { method: 'POST', body: JSON.stringify({
+      name: data.name, email: data.email, phone: data.phone,
+      interest: data.interesse, source: data.source,
+      assignedTo: data.responsavel, interestedPlan: data.planoInteresse,
+      notes: data.observacoes, answers: data.answers ?? {},
+    }) }),
   updateStatus: async (id: string, status: string, data?: object) =>
     apiFetch(`/api/v1/leads/${id}/status`, {
       method: 'PATCH',
