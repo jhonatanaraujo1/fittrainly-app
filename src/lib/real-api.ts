@@ -425,6 +425,28 @@ export const billingApi = {
   },
 }
 
+// ── Cobrança semanal do PT + inadimplência ────────────────────────────────────
+export interface PtWeeklyCharge {
+  ptId: string; ptName: string; planName: string | null
+  periodStart: string; periodEnd: string; dueDate: string
+  hours: number; amountDue: number; amountPaid: number; balance: number
+  status: 'PAGO' | 'PARCIAL' | 'EM_ABERTO' | 'VENCIDO'; recorded: boolean
+}
+export interface PtWeeklyOverview {
+  periodStart: string; periodEnd: string; dueDate: string
+  entries: PtWeeklyCharge[]; totalDue: number; totalPaid: number; totalBalance: number
+}
+export interface DelinquentPt {
+  ptId: string; ptName: string; planName: string | null
+  totalOwed: number; weeksOverdue: number; oldestPeriodStart: string
+  daysLate: number; periods: PtWeeklyCharge[]
+}
+export interface DelinquencyReport {
+  asOf: string; trainers: DelinquentPt[]; totalOwed: number
+}
+// (os métodos semanais/inadimplência vivem no ptPaymentApi já existente,
+//  mais abaixo — ver "PT weekly payment cycle")
+
 // ── Leads CRM ─────────────────────────────────────────────────────────────────
 // Route and fields confirmed live against the backend on 01-02/jul — renamed
 // from /convert-to-aluno (interesse/responsavel/planoInteresse/observacoes)
@@ -1037,6 +1059,16 @@ export const ptPaymentApi = {
       }>
       totalHours: number
     }>(`/api/v1/billing/${ptId}/weekly-schedule?month=${encodeURIComponent(month)}`),
+
+  // Controlo de inadimplência (cobrança semanal da renda). Distinto do
+  // weeklySchedule acima (adiantamentos de planos por faixas) — isto é o
+  // registo de quem pagou, quanto e quando, por semana.
+  week: async (date?: string) =>
+    apiFetch<PtWeeklyOverview>(`/api/v1/pt-payments/week${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+  delinquency: async () => apiFetch<DelinquencyReport>('/api/v1/pt-payments/delinquency'),
+  history: async (ptId: string) => apiFetch<PtWeeklyCharge[]>(`/api/v1/pt-payments/history/${ptId}`),
+  record: async (data: { ptId: string; periodStart: string; amount: number; notes?: string }) =>
+    apiFetch<PtWeeklyCharge>('/api/v1/pt-payments', { method: 'POST', body: JSON.stringify(data) }),
 }
 
 // ── Workout Plans ─────────────────────────────────────────────────────────────

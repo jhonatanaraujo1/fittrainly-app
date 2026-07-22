@@ -1243,6 +1243,54 @@ export const ptDocumentApi = {
   },
 }
 
+// ── Cobrança semanal do PT + inadimplência (mock) ─────────────────────────────
+// Mock leve — produção usa o backend real. Só o suficiente para os tipos
+// baterem e a página não crashar em modo mock.
+const mockPtPayments: Record<string, { periodStart: string; amountPaid: number; notes?: string }> = {}
+function mockWeekStart(d: Date) {
+  const day = (d.getDay() + 6) % 7 // 0 = segunda
+  const m = new Date(d); m.setDate(d.getDate() - day); return m.toISOString().slice(0, 10)
+}
+const ptPaymentDelinquencyExtra = {
+  week: async (date?: string) => {
+    await delay(200)
+    const base = date ? new Date(date) : new Date()
+    const periodStart = mockWeekStart(base)
+    const end = new Date(periodStart); end.setDate(end.getDate() + 6)
+    const due = new Date(periodStart); due.setDate(due.getDate() + 7)
+    const entries = db.pts.filter(p => p.active).map(pt => {
+      const amountDue = 0
+      const paid = mockPtPayments[`${pt.id}-${periodStart}`]?.amountPaid ?? 0
+      return {
+        ptId: pt.id, ptName: pt.name, planName: null,
+        periodStart, periodEnd: end.toISOString().slice(0, 10), dueDate: due.toISOString().slice(0, 10),
+        hours: 0, amountDue, amountPaid: paid, balance: Math.max(0, amountDue - paid),
+        status: 'PAGO' as const, recorded: paid > 0,
+      }
+    })
+    return {
+      periodStart, periodEnd: end.toISOString().slice(0, 10), dueDate: due.toISOString().slice(0, 10),
+      entries, totalDue: 0, totalPaid: entries.reduce((s, e) => s + e.amountPaid, 0), totalBalance: 0,
+    }
+  },
+  delinquency: async () => { await delay(200); return { asOf: new Date().toISOString().slice(0, 10), trainers: [] as import('./real-api').DelinquentPt[], totalOwed: 0 } },
+  history: async (_ptId: string) => { await delay(200); return [] as import('./real-api').PtWeeklyCharge[] },
+  record: async (data: { ptId: string; periodStart: string; amount: number; notes?: string }) => {
+    await delay(300)
+    const k = `${data.ptId}-${data.periodStart}`
+    mockPtPayments[k] = { periodStart: data.periodStart, amountPaid: (mockPtPayments[k]?.amountPaid ?? 0) + data.amount, notes: data.notes }
+    const pt = db.pts.find(p => p.id === data.ptId)
+    const end = new Date(data.periodStart); end.setDate(end.getDate() + 6)
+    const due = new Date(data.periodStart); due.setDate(due.getDate() + 7)
+    return {
+      ptId: data.ptId, ptName: pt?.name ?? 'PT', planName: null,
+      periodStart: data.periodStart, periodEnd: end.toISOString().slice(0, 10), dueDate: due.toISOString().slice(0, 10),
+      hours: 0, amountDue: 0, amountPaid: mockPtPayments[k].amountPaid, balance: 0,
+      status: 'PAGO' as const, recorded: true,
+    }
+  },
+}
+
 // ── Documentos do aluno (mock) ────────────────────────────────────────────────
 // Por agora só o contrato de anamnese.
 interface MockStudentDoc {
@@ -1363,6 +1411,7 @@ export const billingApi = {
 // credit back to the PT, since more hours only ever make the marginal rate
 // cheaper, never more expensive.
 export const ptPaymentApi = {
+  ...ptPaymentDelinquencyExtra, // week / delinquency / history / record (inadimplência)
   weeklySchedule: async (ptId: string, month: string) => {
     await delay(250)
     const pt = db.pts.find(p => p.id === ptId)

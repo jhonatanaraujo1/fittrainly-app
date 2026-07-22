@@ -49,6 +49,7 @@ export const ptDocumentApi   = USE_REAL.personalTrainers ? (real.ptDocumentApi a
 export type { PtDocument } from './real-api'
 export const studentDocumentApi = USE_REAL.aluno ? (real.studentDocumentApi as unknown as typeof mock.studentDocumentApi) : mock.studentDocumentApi
 export type { StudentDocument } from './real-api'
+export type { PtWeeklyCharge, PtWeeklyOverview, DelinquentPt, DelinquencyReport } from './real-api'
 export const alunoApi        = USE_REAL.aluno ? (real.alunoApi as unknown as typeof mock.alunoApi) : withPersistence(mock.alunoApi)
 export const availabilityApi = USE_REAL.availability ? (real.availabilityApi as unknown as typeof mock.availabilityApi) : withPersistence(mock.availabilityApi)
 export const adminScheduleApi = USE_REAL.adminSchedule ? (real.adminScheduleApi as unknown as typeof mock.adminScheduleApi) : withPersistence(mock.adminScheduleApi)
