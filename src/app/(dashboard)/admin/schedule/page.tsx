@@ -71,6 +71,37 @@ export default function AdminSchedulePage() {
   })
   const slotDuration = studioConfig?.slotDurationMinutes ?? 30
   const classDuration = studioConfig?.classDurationMinutes ?? 30
+  const studioCapacity = (studioConfig as { studioCapacity?: number } | undefined)?.studioCapacity ?? 4
+  const maxPorPt = (studioConfig as { maxStudentsPerTrainer?: number } | undefined)?.maxStudentsPerTrainer ?? 1
+
+  // Campos da lotação.
+  const [capacityInput, setCapacityInput] = useState('')
+  const [perPtInput, setPerPtInput] = useState('')
+
+  // Repõe os valores atuais sempre que o dialog abre. Ligado ao ESTADO e não
+  // ao onOpenChange do Dialog: o dialog é aberto por setConfigOpen(true) a
+  // partir do botão da toolbar, e nesse caminho o onOpenChange nunca dispara —
+  // os campos abriam vazios.
+  useEffect(() => {
+    if (configOpen) {
+      setCapacityInput(String(studioCapacity))
+      setPerPtInput(String(maxPorPt))
+    }
+  }, [configOpen, studioCapacity, maxPorPt])
+
+  // Guarda os dois juntos: a regra que os liga é cruzada (um PT não pode
+  // atender mais alunos do que a sala comporta), e o backend valida o par.
+  const updateCapacity = useMutation({
+    mutationFn: ({ capacidade, porPt }: { capacidade: number; porPt: number }) =>
+      studioConfigApi.updateSettings({ studioCapacity: capacidade, maxStudentsPerTrainer: porPt }),
+    onSuccess: () => {
+      toast.success('Lotação da agenda atualizada')
+      qc.invalidateQueries({ queryKey: ['studio-config'] })
+      qc.invalidateQueries({ queryKey: ['admin-schedule'] })
+      setConfigOpen(false)
+    },
+    onError: (e: Error) => toast.error(e.message || 'Erro ao atualizar a lotação'),
+  })
 
   // #4/#7 — configura a CADÊNCIA do slot (30/40/45/60). A aula acompanha a
   // cadência (sem folga) — resolve "os slots são de 40, não 30".
@@ -553,9 +584,9 @@ export default function AdminSchedulePage() {
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Duração do slot</DialogTitle>
+            <DialogTitle>Configurações da agenda</DialogTitle>
             <DialogDescription>
-              De quanto em quanto tempo começa uma aula na agenda. Ex.: 40 → a grade fica 08:00, 08:40, 09:20… Cada aula ocupa o slot inteiro (sem folga).
+              Duração dos blocos e lotação — quantas pessoas cabem na sala e quantos alunos cada PT atende ao mesmo tempo.
             </DialogDescription>
           </DialogHeader>
           <div className="py-1 space-y-3">
@@ -587,6 +618,74 @@ export default function AdminSchedulePage() {
               />
               <p className="text-xs text-gray-400 mt-1.5">Entre 15 e 180 minutos.</p>
             </div>
+
+            <div className="h-px bg-gray-100" />
+
+            {/* Lotação — as duas dimensões que o estúdio precisa de controlar. */}
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Lotação</p>
+
+              <div>
+                <label htmlFor="cap-estudio" className="text-sm font-semibold text-gray-700">
+                  Pessoas na sala ao mesmo tempo
+                </label>
+                <input
+                  id="cap-estudio"
+                  type="number" min={1} max={100} inputMode="numeric"
+                  value={capacityInput}
+                  onChange={(e) => setCapacityInput(e.target.value)}
+                  className="mt-1.5 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-gray-900"
+                />
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Vagas físicas do estúdio, somando todos os PTs. Ninguém consegue marcar acima disto.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="cap-pt" className="text-sm font-semibold text-gray-700">
+                  Alunos por PT no mesmo horário
+                </label>
+                <input
+                  id="cap-pt"
+                  type="number" min={1} max={20} inputMode="numeric"
+                  value={perPtInput}
+                  onChange={(e) => setPerPtInput(e.target.value)}
+                  className="mt-1.5 w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-gray-900"
+                />
+                <p className="text-xs text-gray-400 mt-1.5">
+                  1 = atendimento individual. Acima disso, o PT atende em dupla ou pequeno grupo.
+                </p>
+              </div>
+
+              {/* A regra cruzada, dita antes de o admin tentar e levar erro. */}
+              {Number(perPtInput) > Number(capacityInput) && capacityInput !== '' && perPtInput !== '' && (
+                <p className="text-xs text-amber-600 font-medium">
+                  Um PT não pode atender mais alunos ({perPtInput}) do que a sala comporta ({capacityInput}).
+                </p>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full min-h-[44px]"
+                disabled={updateCapacity.isPending}
+                onClick={() => {
+                  const cap = parseInt(capacityInput, 10)
+                  const pp = parseInt(perPtInput, 10)
+                  if (!Number.isFinite(cap) || cap < 1 || cap > 100) {
+                    toast.error('A lotação do estúdio deve estar entre 1 e 100 pessoas'); return
+                  }
+                  if (!Number.isFinite(pp) || pp < 1 || pp > 20) {
+                    toast.error('Cada PT deve atender entre 1 e 20 alunos por horário'); return
+                  }
+                  if (pp > cap) {
+                    toast.error(`Cada PT atenderia ${pp} alunos, mas a sala só comporta ${cap} ao todo.`); return
+                  }
+                  updateCapacity.mutate({ capacidade: cap, porPt: pp })
+                }}
+              >
+                {updateCapacity.isPending ? 'A guardar…' : 'Guardar lotação'}
+              </Button>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" className="min-h-[44px]" onClick={() => setConfigOpen(false)} disabled={updateSlotCadence.isPending}>
@@ -604,7 +703,7 @@ export default function AdminSchedulePage() {
                 updateSlotCadence.mutate(n)
               }}
             >
-              Guardar
+              Guardar duração
             </Button>
           </DialogFooter>
         </DialogContent>

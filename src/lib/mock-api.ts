@@ -91,8 +91,19 @@ export const studioConfigApi = {
     mockStudioConfig.classDurationMinutes = classDurationMinutes
     return { ...mockStudioConfig }
   },
-  updateSettings: async (patch: { slotDurationMinutes?: number; classDurationMinutes?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean }) => {
+  updateSettings: async (patch: { slotDurationMinutes?: number; classDurationMinutes?: number; studioCapacity?: number; maxStudentsPerTrainer?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean }) => {
     await delay(200)
+    // Lotação: resolvidos juntos, porque a regra que os liga é cruzada — um PT
+    // não pode atender mais alunos do que a sala inteira comporta.
+    if (patch.studioCapacity !== undefined || patch.maxStudentsPerTrainer !== undefined) {
+      const capacidade = patch.studioCapacity ?? mockStudioConfig.studioCapacity
+      const porPt = patch.maxStudentsPerTrainer ?? mockStudioConfig.maxStudentsPerTrainer
+      if (capacidade < 1 || capacidade > 100) throw new Error('A lotação do estúdio deve estar entre 1 e 100 pessoas')
+      if (porPt < 1 || porPt > 20) throw new Error('Cada PT deve atender entre 1 e 20 alunos por horário')
+      if (porPt > capacidade) throw new Error(`Cada PT atenderia ${porPt} alunos, mas a sala só comporta ${capacidade} ao todo.`)
+      mockStudioConfig.studioCapacity = capacidade
+      mockStudioConfig.maxStudentsPerTrainer = porPt
+    }
     if (patch.slotDurationMinutes !== undefined) {
       if (patch.slotDurationMinutes < 15 || patch.slotDurationMinutes > 180) {
         throw new Error('A cadência do slot deve estar entre 15 e 180 minutos')

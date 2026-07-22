@@ -209,6 +209,8 @@ async function classEndISO(date: string, slotTime: string): Promise<string> {
 interface StudioConfig {
   slotDurationMinutes: number
   classDurationMinutes: number
+  studioCapacity: number
+  maxStudentsPerTrainer: number
   name: string
   slug: string
   privacyPolicyUrl: string | null
@@ -217,6 +219,10 @@ interface StudioConfig {
 interface StudioSettingsPatch {
   slotDurationMinutes?: number
   classDurationMinutes?: number
+  // Lotação da agenda: quantas pessoas cabem na sala, e quantos alunos cada
+  // PT atende ao mesmo tempo.
+  studioCapacity?: number
+  maxStudentsPerTrainer?: number
   name?: string
   privacyPolicyUrl?: string | null
   leadCaptureEnabled?: boolean

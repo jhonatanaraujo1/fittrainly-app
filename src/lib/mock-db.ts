@@ -26,6 +26,9 @@ export const SLOT_STEP = 30
 export const mockStudioConfig = {
   slotDurationMinutes: 30,
   classDurationMinutes: 30,
+  // Lotação da agenda — as duas dimensões, configuráveis pelo admin.
+  studioCapacity: STUDIO_MAX_SPOTS,
+  maxStudentsPerTrainer: 1,
   name: 'Meu Estúdio',
   slug: 'mg-estudio',
   privacyPolicyUrl: null as string | null,

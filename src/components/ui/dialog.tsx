@@ -65,7 +65,10 @@ function DialogContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-2 right-2"
+                // 28px falhava o alvo mínimo de toque (44px, Apple HIG) em
+                // TODOS os dialogs da app. O ícone mantém o tamanho; só a área
+                // de clique cresce.
+                className="absolute top-2 right-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 size="icon-sm"
               />
             }
