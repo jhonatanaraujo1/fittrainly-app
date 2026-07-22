@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { SpecialtyPicker } from '@/components/specialty-picker'
 import { UserCog, Save, Receipt } from 'lucide-react'
 import { ptApi } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 
 type PtMe = {
-  id: string; name?: string; email?: string; phone?: string; specialty?: string; bio?: string
+  id: string; name?: string; email?: string; phone?: string; specialty?: string; specialties?: string[]; bio?: string
   taxId?: string; address?: string
 }
 
@@ -47,7 +48,9 @@ export default function PTPerfilPage() {
       setForm({
         id: data.id,
         name: data.name ?? '', email: data.email ?? '', phone: data.phone ?? '',
-        specialty: data.specialty ?? '', bio: data.bio ?? '',
+        // Cai no valor único antigo se o backend ainda não devolver a lista.
+        specialties: data.specialties ?? (data.specialty ? [data.specialty] : []),
+        bio: data.bio ?? '',
         taxId: data.taxId ?? '', address: data.address ?? '',
       })
       setLoaded(true)
@@ -59,7 +62,7 @@ export default function PTPerfilPage() {
   const save = useMutation({
     mutationFn: () => ptApi.updateOwnProfile({
       name: form.name, email: form.email, phone: form.phone,
-      specialty: form.specialty, bio: form.bio,
+      specialties: form.specialties ?? [], bio: form.bio,
       taxId: form.taxId, address: form.address,
     }),
     onSuccess: () => {
@@ -96,7 +99,13 @@ export default function PTPerfilPage() {
           <Field label="Nome completo" value={form.name ?? ''} onChange={set('name')} placeholder="O teu nome" />
           <Field label="Email (login)" value={form.email ?? ''} onChange={set('email')} placeholder="voce@email.com" type="email" hint="É o teu acesso à plataforma." />
           <Field label="Telefone" value={form.phone ?? ''} onChange={set('phone')} placeholder="+351 …" />
-          <Field label="Especialidade" value={form.specialty ?? ''} onChange={set('specialty')} placeholder="Musculação, funcional…" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-gray-700">Especialidades</label>
+          <SpecialtyPicker
+            value={form.specialties ?? []}
+            onChange={v => setForm(f => ({ ...f, specialties: v }))}
+          />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-medium text-gray-700">Bio</label>

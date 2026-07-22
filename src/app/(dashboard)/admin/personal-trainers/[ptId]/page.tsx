@@ -9,6 +9,7 @@ import {
   CheckCircle2, AlertTriangle, Users, Edit2, X, Loader2, KeyRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { SpecialtyPicker } from '@/components/specialty-picker'
 import { format, parseISO } from 'date-fns'
 import { pt as ptLocale } from 'date-fns/locale'
 import Link from 'next/link'
@@ -58,7 +59,7 @@ function EditSheet({ pt, plans, onClose }: {
     name:      pt.name,
     email:     pt.email ?? '',
     phone:     pt.phone ?? '',
-    specialty: pt.specialty ?? '',
+    specialties: (pt as { specialties?: string[] }).specialties ?? (pt.specialty ? [pt.specialty] : []),
     bio:       pt.bio ?? '',
     planId:    pt.plan?.id ?? '',
     teefNumber:          pt.teefNumber ?? '',
@@ -116,8 +117,10 @@ function EditSheet({ pt, plans, onClose }: {
             <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+351 912 000 000" className="min-h-[44px]" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Especialidade</Label>
-            <Input value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))} className="min-h-[44px]" />
+            <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Especialidades</Label>
+            {/* Era um input de texto livre — cada PT escrevia à sua maneira e
+                só cabia uma. Agora é a mesma lista canónica do cadastro. */}
+            <SpecialtyPicker value={form.specialties} onChange={v => setForm(f => ({ ...f, specialties: v }))} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Plano de aluguel</Label>

@@ -22,6 +22,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { SpecialtyPicker } from '@/components/specialty-picker'
 import { ptApi, planApi } from '@/lib/api'
 import { getInitials, avatarColor, planTypeLabel, planTypeBadge, docStatus } from '@/lib/utils'
 import { whatsappCredentialsUrl } from '@/lib/notify'
@@ -33,22 +34,17 @@ interface NovoPTSheetProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   plans: RentalPlan[]
-  onCreate: (data: { name: string; email: string; phone: string; specialty: string; bio: string; planId: string; teefNumber: string; teefValidUntil: string; insuranceValidUntil: string }) => void
+  onCreate: (data: { name: string; email: string; phone: string; specialties: string[]; bio: string; planId: string; teefNumber: string; teefValidUntil: string; insuranceValidUntil: string }) => void
   isPending: boolean
 }
 
-const SPECIALTIES = [
-  'Musculação e Força', 'Funcional e Mobilidade', 'Emagrecimento e Saúde',
-  'Pilates', 'CrossFit', 'Cardio e Resistência', 'Nutrição e PT', 'Reabilitação',
-]
-
 function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTSheetProps) {
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', specialties: [] as string[], bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const touch = (field: string) => setTouched(t => ({ ...t, [field]: true }))
-  const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
+  const set = (field: string, value: string | string[]) => setForm(f => ({ ...f, [field]: value }))
 
   const errors = {
     name: touched.name && !form.name ? 'Nome obrigatório' : '',
@@ -65,7 +61,7 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
     onOpenChange(false)
     setTimeout(() => {
       setStep(1)
-      setForm({ name: '', email: '', phone: '', specialty: '', bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
+      setForm({ name: '', email: '', phone: '', specialties: [], bio: '', planId: '', teefNumber: '', teefValidUntil: '', insuranceValidUntil: '' })
       setTouched({})
     }, 300)
   }
@@ -171,25 +167,7 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Especialidade</Label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SPECIALTIES.map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => set('specialty', form.specialty === s ? '' : s)}
-                        className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-all ${
-                          form.specialty === s
-                            ? 'bg-gray-900 text-white border-gray-900'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                  {form.specialty && (
-                    <p className="text-[11px] text-emerald-600 font-medium">✓ {form.specialty} seleccionado</p>
-                  )}
+                  <SpecialtyPicker value={form.specialties} onChange={v => set('specialties', v)} />
                 </div>
               </motion.div>
             ) : (
@@ -284,7 +262,7 @@ function NovoPTSheet({ open, onOpenChange, plans, onCreate, isPending }: NovoPTS
                       <p className="text-xs text-gray-400">{form.email || '—'}</p>
                     </div>
                   </div>
-                  {form.specialty && <p className="text-xs text-gray-500">📍 {form.specialty}</p>}
+                  {form.specialties.length > 0 && <p className="text-xs text-gray-500">📍 {form.specialties.join(', ')}</p>}
                   {form.phone && <p className="text-xs text-gray-500">📞 {form.phone}</p>}
                 </div>
               </motion.div>

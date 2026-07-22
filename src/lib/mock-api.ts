@@ -295,7 +295,7 @@ export const ptApi = {
   // Self-service: o PT edita o próprio perfil (contacto + fiscal). Não toca em
   // plano/estado. Espelha o PATCH /personal-trainers/me do backend.
   updateOwnProfile: async (data: {
-    name?: string; email?: string; phone?: string; specialty?: string; bio?: string
+    name?: string; email?: string; phone?: string; specialty?: string; specialties?: string[]; bio?: string
     taxId?: string; address?: string
   }) => {
     await delay(300)
@@ -305,7 +305,9 @@ export const ptApi = {
       name: data.name ?? pt.name,
       email: data.email ?? pt.email,
       phone: data.phone ?? pt.phone,
-      specialty: data.specialty ?? pt.specialty,
+      // Espelha o backend: a lista manda, `specialty` fica derivado dela.
+      specialties: data.specialties ?? (pt as { specialties?: string[] }).specialties,
+      specialty: data.specialties ? data.specialties.join(', ') : (data.specialty ?? pt.specialty),
       bio: data.bio ?? pt.bio,
       taxId: data.taxId ?? (pt as { taxId?: string }).taxId,
       address: data.address ?? (pt as { address?: string }).address,
