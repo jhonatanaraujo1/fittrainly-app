@@ -29,6 +29,53 @@ function slotKeyToISO(date: string, time: string): { start: string; end: string 
   }
 }
 
+// ── Cadeia de slots de uma sessão ─────────────────────────────────────────────
+// Espelha BookingService.book do backend: um pack de 60min numa grelha de 30min
+// ocupa DOIS slots consecutivos do MESMO PT. Não é erro — só falha se a
+// continuação não existir ou não estiver livre, e a mensagem diz porquê.
+// As 4 validações por bloco: PT libertou, estúdio não bloqueou, o PT não tem
+// outro aluno nesse bloco, e as 4 vagas partilhadas do estúdio.
+function resolveSlotChain(opts: {
+  ptId: string; alunoId: string; date: string; slotTime: string; sessionDuration: number
+}): string[] {
+  const { ptId, alunoId, date, slotTime, sessionDuration } = opts
+  const slotMinutes = mockStudioConfig.classDurationMinutes
+  if (sessionDuration % slotMinutes !== 0) {
+    throw new Error(`A sessão é de ${sessionDuration}min e o estúdio trabalha em blocos de ${slotMinutes}min — não encaixa.`)
+  }
+  const needed = sessionDuration / slotMinutes
+  const chain: string[] = []
+  let time = slotTime
+
+  for (let i = 0; i < needed; i++) {
+    const released = db.ptReleases.some(r => r.ptId === ptId && r.date === date && r.slotTime === time)
+    if (!released) {
+      throw i === 0
+        ? new Error('O teu PT não tem disponibilidade neste horário')
+        : new Error(`Esta sessão é de ${sessionDuration}min e precisa de ${slotTime}–${addMinutesToTime(slotTime, sessionDuration)}. O PT não tem o horário das ${time} disponível.`)
+    }
+    const where = needed > 1 ? ` (bloco das ${time})` : ''
+    if (isSlotBlocked(date, time)) throw new Error(`Este horário está bloqueado pelo estúdio${where}`)
+    if (getPTSlotCount(ptId, date, time) >= 1) {
+      throw new Error(needed > 1
+        ? `Esta sessão é de ${sessionDuration}min e precisa até às ${addMinutesToTime(slotTime, sessionDuration)}, mas o PT já tem outro aluno no bloco das ${time}.`
+        : 'O teu PT já tem uma sessão marcada neste horário — escolhe outro horário')
+    }
+    if (getStudioSlotCount(date, time) >= STUDIO_MAX_SPOTS) {
+      throw new Error(needed > 1
+        ? `O estúdio fica lotado (${STUDIO_MAX_SPOTS} vagas) no bloco das ${time}, que esta sessão de ${sessionDuration}min precisa de ocupar.`
+        : `Slot lotado — ${STUDIO_MAX_SPOTS}/${STUDIO_MAX_SPOTS} vagas do estúdio preenchidas`)
+    }
+    const key = `${date}-${time}`
+    if (db.bookings.some(b => b.slotKey === key && b.alunoId === alunoId && b.status === 'CONFIRMED')) {
+      throw new Error('Já tens uma reserva neste horário')
+    }
+    chain.push(time)
+    time = addMinutesToTime(time, slotMinutes)
+  }
+  return chain
+}
+
 // Studio slot config (V14) — cadência (travada 1h) + duração da aula
 // (editável pelo admin). Mock: vive em memória; a mudança vale na sessão.
 export const studioConfigApi = {
@@ -806,52 +853,42 @@ export const bookingApi = {
     const date = slotKey.slice(0, 10)
     const slotTime = slotKey.slice(11)
 
-    // Check PT released this slot (any PT — aluno is linked to specific PT)
-    const ptRelease = db.ptReleases.find(r => r.ptId === aluno.personalTrainerId && r.date === date && r.slotTime === slotTime)
-    if (!ptRelease) throw new Error('O teu PT não tem disponibilidade neste horário')
-
-    // Defense in depth — a block added after the PT released this slot
-    // should still make it unbookable.
-    if (isSlotBlocked(date, slotTime)) throw new Error('Este horário está bloqueado pelo estúdio')
-
-    // Sessions are 1-on-1 — a PT can only have one student per slot, never a group
-    const ptAlreadyBooked = db.bookings.some(b =>
-      b.slotKey === slotKey && b.personalTrainerId === aluno.personalTrainerId && b.status === 'CONFIRMED'
-    )
-    if (ptAlreadyBooked) throw new Error('O teu PT já tem uma sessão marcada neste horário — escolhe outro horário')
-
-    // Check studio max (4 across all PTs)
-    const studioCount = getStudioSlotCount(date, slotTime)
-    if (studioCount >= STUDIO_MAX_SPOTS) throw new Error('Slot lotado — 4/4 vagas do estúdio preenchidas')
-
-    // Check aluno not already booked
-    const already = db.bookings.some(b => b.slotKey === slotKey && b.alunoId === aluno.id && b.status === 'CONFIRMED')
-    if (already) throw new Error('Já tens uma reserva neste horário')
-
-    // Check active pack with remaining sessions
+    // O pack decide QUANTOS blocos a sessão ocupa — resolve-se primeiro.
     const pack = db.packs.find(p => p.alunoId === aluno.id && p.status === 'ACTIVE')
     if (!pack) throw new Error('Não tens sessões disponíveis. Fala com o teu PT para carregar um pack.')
     if (pack.total - pack.used <= 0) throw new Error('Pack sem sessões disponíveis — fala com o teu PT')
 
-    const { start, end } = slotKeyToISO(date, slotTime)
-    const booking = {
-      id: 'bk-' + uid(),
-      slotKey, availabilityId: slotKey,
-      alunoId: aluno.id, alunoName: aluno.name,
-      personalTrainerId: aluno.personalTrainerId,
-      personalTrainerName: aluno.personalTrainerName,
-      startTime: start, endTime: end,
-      sessionDuration: pack.sessionDuration,
-      status: 'CONFIRMED' as const,
-      createdAt: new Date().toISOString(),
-    }
-    db.bookings.push(booking)
+    // Valida TODOS os blocos antes de gravar qualquer um.
+    const chain = resolveSlotChain({
+      ptId: aluno.personalTrainerId, alunoId: aluno.id,
+      date, slotTime, sessionDuration: pack.sessionDuration,
+    })
 
-    // Debit pack
+    const bookingGroupId = 'grp-' + uid()
+    const created = chain.map(time => {
+      const { start, end } = slotKeyToISO(date, time)
+      const b = {
+        id: 'bk-' + uid(),
+        bookingGroupId,
+        slotKey: `${date}-${time}`, availabilityId: `${date}-${time}`,
+        alunoId: aluno.id, alunoName: aluno.name,
+        personalTrainerId: aluno.personalTrainerId,
+        personalTrainerName: aluno.personalTrainerName,
+        startTime: start, endTime: end,
+        sessionDuration: pack.sessionDuration,
+        status: 'CONFIRMED' as const,
+        createdAt: new Date().toISOString(),
+      }
+      db.bookings.push(b)
+      return b
+    })
+
+    // UMA sessão debitada, por mais blocos que ocupe.
     pack.used++
     if (pack.total - pack.used === 0) pack.status = 'DEPLETED'
 
-    return booking
+    // Devolve o intervalo real da sessão.
+    return { ...created[0], endTime: created[created.length - 1].endTime }
   },
 
   // Admin/PT marcam POR um aluno específico (desconta do pack do aluno).
@@ -861,29 +898,36 @@ export const bookingApi = {
     if (!aluno) throw new Error('Aluno não encontrado')
     const date = availabilityId.slice(0, 10)
     const slotTime = availabilityId.slice(11)
-    if (isSlotBlocked(date, slotTime)) throw new Error('Este horário está bloqueado pelo estúdio')
-    const studioCount = getStudioSlotCount(date, slotTime)
-    if (studioCount >= STUDIO_MAX_SPOTS) throw new Error('Slot lotado — 4/4 vagas do estúdio preenchidas')
-    const already = db.bookings.some(b => b.slotKey === availabilityId && b.alunoId === aluno.id && b.status === 'CONFIRMED')
-    if (already) throw new Error('O aluno já tem uma reserva neste horário')
     const pack = db.packs.find(p => p.alunoId === aluno.id && p.status === 'ACTIVE')
     if (!pack || pack.total - pack.used <= 0) throw new Error('O aluno não tem pack ativo com sessões disponíveis')
-    const { start, end } = slotKeyToISO(date, slotTime)
-    const booking = {
-      id: 'bk-' + uid(),
-      slotKey: availabilityId, availabilityId,
-      alunoId: aluno.id, alunoName: aluno.name,
-      personalTrainerId: aluno.personalTrainerId,
-      personalTrainerName: aluno.personalTrainerName,
-      startTime: start, endTime: end,
-      sessionDuration: pack.sessionDuration,
-      status: 'CONFIRMED' as const,
-      createdAt: new Date().toISOString(),
-    }
-    db.bookings.push(booking)
+
+    // Mesma cadeia do auto-agendamento: 60min em blocos de 30 ocupa dois.
+    const chain = resolveSlotChain({
+      ptId: aluno.personalTrainerId, alunoId: aluno.id,
+      date, slotTime, sessionDuration: pack.sessionDuration,
+    })
+
+    const bookingGroupId = 'grp-' + uid()
+    const created = chain.map(time => {
+      const { start, end } = slotKeyToISO(date, time)
+      const b = {
+        id: 'bk-' + uid(),
+        bookingGroupId,
+        slotKey: `${date}-${time}`, availabilityId: `${date}-${time}`,
+        alunoId: aluno.id, alunoName: aluno.name,
+        personalTrainerId: aluno.personalTrainerId,
+        personalTrainerName: aluno.personalTrainerName,
+        startTime: start, endTime: end,
+        sessionDuration: pack.sessionDuration,
+        status: 'CONFIRMED' as const,
+        createdAt: new Date().toISOString(),
+      }
+      db.bookings.push(b)
+      return b
+    })
     pack.used++
     if (pack.total - pack.used === 0) pack.status = 'DEPLETED'
-    return booking
+    return { ...created[0], endTime: created[created.length - 1].endTime }
   },
 
   // Cancel with role-based time enforcement
@@ -907,9 +951,14 @@ export const bookingApi = {
     }
     // ADMIN: no restriction
 
-    booking.status = 'CANCELLED'
+    // Cancela a sessão INTEIRA — numa sessão de 60min em blocos de 30,
+    // cancelar o primeiro bloco deixaria o segundo reservado.
+    const grupo = booking.bookingGroupId
+      ? db.bookings.filter(b => b.bookingGroupId === booking.bookingGroupId && b.status === 'CONFIRMED')
+      : [booking]
+    grupo.forEach(b => { b.status = 'CANCELLED' })
 
-    // Refund session to pack if future booking
+    // Devolve UMA sessão — foi uma que se debitou.
     if (hoursUntil > 0) {
       const pack = db.packs.find(p => p.alunoId === booking.alunoId && (p.status === 'ACTIVE' || p.status === 'DEPLETED'))
       if (pack) {

@@ -204,6 +204,10 @@ export interface MockPTRelease {
 // Booking: aluno books a PT's released slot inside a studio slot
 export interface MockBooking {
   id: string
+  // Sessões que ocupam vários blocos (60min numa grelha de 30) partilham o
+  // grupo: 1 débito no pack, e cancelar um bloco cancela a sessão toda.
+  // Opcional porque as reservas semeadas são todas de um bloco só.
+  bookingGroupId?: string
   slotKey: string        // "YYYY-MM-DD-HH:MM"
   availabilityId: string // alias of slotKey for backward compat
   alunoId: string; alunoName: string
