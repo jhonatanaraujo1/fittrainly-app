@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Calendar, Clock } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
@@ -46,6 +47,24 @@ function resolveCell(cell: CalCell, viewYear: number, viewMonth: number) {
   if (cell.slot === 'prev') { m -= 1; if (m < 0) { m = 11; y -= 1 } }
   if (cell.slot === 'next') { m += 1; if (m > 11) { m = 0; y += 1 } }
   return { y, m }
+}
+
+// ── Portal ────────────────────────────────────────────────────────────────────
+// O popup é montado em document.body, não onde o DatePicker está na árvore.
+//
+// Porquê: `position: fixed` NÃO se resolve contra a viewport quando existe um
+// ancestral com `transform`/`filter`/`will-change` — passa a resolver contra
+// esse ancestral. Os nossos Dialogs animam com `zoom-in-95`, ou seja têm
+// transform. Dentro deles, as coordenadas de viewport calculadas em
+// usePopupStyle eram interpretadas contra a caixa do dialog e o calendário
+// aterrava longe do gatilho (era o bug do "Novo Pack de Sessões").
+// O portal tira o popup de dentro do dialog, e aí `fixed` volta a significar
+// viewport.
+function PopupPortal({ children }: { children: React.ReactNode }) {
+  const [montado, setMontado] = useState(false)
+  useEffect(() => { setMontado(true) }, [])
+  if (!montado) return null   // SSR não tem document
+  return createPortal(children, document.body)
 }
 
 // ── Popup positioning (fixed) ──────────────────────────────────────────────────
@@ -329,6 +348,7 @@ export function DatePicker({
 
       <AnimatePresence>
         {open && (
+          <PopupPortal>
           <motion.div
             ref={popupRef}
             style={popupStyle}
@@ -340,6 +360,7 @@ export function DatePicker({
           >
             <CalendarBody value={value} onSelect={handleSelect} minDate={minDate} maxDate={maxDate} initialView={initialView} />
           </motion.div>
+          </PopupPortal>
         )}
       </AnimatePresence>
     </div>
@@ -453,6 +474,7 @@ export function DateTimePicker({
 
       <AnimatePresence>
         {open && (
+          <PopupPortal>
           <motion.div
             ref={popupRef}
             style={popupStyle}
@@ -491,6 +513,7 @@ export function DateTimePicker({
               </button>
             </div>
           </motion.div>
+          </PopupPortal>
         )}
       </AnimatePresence>
     </div>
