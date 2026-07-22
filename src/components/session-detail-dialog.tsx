@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { getInitials, avatarColor, formatTime } from '@/lib/utils'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 export interface SessionDetailStudent {
   bookingId?: string
@@ -112,14 +113,14 @@ export function SessionDetailDialog({
             ) : (
               <>
                 <div className="flex gap-2">
-                  <select
+                  <CustomSelect
+                    size="lg"
+                    className="flex-1"
                     value={pick}
-                    onChange={e => setPick(e.target.value)}
-                    className="flex-1 min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                  >
-                    <option value="">Escolher aluno…</option>
-                    {(bookableStudents ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
+                    onChange={setPick}
+                    placeholder="Escolher aluno…"
+                    options={(bookableStudents ?? []).map(s => ({ value: s.id, label: s.name }))}
+                  />
                   <Button
                     disabled={!pick || booking}
                     onClick={() => { if (pick) { onBookStudent(pick); setPick('') } }}

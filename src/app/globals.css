@@ -145,6 +145,13 @@
 .dark .text-gray-400 { color: rgba(255,255,255,0.38) !important; }
 .dark .text-gray-300 { color: rgba(255,255,255,0.24) !important; }
 
+/* Cores de marca em valor arbitrário. O retrofit acima cobre as ESCALAS do
+   Tailwind (text-gray-*), mas não `text-[#…]` — por isso um valor hardcoded
+   escuro fica preto sobre preto e ninguém repara até um cliente reclamar.
+   #7D6229 é o gold-dim: legível sobre fundo claro, quase invisível sobre o
+   escuro. No dark passa ao gold cheio, que contrasta nos dois. */
+.dark .text-\[\#7D6229\] { color: #C9A84C !important; }
+
 .dark .border-gray-50,
 .dark .border-gray-100,
 .dark .border-gray-200 { border-color: rgba(255,255,255,0.08) !important; }

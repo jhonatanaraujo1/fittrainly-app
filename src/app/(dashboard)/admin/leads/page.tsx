@@ -25,6 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { leadApi, ptApi } from '@/lib/api'
+import { CustomSelect } from '@/components/ui/custom-select'
 import type { MockLead } from '@/lib/mock-db'
 import type { LeadStatus } from '@/types'
 
@@ -1014,30 +1015,33 @@ export default function LeadsPage() {
           )}
         </div>
         <div className="flex gap-2">
-        <select
+        {/* O separador "──────" do <select> nativo desapareceu: os anos passam
+            a vir prefixados ("Ano 2026"), que distingue melhor do que uma linha
+            decorativa não-selecionável. */}
+        <CustomSelect
+          size="lg"
+          className="flex-1 sm:flex-none sm:w-48"
           value={periodFilter}
-          onChange={e => setPeriodFilter(e.target.value)}
-          className="flex-1 sm:flex-none min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
-        >
-          <option value="all">Todos os períodos</option>
-          <option value="30d">Últimos 30 dias</option>
-          <option value="90d">Últimos 3 meses</option>
-          <option value="6m">Últimos 6 meses</option>
-          <option value="1y">Último ano</option>
-          <option disabled>──────</option>
-          {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map(y => (
-            <option key={y} value={String(y)}>{y}</option>
-          ))}
-        </select>
-        <select
+          onChange={setPeriodFilter}
+          options={[
+            { value: 'all', label: 'Todos os períodos' },
+            { value: '30d', label: 'Últimos 30 dias' },
+            { value: '90d', label: 'Últimos 3 meses' },
+            { value: '6m', label: 'Últimos 6 meses' },
+            { value: '1y', label: 'Último ano' },
+            ...[0, 1, 2].map(i => {
+              const y = new Date().getFullYear() - i
+              return { value: String(y), label: `Ano ${y}` }
+            }),
+          ]}
+        />
+        <CustomSelect
+          size="lg"
+          className="flex-1 sm:flex-none sm:w-44"
           value={monthFilter}
-          onChange={e => setMonthFilter(e.target.value)}
-          className="flex-1 sm:flex-none min-w-0 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px] cursor-pointer"
-          title="Filtrar por mês específico (combina com o ano escolhido ao lado)"
-        >
-          <option value="all">Todos os meses</option>
-          {MONTH_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
+          onChange={setMonthFilter}
+          options={[{ value: 'all', label: 'Todos os meses' }, ...MONTH_OPTIONS]}
+        />
         </div>
       </div>
 

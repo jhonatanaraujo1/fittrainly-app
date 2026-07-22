@@ -134,7 +134,10 @@ export default function PlansPage() {
                 </div>
                 <div>
                   <p className="font-bold text-gray-900">{plan.name}</p>
-                  <p className="text-2xl font-bold text-[#111111] mt-1">{planPrice(plan)}</p>
+                  {/* text-gray-900, não text-[#111111]: a folha de dark mode
+                      remapeia as escalas do Tailwind, mas não valores
+                      arbitrários — o preço ficava preto sobre preto. */}
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{planPrice(plan)}</p>
                   {plan.description && (
                     <p className="text-xs text-gray-400 mt-2 leading-relaxed">{plan.description}</p>
                   )}

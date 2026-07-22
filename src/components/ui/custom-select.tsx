@@ -16,7 +16,9 @@ interface CustomSelectProps<T extends string | number> {
   options: SelectOption<T>[]
   placeholder?: string
   className?: string
-  size?: 'sm' | 'md'
+  // 'lg' = 44px, o mínimo de alvo de toque (Apple HIG). Usar em formulários
+  // e filtros; 'sm'/'md' só em barras densas de desktop.
+  size?: 'sm' | 'md' | 'lg'
   prefix?: React.ReactNode
 }
 
@@ -54,7 +56,7 @@ export function CustomSelect<T extends string | number>({
           open
             ? 'border-[#C9A84C] ring-1 ring-[#C9A84C]/40'
             : 'border-gray-200',
-          size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3 text-sm',
+          size === 'sm' ? 'h-8 px-2.5 text-xs' : size === 'lg' ? 'min-h-[44px] px-3.5 text-sm' : 'h-9 px-3 text-sm',
         )}>
         {prefix}
         <span className={cn('flex-1 font-medium', selected ? 'text-gray-700' : 'text-gray-400')}>
@@ -76,7 +78,10 @@ export function CustomSelect<T extends string | number>({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute z-50 mt-1 w-full min-w-[140px] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden"
+            // max-h + scroll: o seletor de ano do DatePicker chega a 121
+            // opções (datas de nascimento até validades de documentos). Sem
+            // limite, a lista saía do ecrã e ficava inalcançável.
+            className="absolute z-50 mt-1 w-full min-w-[140px] max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-white shadow-xl"
           >
             {options.map(opt => {
               const active = opt.value === value
@@ -84,6 +89,9 @@ export function CustomSelect<T extends string | number>({
                 <button
                   key={String(opt.value)}
                   type="button"
+                  // Numa lista longa (anos), abrir no topo deixava o valor
+                  // atual fora de vista. Traz o selecionado para o centro.
+                  ref={active ? (el) => el?.scrollIntoView({ block: 'center' }) : undefined}
                   onClick={() => { onChange(opt.value); setOpen(false) }}
                   className={cn(
                     'flex items-center justify-between gap-3 w-full px-3 py-2.5 text-sm text-left transition-colors',

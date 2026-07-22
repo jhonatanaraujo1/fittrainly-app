@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DatePicker } from '@/components/ui/date-picker'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 // Painel genérico de documentos. Serve o PT (seguro/TEEF/outro) e o aluno
 // (contrato de anamnese) — a lógica de upload, pré-visualização e alerta de
@@ -225,9 +226,7 @@ export function DocumentsPanel({
           {types.length > 1 && (
             <label className="flex flex-col gap-1">
               <span className="text-[11px] text-gray-400">Tipo</span>
-              <select value={type} onChange={e => setType(e.target.value)} className={inp}>
-                {types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <CustomSelect value={type} onChange={setType} options={types} />
             </label>
           )}
           <div className="flex flex-col gap-1 min-w-[190px]">

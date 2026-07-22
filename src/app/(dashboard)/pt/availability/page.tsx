@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { availabilityApi, alunoApi, bookingApi } from '@/lib/api'
 import { cn, formatTime } from '@/lib/utils'
+import { CustomSelect } from '@/components/ui/custom-select'
 import type { StudioSlot } from '@/types'
 
 type MyStudent = { id: string; name: string; email?: string }
@@ -465,14 +466,13 @@ export default function PTAvailabilityPage() {
           {confirmSlot?.released && (
             <div className="space-y-2 py-1">
               <label className="text-xs font-semibold text-gray-600">Marcar aluno neste horário</label>
-              <select
+              <CustomSelect
+                size="lg"
                 value={studentToBook}
-                onChange={e => setStudentToBook(e.target.value)}
-                className="w-full min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-              >
-                <option value="">Escolher aluno…</option>
-                {myStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+                onChange={setStudentToBook}
+                placeholder="Escolher aluno…"
+                options={myStudents.map(s => ({ value: s.id, label: s.name }))}
+              />
               <Button
                 className="w-full"
                 disabled={!studentToBook || bookForStudent.isPending || (confirmSlot.studioCount >= confirmSlot.studioMax)}

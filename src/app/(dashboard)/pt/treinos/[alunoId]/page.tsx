@@ -12,6 +12,7 @@ import { getInitials, avatarColor } from '@/lib/utils'
 import type { MockAluno } from '@/lib/mock-db'
 import { gerarProtocolos, SEVERIDADE_CONFIG } from '@/lib/clinical-protocols'
 import type { WorkoutPlan, Exercise } from '@/types'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 const MUSCLE_GROUPS = [
   'Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Antebraço',
@@ -53,13 +54,12 @@ function ExerciseForm({ onSave, onCancel }: {
           className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
         <div className="flex flex-col gap-2.5">
-          <select
+          <CustomSelect
+            size="lg"
             value={form.muscleGroup}
-            onChange={e => field('muscleGroup', e.target.value)}
-            className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[44px]"
-          >
-            {MUSCLE_GROUPS.map(g => <option key={g}>{g}</option>)}
-          </select>
+            onChange={v => field('muscleGroup', v)}
+            options={MUSCLE_GROUPS.map(g => ({ value: g, label: g }))}
+          />
           <div className="grid grid-cols-3 gap-2">
             <input
               type="number" min={1} max={10} value={form.sets}

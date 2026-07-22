@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Calendar, Clock } fr
 import { format, parseISO, isValid } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 // ── Calendar utils ─────────────────────────────────────────────────────────────
 
@@ -135,23 +136,25 @@ function CalendarBody({ value, onSelect, minDate, maxDate, initialView }: Calend
           className="p-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center flex-shrink-0">
           <ChevronLeft className="w-4 h-4 text-gray-600" />
         </button>
+        {/* CustomSelect, não <select> nativo: o popup do select é desenhado
+            pelo SO e não aceita CSS — em dark mode saía uma caixa branca por
+            cima do calendário escuro. O CustomSelect é DOM normal, por isso
+            segue o tema como o resto da app. */}
         <div className="flex-1 flex items-center justify-center gap-1.5">
-          <select
-            aria-label="Mês"
+          <CustomSelect<number>
+            size="sm"
             value={viewMonth}
-            onChange={e => setViewMonth(Number(e.target.value))}
-            className="text-sm font-bold text-gray-900 bg-transparent rounded-lg px-1.5 py-1 outline-none hover:bg-gray-100 focus:bg-gray-100 cursor-pointer"
-          >
-            {MONTH_PT.map((m, i) => <option key={m} value={i}>{m}</option>)}
-          </select>
-          <select
-            aria-label="Ano"
+            onChange={setViewMonth}
+            options={MONTH_PT.map((m, i) => ({ value: i, label: m }))}
+            className="w-[112px]"
+          />
+          <CustomSelect<number>
+            size="sm"
             value={viewYear}
-            onChange={e => setViewYear(Number(e.target.value))}
-            className="text-sm font-bold text-gray-900 bg-transparent rounded-lg px-1.5 py-1 outline-none hover:bg-gray-100 focus:bg-gray-100 cursor-pointer tabular-nums"
-          >
-            {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+            onChange={setViewYear}
+            options={yearOptions.map(y => ({ value: y, label: String(y) }))}
+            className="w-[84px]"
+          />
         </div>
         <button type="button" onClick={nextMonth} aria-label="Mês seguinte"
           className="p-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center flex-shrink-0">
