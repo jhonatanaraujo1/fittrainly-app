@@ -372,7 +372,18 @@ export default function AdminSchedulePage() {
                                       'flex items-center justify-between rounded px-1.5 py-1 min-h-[20px] text-white text-[9px] font-semibold group cursor-pointer hover:opacity-80 transition-opacity',
                                       ptColor(rel.ptId),
                                     )}>
-                                    <span className="truncate">{ptName.split(' ')[0]}</span>
+                                    {/* PT · aluno. Sem o nome do aluno o admin
+                                        via só "1✓" e tinha de abrir o chip
+                                        para saber quem estava no horário. */}
+                                    <span className="truncate">
+                                      {ptName.split(' ')[0]}
+                                      {rel.studentNames.length > 0 && (
+                                        <span className="font-normal opacity-90">
+                                          {' · '}
+                                          {rel.studentNames.map(n => n.split(' ')[0]).join(', ')}
+                                        </span>
+                                      )}
+                                    </span>
                                     {rel.confirmedCount === 0 ? (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); removeRelease.mutate(rel.releaseId) }}

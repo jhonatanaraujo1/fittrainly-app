@@ -23,12 +23,28 @@ export function withIVA(value: number): { base: number; iva: number; total: numb
   return { base, iva, total: base + iva }
 }
 
+// REGRA DE OURO DO TEMPO NESTE SISTEMA
+// O backend trata hora-de-parede como UTC de ponta a ponta: guarda os slots
+// como `${data}T${hora}:00Z` e valida horários de funcionamento com
+// LocalDateTime.ofInstant(..., ZoneOffset.UTC). Não há conversão de fuso em
+// lado nenhum do domínio — "09:00" significa 09:00 no relógio do estúdio.
+//
+// Logo, renderizar com o fuso do browser está ERRADO: em Portugal no verão
+// (WEST, UTC+1) o aluno via TODOS os horários +1h em relação ao que o PT
+// libertou — 07:30 aparecia como 08:30, e surgiam linhas de horário que o PT
+// nunca abriu. A grelha do PT já lia por fatia da string ISO e por isso estava
+// certa; era a agenda do aluno que divergia.
+//
+// toDate desloca o instante pelo offset local para que os componentes LOCAIS
+// da Date passem a valer exatamente os componentes UTC — assim o date-fns
+// (que formata sempre em local) imprime a hora-de-parede do estúdio,
+// independentemente de onde o browser está.
 function toDate(d: Date | string): Date {
-  if (typeof d === 'string') {
-    const parsed = parseISO(d)
-    return isValid(parsed) ? parsed : new Date(d)
-  }
-  return d
+  const raw = typeof d === 'string'
+    ? (isValid(parseISO(d)) ? parseISO(d) : new Date(d))
+    : d
+  if (!isValid(raw)) return raw
+  return new Date(raw.getTime() + raw.getTimezoneOffset() * 60_000)
 }
 
 export function formatDate(d: Date | string): string {
@@ -41,6 +57,16 @@ export function formatDateShort(d: Date | string): string {
 
 export function formatTime(d: Date | string): string {
   return format(toDate(d), 'HH:mm')
+}
+
+// Chaves de grelha (data / hora) na hora-de-parede do estúdio. Fatiam a string
+// ISO tal como a grelha do PT faz — nunca `new Date(...)` seguido de format(),
+// que reinterpreta no fuso do browser. Ver a nota em toDate.
+export function slotDateKey(iso: string): string {
+  return iso.slice(0, 10)
+}
+export function slotTimeKey(iso: string): string {
+  return iso.slice(11, 16)
 }
 
 export function formatWeekday(d: Date | string): string {

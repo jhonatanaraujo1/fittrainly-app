@@ -133,7 +133,9 @@ export interface AdminScheduleSlot {
   endTime: string
   studioCount: number
   studioMax: number
-  releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+  // Nomes dos alunos confirmados no slot, para o admin ver quem está em cada
+  // horário direto na grelha (backend carrega em bloco, sem N+1).
+  releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number; studentNames: string[] }>
   blocked: boolean
   blockReason?: string
   blockId?: string

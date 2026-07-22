@@ -107,6 +107,9 @@ interface RealAvailability {
   maxStudents: number
   confirmedCount: number
   availableSlots: number
+  // Preenchido pelo GET /admin/schedule (listAllByRange carrega as reservas do
+  // intervalo em bloco). Vazio nos endpoints PT/aluno.
+  studentNames?: string[]
 }
 
 const STUDIO_MAX_SPOTS_FALLBACK = 4 // matches Tenant.studioCapacity seed default; real cap is enforced server-side
@@ -596,14 +599,26 @@ export const availabilityApi = {
   studioGrid: async (startDate: string, endDate: string) => {
     const start = new Date(startDate).toISOString()
     const end = new Date(endDate).toISOString()
-    const [mine, config, blocks] = await Promise.all([
+    const [mine, config, blocks, weekly] = await Promise.all([
       apiFetch<RealAvailability[]>(
         `/api/v1/availability?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
       ),
       fetchStudioConfig(),
       // #10 — fechos do estúdio (rota PT-readable). Degrada para [] se falhar.
       studioScheduleApi.listBlocksReadonly(startDate, endDate).catch(() => [] as Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>),
+      // Horas reais do estúdio, mesma fonte que a agenda do admin usa.
+      studioScheduleApi.getWeeklyHoursReadonly().catch(() => [] as Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; lunchStart: string | null; lunchEnd: string | null }>),
     ])
+
+    // Horas configuradas por dia da semana (backend serializa LocalTime como
+    // "HH:mm:ss"). Cai nos defaults partilhados só para os dias que o estúdio
+    // ainda não configurou — um estúdio novo continua a ter grelha.
+    const hoursByDow = new Map<number, [string | null, string | null]>()
+    const lunchByDow = new Map<number, [string | null, string | null]>()
+    for (const w of weekly) {
+      hoursByDow.set(w.dayOfWeek, [w.openTime ? w.openTime.slice(0, 5) : null, w.closeTime ? w.closeTime.slice(0, 5) : null])
+      lunchByDow.set(w.dayOfWeek, [w.lunchStart ? w.lunchStart.slice(0, 5) : null, w.lunchEnd ? w.lunchEnd.slice(0, 5) : null])
+    }
 
     // Index the PT's own releases by cell key (backend UTC slice).
     const mineByCell = new Map<string, RealAvailability>()
@@ -621,8 +636,10 @@ export const availabilityApi = {
       blocked: boolean; blockReason?: string
     }> = []
     for (const date of eachDateStr(startDate, endDate)) {
-      const hours = DEFAULT_STUDIO_HOURS[dowOf(date)] ?? [null, null]
-      for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes)) {
+      const dow = dowOf(date)
+      const hours = hoursByDow.get(dow) ?? DEFAULT_STUDIO_HOURS[dow] ?? [null, null]
+      const lunch = lunchByDow.get(dow) ?? [null, null]
+      for (const time of slotTimesForHours(hours[0], hours[1], config.slotDurationMinutes, config.classDurationMinutes, lunch[0], lunch[1])) {
         const a = mineByCell.get(`${date}-${time}`)
         const blk = slotBlock(blocks, date, time, config.classDurationMinutes)
         out.push({
@@ -698,6 +715,23 @@ export const availabilityApi = {
       sessionDuration: Math.round((new Date(r.endTime).getTime() - new Date(r.startTime).getTime()) / 60000),
       packRemaining: 0,
     }))
+  },
+
+  // Libertação em bloco: 1 request para a semana inteira em vez de um POST por
+  // slot em série (era ~150 round-trips e dezenas de segundos). O backend
+  // avalia cada slot isoladamente, por isso um slot no passado ou bloqueado é
+  // ignorado com motivo em vez de abortar o lote.
+  createBatch: async (slots: Array<{ date: string; slotTime: string; endTime?: string }>) => {
+    if (slots.length === 0) return { created: 0, skipped: 0, results: [] }
+    const config = await fetchStudioConfig()
+    const payload = slots.map(s => ({
+      startTime: `${s.date}T${s.slotTime}:00Z`,
+      endTime: s.endTime ?? `${s.date}T${addMinutesToTime(s.slotTime, config.classDurationMinutes)}:00Z`,
+    }))
+    return apiFetch<{ created: number; skipped: number; results: Array<{ startTime: string; created: boolean; reason: string | null }> }>(
+      '/api/v1/availability/batch',
+      { method: 'POST', body: JSON.stringify({ slots: payload }) },
+    )
   },
 
   // PT releases a slot — POST /availability { startTime, endTime }, no
@@ -789,7 +823,7 @@ export const adminScheduleApi = {
     const out: Array<{
       date: string; slotTime: string; startTime: string; endTime: string
       studioCount: number; studioMax: number
-      releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+      releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number; studentNames: string[] }>
       blocked: boolean; blockReason?: string; blockId?: string
     }> = []
     for (const date of eachDateStr(startDate, endDate)) {
@@ -811,6 +845,7 @@ export const adminScheduleApi = {
             ptId: r.personalTrainerId,
             ptName: r.personalTrainerName,
             confirmedCount: r.confirmedCount,
+            studentNames: r.studentNames ?? [],
           })),
           blocked: !!blk,
           blockReason: blk?.reason,
@@ -859,6 +894,14 @@ export const studioScheduleApi = {
   listBlocks: async (startDate: string, endDate: string) =>
     apiFetch<Array<{ id: string; date: string; startTime: string; endTime: string; reason: string }>>(
       `/api/v1/admin/studio-schedule/blocks?startDate=${startDate}&endDate=${endDate}`,
+    ),
+
+  // Horas de funcionamento reais, legíveis pelo PT (rota fora de /admin). A
+  // grelha do PT desenhava com horários hardcoded e por isso mostrava linhas
+  // que o estúdio nunca configurou — e omitia as que configurou.
+  getWeeklyHoursReadonly: async () =>
+    apiFetch<Array<{ dayOfWeek: number; openTime: string | null; closeTime: string | null; lunchStart: string | null; lunchEnd: string | null }>>(
+      '/api/v1/studio-schedule/weekly-hours',
     ),
 
   // Leitura acessível ao PT (rota fora de /admin) — para mostrar os fechos do

@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CancelBookingDialog } from '@/components/cancel-booking-dialog'
 import { ConfirmBookingDialog } from '@/components/confirm-booking-dialog'
 import { dashboardApi, bookingApi, alunoApi, availabilityApi, ptApi } from '@/lib/api'
-import { formatDate, formatTime, bookingStatusLabel, bookingStatusColor, cn } from '@/lib/utils'
+import { formatDate, formatTime, slotDateKey, slotTimeKey, bookingStatusLabel, bookingStatusColor, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import type { AlunoDashboard, RecentSession, Availability, Booking, Aluno, PersonalTrainer } from '@/types'
 
@@ -132,7 +132,7 @@ function AgendaSection() {
   const futureSlots = slots.filter(s => new Date(s.startTime) > now)
 
   const grouped = futureSlots.reduce<Record<string, Availability[]>>((acc, s) => {
-    const d = format(new Date(s.startTime), 'yyyy-MM-dd')
+    const d = slotDateKey(s.startTime)
     ;(acc[d] ??= []).push(s)
     return acc
   }, {})
@@ -144,10 +144,10 @@ function AgendaSection() {
   // also lets the aluno browse back to see classes he already had.
   const slotMap: Record<string, Availability> = {}
   for (const s of slots) {
-    const key = `${format(new Date(s.startTime), 'yyyy-MM-dd')}-${format(new Date(s.startTime), 'HH:mm')}`
+    const key = `${slotDateKey(s.startTime)}-${slotTimeKey(s.startTime)}`
     slotMap[key] = s
   }
-  const allTimes = [...new Set(slots.map(s => format(new Date(s.startTime), 'HH:mm')))].sort()
+  const allTimes = [...new Set(slots.map(s => slotTimeKey(s.startTime)))].sort()
 
   const confirmedThisWeek = [...bookedMap.keys()].filter(id => slots.some(s => s.id === id)).length
   const isLoading = slotsLoading || !me

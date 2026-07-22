@@ -188,29 +188,47 @@ export default function PTAvailabilityPage() {
     },
   })
 
+  // Um único request para o lote inteiro. Antes era um POST por slot em série:
+  // "Semana toda" = ~150 round-trips (dezenas de segundos com UM utilizador) e
+  // o primeiro slot inválido matava o resto — foi por isso que "Semana toda" a
+  // meio da semana dava "Erro ao ativar horários" e criava zero, com segunda e
+  // terça já no passado.
   const bulkCreate = useMutation({
-    mutationFn: async (slots: StudioSlot[]) => {
-      let count = 0
-      for (const s of slots) {
-        if (!s.released) { await availabilityApi.create({ date: s.date, slotTime: s.slotTime }); count++ }
+    mutationFn: (slots: StudioSlot[]) =>
+      availabilityApi.createBatch(
+        slots.filter(s => !s.released && !s.blocked).map(s => ({ date: s.date, slotTime: s.slotTime })),
+      ),
+    onSuccess: ({ created, skipped, results }) => {
+      if (created === 0 && skipped === 0) return toast.info('Nada para ativar — já estava tudo ativo')
+      if (created === 0) {
+        // Nada entrou: o motivo concreto vale mais que "erro".
+        const why = [...new Set(results.map(r => r.reason).filter(Boolean))].join(', ')
+        return toast.warning(`Nenhum horário ativado — ${why || 'todos foram ignorados'}`)
       }
-      return count
+      toast.success(
+        `${created} horário${created !== 1 ? 's' : ''} ativado${created !== 1 ? 's' : ''} ✓` +
+        (skipped > 0 ? ` · ${skipped} ignorado${skipped !== 1 ? 's' : ''} (${[...new Set(results.filter(r => !r.created).map(r => r.reason).filter(Boolean))].join(', ')})` : '')
+      )
     },
-    onSuccess: (count) => toast.success(count > 0 ? `${count} horário${count !== 1 ? 's' : ''} ativado${count !== 1 ? 's' : ''} ✓` : 'Nada para ativar — já estava tudo ativo'),
-    onError: () => toast.error('Erro ao ativar horários'),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Erro ao ativar horários'),
     onSettled: invalidate,
   })
 
   const bulkDelete = useMutation({
+    // Sem endpoint de batch para DELETE, mas em paralelo em vez de em série, e
+    // com allSettled — um slot que já não pode ser removido não impede os
+    // outros nem esconde quantos saíram de facto.
     mutationFn: async (slots: StudioSlot[]) => {
-      let count = 0
-      for (const s of slots) {
-        if (s.released && !s.myBookings && s.releaseId) { await availabilityApi.delete(s.releaseId); count++ }
-      }
-      return count
+      const ids = slots.filter(s => s.released && !s.myBookings && s.releaseId).map(s => s.releaseId!)
+      const outcomes = await Promise.allSettled(ids.map(id => availabilityApi.delete(id)))
+      return { removed: outcomes.filter(o => o.status === 'fulfilled').length, failed: outcomes.filter(o => o.status === 'rejected').length }
     },
-    onSuccess: (count) => toast.success(count > 0 ? `${count} horário${count !== 1 ? 's' : ''} removido${count !== 1 ? 's' : ''}` : 'Nada para remover'),
-    onError: () => toast.error('Erro ao limpar semana'),
+    onSuccess: ({ removed, failed }) => {
+      if (removed === 0 && failed === 0) return toast.info('Nada para remover')
+      if (removed > 0) toast.success(`${removed} horário${removed !== 1 ? 's' : ''} removido${removed !== 1 ? 's' : ''}`)
+      if (failed > 0) toast.warning(`${failed} não puderam ser removidos (têm alunos confirmados)`)
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Erro ao limpar semana'),
     onSettled: invalidate,
   })
 

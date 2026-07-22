@@ -592,6 +592,32 @@ export const availabilityApi = {
     return release
   },
 
+  // Libertação em bloco — espelha POST /availability/batch. Cada slot é
+  // avaliado isoladamente: os inválidos voltam com motivo em vez de rebentar o
+  // lote inteiro (era o bug do "Semana toda" a meio da semana).
+  createBatch: async (slots: Array<{ date: string; slotTime: string; endTime?: string }>) => {
+    await delay(320)
+    if (slots.length === 0) return { created: 0, skipped: 0, results: [] as Array<{ startTime: string; created: boolean; reason: string | null }> }
+    const user = getCurrentUser()
+    const pt = db.pts.find(p => p.userId === user?.id) ?? db.pts[0]
+    const now = Date.now()
+    const results: Array<{ startTime: string; created: boolean; reason: string | null }> = []
+    let created = 0
+    for (const s of slots) {
+      const startTime = `${s.date}T${s.slotTime}:00Z`
+      const reason =
+        new Date(startTime).getTime() < now ? 'Já passou'
+        : isSlotBlocked(s.date, s.slotTime) ? 'Bloqueado pelo estúdio'
+        : db.ptReleases.some(r => r.ptId === pt.id && r.date === s.date && r.slotTime === s.slotTime) ? 'Já estava ativo'
+        : null
+      if (reason) { results.push({ startTime, created: false, reason }); continue }
+      db.ptReleases.push({ id: 'rel-' + uid(), ptId: pt.id, ptName: pt.name, date: s.date, slotTime: s.slotTime })
+      results.push({ startTime, created: true, reason: null })
+      created++
+    }
+    return { created, skipped: results.length - created, results }
+  },
+
   // Admin creates a release on behalf of a PT
   createForPT: async (data: { ptId: string; date: string; slotTime: string }) => {
     await delay(300)
@@ -640,7 +666,7 @@ export const adminScheduleApi = {
     const result: Array<{
       date: string; slotTime: string; startTime: string; endTime: string
       studioCount: number; studioMax: number
-      releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number }>
+      releases: Array<{ releaseId: string; ptId: string; ptName: string; confirmedCount: number; studentNames: string[] }>
       blocked: boolean; blockReason?: string; blockId?: string
     }> = []
 
@@ -651,7 +677,15 @@ export const adminScheduleApi = {
         const { start: s, end: e } = slotKeyToISO(date, time)
         const releases = db.ptReleases
           .filter(r => r.date === date && r.slotTime === time)
-          .map(r => ({ releaseId: r.id, ptId: r.ptId, ptName: r.ptName, confirmedCount: getPTSlotCount(r.ptId, date, time) }))
+          .map(r => ({
+            releaseId: r.id, ptId: r.ptId, ptName: r.ptName,
+            confirmedCount: getPTSlotCount(r.ptId, date, time),
+            // Nome do aluno direto na grelha — o admin não devia ter de abrir
+            // chip a chip para saber quem está em cada horário.
+            studentNames: db.bookings
+              .filter(b => b.slotKey === `${date}-${time}` && b.personalTrainerId === r.ptId && b.status === 'CONFIRMED')
+              .map(b => b.alunoName),
+          }))
         const block = studioBlocks.find(b => {
           if (b.date !== date) return false
           const [bh, bm] = b.startTime.split(':').map(Number)

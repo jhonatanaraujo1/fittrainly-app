@@ -100,24 +100,37 @@ export function SessionDetailDialog({
             <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
               <UserPlus className="w-3.5 h-3.5" /> Marcar aluno neste horário
             </p>
-            <div className="flex gap-2">
-              <select
-                value={pick}
-                onChange={e => setPick(e.target.value)}
-                className="flex-1 min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-              >
-                <option value="">Escolher aluno…</option>
-                {(bookableStudents ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-              <Button
-                disabled={!pick || booking}
-                onClick={() => { if (pick) { onBookStudent(pick); setPick('') } }}
-                className="flex-shrink-0"
-              >
-                {booking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Marcar'}
-              </Button>
-            </div>
-            <p className="text-[11px] text-gray-400">Desconta do pack do aluno e entra na faturação.</p>
+            {/* A lista só traz os alunos DESTE PT — cada aluno pertence a um PT
+                e só treina com esse (regra também imposta no backend). Sem
+                alunos vinculados não há o que marcar: dizer isso é melhor do
+                que oferecer um select vazio. */}
+            {(bookableStudents ?? []).length === 0 ? (
+              <p className="text-xs text-gray-500 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                {ptName ? `${ptName.split(' ')[0]} ainda não tem alunos vinculados.` : 'Este PT ainda não tem alunos vinculados.'}
+                {' '}Vincula um aluno a este PT antes de marcar a sessão.
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <select
+                    value={pick}
+                    onChange={e => setPick(e.target.value)}
+                    className="flex-1 min-h-[44px] px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                  >
+                    <option value="">Escolher aluno…</option>
+                    {(bookableStudents ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <Button
+                    disabled={!pick || booking}
+                    onClick={() => { if (pick) { onBookStudent(pick); setPick('') } }}
+                    className="flex-shrink-0"
+                  >
+                    {booking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Marcar'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-gray-400">Só alunos de {ptName?.split(' ')[0] ?? 'este PT'}. Desconta do pack do aluno e entra na faturação.</p>
+              </>
+            )}
           </div>
         )}
       </DialogContent>
