@@ -56,6 +56,7 @@ function EditSheet({ pt, plans, onClose }: {
   const qc = useQueryClient()
   const [form, setForm] = useState({
     name:      pt.name,
+    email:     pt.email ?? '',
     phone:     pt.phone ?? '',
     specialty: pt.specialty ?? '',
     bio:       pt.bio ?? '',
@@ -75,7 +76,9 @@ function EditSheet({ pt, plans, onClose }: {
       toast.success('Perfil actualizado ✅')
       onClose()
     },
-    onError: () => toast.error('Erro ao actualizar PT'),
+    // A mensagem real importa: "Email já cadastrado" é acionável, "Erro ao
+    // actualizar PT" faz o admin tentar de novo às cegas.
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Erro ao actualizar PT'),
   })
 
   return (
@@ -96,6 +99,17 @@ function EditSheet({ pt, plans, onClose }: {
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nome</Label>
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="min-h-[44px]" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Email</Label>
+            <Input
+              type="email" inputMode="email" autoComplete="off"
+              value={form.email}
+              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              placeholder="pt@exemplo.com"
+              className="min-h-[44px]"
+            />
+            <p className="text-[11px] text-gray-500">É o login do PT. Alterar aqui muda o acesso dele à plataforma.</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Telefone</Label>
