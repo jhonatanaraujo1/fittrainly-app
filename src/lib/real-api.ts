@@ -903,6 +903,21 @@ export const adminScheduleApi = {
   addRelease: async (data: { ptId: string; date: string; slotTime: string; endTime?: string }) =>
     availabilityApi.createForPT(data),
 
+  // ALOCAR = criar o horário E marcar o aluno, numa só chamada. Não existe
+  // alocar sem aluno — a regra é imposta no servidor, não só na UI.
+  allocate: async (data: { ptId: string; studentId: string; date: string; slotTime: string }) => {
+    const config = await fetchStudioConfig()
+    return apiFetch('/api/v1/admin/schedule/allocate', {
+      method: 'POST',
+      body: JSON.stringify({
+        ptId: data.ptId,
+        studentId: data.studentId,
+        startTime: `${data.date}T${data.slotTime}:00Z`,
+        endTime: `${data.date}T${addMinutesToTime(data.slotTime, config.classDurationMinutes)}:00Z`,
+      }),
+    })
+  },
+
   removeRelease: async (releaseId: string) =>
     apiFetch<void>(`/api/v1/admin/schedule/${releaseId}`, { method: 'DELETE' }),
 

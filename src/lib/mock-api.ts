@@ -36,9 +36,9 @@ function slotKeyToISO(date: string, time: string): { start: string; end: string 
 // As 4 validações por bloco: PT libertou, estúdio não bloqueou, o PT não tem
 // outro aluno nesse bloco, e as 4 vagas partilhadas do estúdio.
 function resolveSlotChain(opts: {
-  ptId: string; alunoId: string; date: string; slotTime: string; sessionDuration: number
+  ptId: string; alunoId: string; date: string; slotTime: string; sessionDuration: number; retroativo?: boolean
 }): string[] {
-  const { ptId, alunoId, date, slotTime, sessionDuration } = opts
+  const { ptId, alunoId, date, slotTime, sessionDuration, retroativo } = opts
   const slotMinutes = mockStudioConfig.classDurationMinutes
   if (sessionDuration % slotMinutes !== 0) {
     throw new Error(`A sessão é de ${sessionDuration}min e o estúdio trabalha em blocos de ${slotMinutes}min — não encaixa.`)
@@ -48,6 +48,9 @@ function resolveSlotChain(opts: {
   let time = slotTime
 
   for (let i = 0; i < needed; i++) {
+    if (!retroativo && new Date(`${date}T${time}:00Z`).getTime() < Date.now()) {
+      throw new Error('Não é possível reservar um slot que já passou')
+    }
     const released = db.ptReleases.some(r => r.ptId === ptId && r.date === date && r.slotTime === time)
     if (!released) {
       throw i === 0
@@ -718,6 +721,24 @@ export const availabilityApi = {
 
 // ── Admin Schedule ────────────────────────────────────────────────────────────
 export const adminScheduleApi = {
+  // ALOCAR = criar o horário E marcar o aluno, numa só operação. Espelha
+  // POST /admin/schedule/allocate. Alocar sem aluno deixou de existir.
+  allocate: async (data: { ptId: string; studentId: string; date: string; slotTime: string }) => {
+    await delay(400)
+    const pt = getPTById(data.ptId)
+    if (!pt) throw new Error('PT não encontrado')
+    const aluno = db.alunos.find(a => a.id === data.studentId)
+    if (!aluno) throw new Error('Aluno não encontrado')
+    if (aluno.personalTrainerId !== data.ptId) {
+      throw new Error(`${aluno.name} está vinculado a outro personal trainer.`)
+    }
+    // Reutiliza a libertação do PT se já existir — libertar não é ocupar.
+    if (!db.ptReleases.some(r => r.ptId === data.ptId && r.date === data.date && r.slotTime === data.slotTime)) {
+      db.ptReleases.push({ id: 'rel-' + uid(), ptId: data.ptId, ptName: pt.name, date: data.date, slotTime: data.slotTime })
+    }
+    return bookingApi.createForStudent(`${data.date}-${data.slotTime}`, data.studentId, true)
+  },
+
   // Returns all studio slots for date range with PT releases per slot
   list: async (startDate: string, endDate: string) => {
     await delay(280)
@@ -903,7 +924,8 @@ export const bookingApi = {
   },
 
   // Admin/PT marcam POR um aluno específico (desconta do pack do aluno).
-  createForStudent: async (availabilityId: string, studentId: string) => {
+  // `retroativo` = regularização pelo admin de uma aula que já passou.
+  createForStudent: async (availabilityId: string, studentId: string, retroativo = false) => {
     await delay(400)
     const aluno = db.alunos.find(a => a.id === studentId)
     if (!aluno) throw new Error('Aluno não encontrado')
@@ -915,9 +937,10 @@ export const bookingApi = {
     // Mesma cadeia do auto-agendamento: 60min em blocos de 30 ocupa dois.
     const chain = resolveSlotChain({
       ptId: aluno.personalTrainerId, alunoId: aluno.id,
-      date, slotTime, sessionDuration: pack.sessionDuration,
+      date, slotTime, sessionDuration: pack.sessionDuration, retroativo,
     })
 
+    const jaPassou = new Date(`${date}T${slotTime}:00Z`).getTime() < Date.now()
     const bookingGroupId = 'grp-' + uid()
     const created = chain.map(time => {
       const { start, end } = slotKeyToISO(date, time)
@@ -930,7 +953,8 @@ export const bookingApi = {
         personalTrainerName: aluno.personalTrainerName,
         startTime: start, endTime: end,
         sessionDuration: pack.sessionDuration,
-        status: 'CONFIRMED' as const,
+        // Aula já dada entra como concluída, não "por dar".
+        status: (jaPassou ? 'COMPLETED' : 'CONFIRMED') as 'COMPLETED' | 'CONFIRMED',
         createdAt: new Date().toISOString(),
       }
       db.bookings.push(b)
@@ -1002,7 +1026,14 @@ export const adminApi = {
     const packs = db.packs.filter(p => p.alunoId === id)
     const avaliacoes = db.avaliacoes.filter(a => a.alunoId === id)
     const workoutPlan = db.workoutPlans.find(p => p.alunoId === id)
-    return { aluno, bookings, packs, avaliacoes, workoutPlan }
+    return {
+      // completedSessions derivado das reservas, como o backend faz
+      // (countByStudentIdAndStatus COMPLETED). O valor semeado era estático e
+      // não crescia ao regularizar uma aula antiga — a sessão descontava do
+      // pack mas aparecia em "Agendadas" em vez de "Concluídas".
+      aluno: { ...aluno, completedSessions: bookings.filter(b => b.status === 'COMPLETED').length },
+      bookings, packs, avaliacoes, workoutPlan,
+    }
   },
 
   createAluno: async (data: {

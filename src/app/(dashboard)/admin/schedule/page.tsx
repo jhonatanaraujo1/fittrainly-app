@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SessionDetailDialog } from '@/components/session-detail-dialog'
+import { CustomSelect } from '@/components/ui/custom-select'
 import { adminScheduleApi, adminApi, ptApi, bookingApi, studioScheduleApi, studioConfigApi } from '@/lib/api'
 import { cn, getInitials } from '@/lib/utils'
 import type { AdminScheduleSlot, PersonalTrainer } from '@/types'
@@ -20,6 +21,12 @@ import type { AdminScheduleSlot, PersonalTrainer } from '@/types'
 const WEEKDAYS = [0, 1, 2, 3, 4, 5]
 const PT_COLORS_HEX = ['#3b82f6', '#10b981', '#a855f7', '#f97316', '#f43f5e', '#14b8a6']
 const PT_COLORS_BG = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-orange-500', 'bg-rose-500', 'bg-teal-500']
+
+// Uma alocação num horário que já passou é regularização de histórico.
+function ehPassado(p: { date: string; slotTime: string } | null): boolean {
+  if (!p) return false
+  return new Date(`${p.date}T${p.slotTime}:00Z`).getTime() < Date.now()
+}
 
 function localDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -37,6 +44,9 @@ export default function AdminSchedulePage() {
   const [configOpen, setConfigOpen] = useState(false)
   const [durationInput, setDurationInput] = useState('')
   const [pendingAllocation, setPendingAllocation] = useState<{ ptId: string; ptName: string; date: string; slotTime: string } | null>(null)
+  // Alocar SEM aluno deixou de existir: um horário só entra na grelha do
+  // estúdio quando tem alguém marcado.
+  const [alunoParaAlocar, setAlunoParaAlocar] = useState('')
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -149,6 +159,27 @@ export default function AdminSchedulePage() {
       toast.success('Sessão cancelada')
     },
     onError: (e: Error) => toast.error(e.message || 'Erro ao cancelar sessão'),
+  })
+
+  // Alunos do PT que está a ser alocado — a lista de onde sai o vínculo
+  // obrigatório. Só traz alunos DESTE PT (cada aluno pertence a um só).
+  const { data: alunosDoPtAlocar = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['pt-students-alocar', pendingAllocation?.ptId],
+    queryFn: () => adminApi.alunosByPt(pendingAllocation!.ptId) as Promise<Array<{ id: string; name: string }>>,
+    enabled: !!pendingAllocation,
+  })
+
+  // Alocação = criar o horário E marcar o aluno, numa só chamada ao servidor.
+  const alocar = useMutation({
+    mutationFn: ({ ptId, date, slotTime, studentId }: { ptId: string; date: string; slotTime: string; studentId: string }) =>
+      adminScheduleApi.allocate({ ptId, date, slotTime, studentId }),
+    onSuccess: (_r, vars) => {
+      const pt = activePts.find(p => p.id === vars.ptId)
+      toast.success(`Marcado com ${pt?.name?.split(' ')[0] ?? 'o PT'} ✓`)
+      qc.invalidateQueries({ queryKey: ['admin-schedule'] })
+      setPendingAllocation(null); setAlunoParaAlocar('')
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : 'Erro ao marcar'),
   })
 
   // #2 — alunos do PT do slot selecionado (para o admin marcar por eles).
@@ -342,10 +373,22 @@ export default function AdminSchedulePage() {
                         return <td key={d} className="p-0.5"><div className="min-h-[48px]" /></td>
                       }
 
-                      const ptIdsInSlot = slot.releases.map(r => r.ptId)
-                      const availablePts = activePts.filter(p => !ptIdsInSlot.includes(p.id))
+                      // Só fica de fora quem JÁ TEM aluno marcado aqui (o PT
+                      // atende 1 aluno de cada vez). Ter libertado o horário não
+                      // exclui ninguém — libertar não é ocupar.
+                      const ptIdsComAluno = slot.releases.filter(r => r.confirmedCount > 0).map(r => r.ptId)
+                      const availablePts = activePts.filter(p => !ptIdsComAluno.includes(p.id))
                       const studioFull = slot.studioCount >= slot.studioMax
-                      const releaseFull = slot.releases.length >= slot.studioMax
+                      // Horários COM aluno marcado — os únicos que ocupam a sala
+                      // e os únicos que aparecem na grelha.
+                      const marcados = slot.releases.filter(r => r.confirmedCount > 0)
+                      // PTs que sinalizaram disponibilidade mas ainda não têm
+                      // aluno: não ocupam nada, servem só de sugestão no picker.
+                      const ptsDisponiveis = new Set(
+                        slot.releases.filter(r => r.confirmedCount === 0).map(r => r.ptId)
+                      )
+                      // A sala enche por marcações, nunca por libertações.
+                      const releaseFull = studioFull
 
                       const handleCellClick = () => {
                         if (!blockMode) return
@@ -385,12 +428,15 @@ export default function AdminSchedulePage() {
                               onClick={blockMode ? handleCellClick : undefined}
                               className={cn(
                                 'min-h-[48px] rounded-md border p-1 flex flex-col gap-1 transition-colors',
-                                slot.releases.length === 0 ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
+                                marcados.length === 0 ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
                                 studioFull && 'bg-gray-900/5 border-gray-900/20',
                                 blockMode && 'cursor-pointer hover:bg-red-50 hover:border-red-200',
                               )}>
-                              {/* PT release chips */}
-                              {slot.releases.map(rel => {
+                              {/* Só entram aqui os horários COM aluno marcado.
+                                  Libertar é intenção do PT, não ocupação: um
+                                  horário libertado e sem aluno continua livre
+                                  para qualquer outro PT marcar o aluno dele. */}
+                              {marcados.map(rel => {
                                 const ptName = activePts.find(p => p.id === rel.ptId)?.name ?? 'PT'
                                 return (
                                   <div key={rel.releaseId}
@@ -480,6 +526,8 @@ export default function AdminSchedulePage() {
                                   <div className="py-1 max-h-48 overflow-y-auto">
                                     {availablePts
                                       .filter(p => p.name.toLowerCase().includes(ptSearch.toLowerCase()))
+                                      // Quem sinalizou disponibilidade aparece primeiro.
+                                      .sort((a, b) => Number(ptsDisponiveis.has(b.id)) - Number(ptsDisponiveis.has(a.id)))
                                       .map(pt => (
                                         <button key={pt.id}
                                           onClick={() => {
@@ -493,7 +541,12 @@ export default function AdminSchedulePage() {
                                           </span>
                                           <div className="flex-1 min-w-0">
                                             <p className="text-xs font-semibold text-gray-900 truncate">{pt.name}</p>
-                                            {pt.specialty && <p className="text-[10px] text-gray-400 truncate">{pt.specialty.split(' ')[0]}</p>}
+                                            {/* Quem já sinalizou que pode dar
+                                                esta hora. Não reserva nada — é
+                                                só pista para o admin escolher. */}
+                                            {ptsDisponiveis.has(pt.id)
+                                              ? <p className="text-[10px] font-medium text-emerald-600 truncate">✓ disponível</p>
+                                              : pt.specialty && <p className="text-[10px] text-gray-400 truncate">{pt.specialty.split(' ')[0]}</p>}
                                           </div>
                                         </button>
                                       ))}
@@ -502,7 +555,7 @@ export default function AdminSchedulePage() {
                                         {activePts.length === 0
                                           ? 'Sem PTs ativos. Adiciona ou ativa um PT em Personal Trainers.'
                                           : availablePts.length === 0
-                                          ? 'Todos os PTs já alocados neste horário'
+                                          ? 'A sala já está cheia neste horário.'
                                           : 'Nenhum PT encontrado'}
                                       </p>
                                     )}
@@ -550,31 +603,62 @@ export default function AdminSchedulePage() {
       <Dialog open={!!pendingAllocation} onOpenChange={(o) => !o && setPendingAllocation(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Alocar {pendingAllocation?.ptName}?</DialogTitle>
+            <DialogTitle>Marcar com {pendingAllocation?.ptName}</DialogTitle>
             <DialogDescription>
               {pendingAllocation && (
                 <>
-                  {format(new Date(pendingAllocation.date + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR })} às {pendingAllocation.slotTime}.
-                  {' '}{pendingAllocation.ptName} passa a ter este horário liberado no estúdio.
+                  {format(new Date(pendingAllocation.date + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR })} às {pendingAllocation.slotTime}
+                  {' '}com {pendingAllocation.ptName}. Escolhe o aluno — sem aluno não há marcação.
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
+
+          {/* O aluno é OBRIGATÓRIO. A lista só traz alunos deste PT, porque cada
+              aluno pertence a um só (regra também imposta no backend). */}
+          <div className="py-1">
+            {alunosDoPtAlocar.length === 0 ? (
+              <p className="text-sm text-gray-500 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                {pendingAllocation?.ptName.split(' ')[0]} ainda não tem alunos vinculados.
+                Vincula um aluno a este PT antes de marcar.
+              </p>
+            ) : (
+              <CustomSelect
+                size="lg"
+                value={alunoParaAlocar}
+                onChange={setAlunoParaAlocar}
+                placeholder="Escolher aluno…"
+                options={alunosDoPtAlocar.map(a => ({ value: a.id, label: a.name }))}
+              />
+            )}
+            {ehPassado(pendingAllocation) && alunosDoPtAlocar.length > 0 && (
+              <p className="mt-2 text-[11px] text-amber-600 leading-snug">
+                Esta aula já passou. Vai ficar registada como concluída e descontar uma sessão do pack do aluno.
+              </p>
+            )}
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" className="min-h-[44px]" onClick={() => setPendingAllocation(null)} disabled={addRelease.isPending}>
+            <Button variant="outline" className="min-h-[44px]"
+              onClick={() => { setPendingAllocation(null); setAlunoParaAlocar('') }}
+              disabled={alocar.isPending}>
               Voltar
             </Button>
             <Button
               className="min-h-[44px]"
-              disabled={addRelease.isPending}
+              disabled={!alunoParaAlocar || alocar.isPending}
               onClick={() => {
-                if (pendingAllocation) {
-                  addRelease.mutate({ ptId: pendingAllocation.ptId, date: pendingAllocation.date, slotTime: pendingAllocation.slotTime })
+                if (pendingAllocation && alunoParaAlocar) {
+                  alocar.mutate({
+                    ptId: pendingAllocation.ptId,
+                    date: pendingAllocation.date,
+                    slotTime: pendingAllocation.slotTime,
+                    studentId: alunoParaAlocar,
+                  })
                 }
-                setPendingAllocation(null)
               }}
             >
-              Sim, alocar
+              {alocar.isPending ? 'A marcar…' : 'Marcar aluno'}
             </Button>
           </DialogFooter>
         </DialogContent>
