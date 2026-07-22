@@ -1203,6 +1203,75 @@ export const packApi = {
 }
 
 // ── Leads CRM ─────────────────────────────────────────────────────────────────
+// ── Formulário de captura configurável ────────────────────────────────────────
+export type LeadFieldType = 'TEXT' | 'TEXTAREA' | 'RADIO' | 'CHECKBOX' | 'SELECT'
+export interface LeadFormField {
+  id: string; label: string; type: LeadFieldType
+  required: boolean; options: string[]; placeholder?: string | null
+}
+export interface LeadFormConfig {
+  logoUrl: string | null; headline: string | null; subheadline: string | null
+  fields: LeadFormField[]; maxFields: number
+}
+
+const MAX_CUSTOM_FIELDS = 6
+const mockLeadForm: LeadFormConfig = {
+  logoUrl: null,
+  headline: 'Agenda a tua visita.',
+  subheadline: 'Conhece o espaço e fala com um personal trainer, sem compromisso. Deixa o teu contacto que ligamos-te.',
+  fields: [],
+  maxFields: MAX_CUSTOM_FIELDS,
+}
+
+// Mesmas regras do LeadFormService — o mock não pode ser mais permissivo que a
+// produção, senão a demo valida coisas que o backend recusa.
+function validateLeadFields(fields: LeadFormField[]): LeadFormField[] {
+  if (fields.length > MAX_CUSTOM_FIELDS) {
+    throw new Error(`O formulário aceita no máximo ${MAX_CUSTOM_FIELDS} campos próprios (enviaste ${fields.length}).`)
+  }
+  const vistos = new Set<string>()
+  return fields.map((f, i) => {
+    const label = (f.label ?? '').trim()
+    if (!label) throw new Error(`O campo ${i + 1} está sem pergunta.`)
+    if (vistos.has(label.toLowerCase())) throw new Error(`Há dois campos com a mesma pergunta: "${label}".`)
+    vistos.add(label.toLowerCase())
+    const precisaOpcoes = f.type === 'RADIO' || f.type === 'CHECKBOX' || f.type === 'SELECT'
+    let options: string[] = []
+    if (precisaOpcoes) {
+      options = [...new Set((f.options ?? []).map(o => o.trim()).filter(Boolean))]
+      if (options.length < 2) throw new Error(`O campo "${label}" é de escolha e precisa de pelo menos 2 opções.`)
+      if (options.length > 12) throw new Error(`O campo "${label}" tem opções a mais (máx. 12).`)
+    }
+    return { id: f.id?.trim() || 'fld-' + uid(), label, type: f.type, required: !!f.required, options, placeholder: f.placeholder?.trim() || null }
+  })
+}
+
+export const leadFormApi = {
+  get: async () => { await delay(150); return { ...mockLeadForm, fields: [...mockLeadForm.fields] } },
+  update: async (patch: { headline?: string | null; subheadline?: string | null; fields?: LeadFormField[] }) => {
+    await delay(250)
+    if (patch.headline !== undefined) mockLeadForm.headline = patch.headline?.trim() || null
+    if (patch.subheadline !== undefined) mockLeadForm.subheadline = patch.subheadline?.trim() || null
+    if (patch.fields !== undefined) mockLeadForm.fields = validateLeadFields(patch.fields)
+    return { ...mockLeadForm, fields: [...mockLeadForm.fields] }
+  },
+  uploadLogo: async (file: File) => {
+    await delay(400)
+    if (file.size > 1_000_000) throw new Error(`O logo tem ${Math.round(file.size / 1024)}KB — o máximo é 976KB.`)
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+      throw new Error('Formato não suportado. Usa PNG, JPG, WEBP ou SVG.')
+    }
+    // No mock não há S3: um object URL local serve para ver o resultado.
+    mockLeadForm.logoUrl = URL.createObjectURL(file)
+    return { ...mockLeadForm, fields: [...mockLeadForm.fields] }
+  },
+  removeLogo: async () => {
+    await delay(200)
+    mockLeadForm.logoUrl = null
+    return { ...mockLeadForm, fields: [...mockLeadForm.fields] }
+  },
+}
+
 export const leadApi = {
   list: async () => { await delay(280); return db.leads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()) },
   byStatus: async (status: import('@/lib/mock-db').MockLead['status']) => { await delay(200); return db.leads.filter(l => l.status === status) },

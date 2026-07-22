@@ -1,17 +1,25 @@
 import { notFound } from 'next/navigation'
-import { LeadForm } from './lead-form'
+import { LeadForm, type PublicLeadField } from './lead-form'
 
 const GREEN = '#0C4A3A'
 const GOLD = '#C9A227'
+
+// O logo vem do backend (bucket privado, servido por endpoint público), por
+// isso a URL relativa que a API devolve tem de ser prefixada com a origem dela.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 
 interface StudioInfo {
   name: string
   privacyPolicyUrl: string | null
   leadCaptureEnabled: boolean
+  logoUrl: string | null
+  headline: string | null
+  subheadline: string | null
+  fields: PublicLeadField[]
 }
 
 async function getStudio(slug: string): Promise<StudioInfo | null> {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+  const base = API_BASE
   try {
     const res = await fetch(`${base}/api/v1/public/studios/${encodeURIComponent(slug)}`, { cache: 'no-store' })
     if (!res.ok) return null
@@ -43,46 +51,45 @@ export default async function LeadCapturePage({ params }: { params: Promise<{ sl
         <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}>
           {/* Hero — oferta, não "bem-vindo" */}
           <div style={{ background: GREEN, padding: '26px 22px 22px', textAlign: 'center' }}>
+            {/* Logo carregado pelo estúdio. Servido pelo backend (bucket
+                privado) — por isso <img> cru, sem o loader do next/image. */}
+            {studio.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`${API_BASE}${studio.logoUrl}`}
+                alt={studio.name}
+                style={{ maxHeight: 56, maxWidth: '70%', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }}
+              />
+            )}
             <p style={{ color: GOLD, fontSize: 12, letterSpacing: '0.16em', fontWeight: 600, margin: '0 0 12px', textTransform: 'uppercase' }}>
               {studio.name}
             </p>
             <h1 style={{ color: '#fff', fontSize: 25, lineHeight: 1.15, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.01em' }}>
-              Agenda a tua visita.
+              {studio.headline || 'Agenda a tua visita.'}
             </h1>
-            <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 14, lineHeight: 1.5, margin: 0 }}>
-              Conhece o espaço e fala com um personal trainer, sem compromisso. Deixa o teu contacto que ligamos-te.
+            <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 14, lineHeight: 1.5, margin: 0, whiteSpace: 'pre-line' }}>
+              {studio.subheadline || 'Conhece o espaço e fala com um personal trainer, sem compromisso. Deixa o teu contacto que ligamos-te.'}
             </p>
           </div>
 
           {/* Form */}
           <div style={{ padding: '20px 22px 22px' }}>
             {studio.leadCaptureEnabled ? (
-              <LeadForm slug={slug} studioName={studio.name} privacyPolicyUrl={studio.privacyPolicyUrl} />
+              <LeadForm slug={slug} studioName={studio.name} privacyPolicyUrl={studio.privacyPolicyUrl} fields={studio.fields ?? []} />
             ) : (
               <p style={{ textAlign: 'center', color: '#666', fontSize: 15, padding: '20px 0' }}>
                 As marcações online estão temporariamente indisponíveis. Contacta o estúdio diretamente.
               </p>
             )}
 
-            {/* Prova social — factos REAIS da landing do estúdio, nada inventado */}
-            <div style={{ borderTop: '1px solid #eee', marginTop: 18, paddingTop: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
-              {[
-                { b: 'Máx. 4', s: 'por horário' },
-                { b: '1-a-1', s: 'o teu PT' },
-                { b: 'Almada', s: 'Margem Sul' },
-              ].map(({ b, s }) => (
-                <div key={s}>
-                  <div style={{ fontSize: 15, color: GREEN, fontWeight: 600 }}>{b}</div>
-                  <div style={{ fontSize: 10.5, color: '#999' }}>{s}</div>
-                </div>
-              ))}
-            </div>
+            {/* A "prova social" que estava aqui era hardcoded com os factos de
+                UM estúdio ("Máx. 4", "Almada, Margem Sul") — errados para
+                qualquer outro. Removida: o estúdio diz o que quiser na
+                mensagem, que agora é dele. */}
           </div>
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: '#aaa', margin: '16px 0 0' }}>
-          Não é um ginásio — é um espaço de treino com critério.
-        </p>
+
       </div>
     </main>
   )

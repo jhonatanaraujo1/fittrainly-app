@@ -259,6 +259,9 @@ export interface MockLead {
   planoInteresse?: string; followUpDate?: string
   inscritoEm?: string
   createdAt: string; updatedAt: string
+  // Respostas aos campos próprios do formulário de captura, com o rótulo do
+  // momento da submissão. Vazio nas leads criadas à mão no CRM.
+  customAnswers?: Array<{ fieldId: string; label: string; value: string }>
 }
 export interface MockNotificationConfig {
   id: string; type: string; label: string; description: string

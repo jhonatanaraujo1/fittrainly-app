@@ -63,7 +63,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, retry = true
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      // FormData tem de definir o próprio Content-Type: o browser gera um
+      // boundary único que vai no header. Forçar application/json aqui fazia o
+      // servidor receber um multipart sem boundary e rejeitar o upload.
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
@@ -489,6 +492,9 @@ function mapLead(r: Record<string, unknown>) {
     followUpDate: r.followUpDate ?? undefined,
     inscritoEm: r.enrolledAt ?? undefined,
     createdAt: r.createdAt, updatedAt: r.updatedAt,
+    // Respostas aos campos próprios do formulário — sem isto o estúdio
+    // configura perguntas e nunca vê as respostas no CRM.
+    customAnswers: (r.customAnswers as Array<{ fieldId: string; label: string; value: string }>) ?? [],
   }
 }
 
@@ -503,6 +509,38 @@ function leadPayloadPtToEn(data?: Record<string, unknown>): Record<string, unkno
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(data)) out[map[k] ?? k] = v
   return out
+}
+
+// ── Formulário de captura configurável ────────────────────────────────────────
+export type LeadFieldType = 'TEXT' | 'TEXTAREA' | 'RADIO' | 'CHECKBOX' | 'SELECT'
+export interface LeadFormField {
+  id: string
+  label: string
+  type: LeadFieldType
+  required: boolean
+  options: string[]
+  placeholder?: string | null
+}
+export interface LeadFormConfig {
+  logoUrl: string | null
+  headline: string | null
+  subheadline: string | null
+  fields: LeadFormField[]
+  maxFields: number
+}
+
+export const leadFormApi = {
+  get: async () => apiFetch<LeadFormConfig>('/api/v1/admin/lead-form'),
+  update: async (patch: { headline?: string | null; subheadline?: string | null; fields?: LeadFormField[] }) =>
+    apiFetch<LeadFormConfig>('/api/v1/admin/lead-form', { method: 'PUT', body: JSON.stringify(patch) }),
+  // multipart: NÃO definir content-type à mão — o browser tem de gerar o
+  // boundary. Por isso não passa pelo apiFetch, que força application/json.
+  uploadLogo: async (file: File) => {
+    const body = new FormData()
+    body.append('file', file)
+    return apiFetch<LeadFormConfig>('/api/v1/admin/lead-form/logo', { method: 'POST', body })
+  },
+  removeLogo: async () => apiFetch<LeadFormConfig>('/api/v1/admin/lead-form/logo', { method: 'DELETE' }),
 }
 
 export const leadApi = {

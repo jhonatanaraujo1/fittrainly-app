@@ -64,6 +64,9 @@ export const ptPaymentApi    = USE_REAL.ptPayment ? (real.ptPaymentApi as unknow
 export const avaliacaoApi    = USE_REAL.avaliacoes ? (real.avaliacaoApi as unknown as typeof mock.avaliacaoApi) : withPersistence(mock.avaliacaoApi)
 export const packApi         = USE_REAL.packs ? (real.packApi as unknown as typeof mock.packApi) : withPersistence(mock.packApi)
 export const leadApi         = USE_REAL.leads ? (real.leadApi as unknown as typeof mock.leadApi) : withPersistence(mock.leadApi)
+// Sem withPersistence: uploadLogo devolve um object URL do browser, que não
+// sobrevive a serialização em localStorage.
+export const leadFormApi     = USE_REAL.leads ? (real.leadFormApi as unknown as typeof mock.leadFormApi) : mock.leadFormApi
 export const notificationApi = USE_REAL.notifications ? (real.notificationApi as unknown as typeof mock.notificationApi) : withPersistence(mock.notificationApi)
 export const notificationInboxApi = USE_REAL.notificationInbox ? (real.notificationInboxApi as unknown as typeof mock.notificationInboxApi) : withPersistence(mock.notificationInboxApi)
 export const workoutApi      = USE_REAL.workout ? (real.workoutApi as unknown as typeof mock.workoutApi) : withPersistence(mock.workoutApi)

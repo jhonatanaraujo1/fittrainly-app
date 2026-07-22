@@ -23,6 +23,10 @@ interface Body {
   phone?: string
   message?: string
   consent?: boolean
+  // Respostas aos campos configurados pelo estúdio, por id. Passam adiante sem
+  // interpretação: quem valida contra a configuração é o backend, único que
+  // sabe qual é a configuração atual.
+  answers?: Record<string, string[]>
   website?: string // honeypot
   elapsedMs?: number // tempo desde o load
 }
@@ -72,6 +76,7 @@ export async function POST(req: Request) {
         email: body.email?.trim() || null,
         phone: body.phone?.trim() || null,
         message: body.message?.trim() || null,
+        answers: body.answers ?? {},
         consent: true,
       }),
     })

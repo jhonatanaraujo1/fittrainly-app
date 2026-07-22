@@ -628,6 +628,19 @@ function LeadCard({ lead, onOpenDialog, isAdvancing, onConvert, onDelete }: {
         </div>
       )}
 
+      {/* Respostas aos campos próprios do formulário. Sem isto, o estúdio
+          configura perguntas e as respostas ficam invisíveis no CRM. */}
+      {lead.customAnswers?.length ? (
+        <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 space-y-1">
+          {lead.customAnswers.map(a => (
+            <div key={a.fieldId} className="text-[11px] leading-snug">
+              <span className="text-gray-400">{a.label}: </span>
+              <span className="text-gray-700 font-medium">{a.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Observações */}
       {lead.observacoes && (
         <p className={`text-xs line-clamp-2 leading-snug ${

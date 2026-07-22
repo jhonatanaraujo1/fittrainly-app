@@ -7,13 +7,25 @@ import { useRef, useState } from 'react'
 const GREEN = '#0C4A3A'
 const GOLD = '#C9A227'
 
+export type LeadFieldType = 'TEXT' | 'TEXTAREA' | 'RADIO' | 'CHECKBOX' | 'SELECT'
+export interface PublicLeadField {
+  id: string
+  label: string
+  type: LeadFieldType
+  required: boolean
+  options: string[]
+  placeholder?: string | null
+}
+
 interface Props {
   slug: string
   studioName: string
   privacyPolicyUrl: string | null
+  // Campos configurados pelo estúdio. Nome/telemóvel/email continuam fixos.
+  fields?: PublicLeadField[]
 }
 
-export function LeadForm({ slug, studioName, privacyPolicyUrl }: Props) {
+export function LeadForm({ slug, studioName, privacyPolicyUrl, fields = [] }: Props) {
   const mountedAt = useRef(Date.now())
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -27,6 +39,16 @@ export function LeadForm({ slug, studioName, privacyPolicyUrl }: Props) {
       setStatus('error'); setErrorMsg('Precisas de aceitar o contacto para continuar.')
       return
     }
+    // Escolha múltipla obrigatória: o HTML não sabe exprimir "pelo menos uma",
+    // por isso valida-se aqui para o erro aparecer sem ida ao servidor.
+    const semResposta = fields.find(
+      f => f.required && f.type === 'CHECKBOX' && data.getAll(`custom_${f.id}`).length === 0
+    )
+    if (semResposta) {
+      setStatus('error'); setErrorMsg(`Escolhe pelo menos uma opção em “${semResposta.label}”.`)
+      return
+    }
+
     const email = String(data.get('email') ?? '').trim()
     const phone = String(data.get('phone') ?? '').trim()
     if (!email && !phone) {
@@ -45,6 +67,13 @@ export function LeadForm({ slug, studioName, privacyPolicyUrl }: Props) {
           email,
           phone,
           consent: true,
+          // Respostas aos campos do estúdio, por id. getAll porque a escolha
+          // múltipla envia vários valores com o mesmo nome.
+          answers: Object.fromEntries(
+            fields
+              .map(f => [f.id, data.getAll(`custom_${f.id}`).map(v => String(v).trim()).filter(Boolean)] as const)
+              .filter(([, vals]) => vals.length > 0)
+          ),
           website: String(data.get('website') ?? ''), // honeypot
           elapsedMs: Date.now() - mountedAt.current,
         }),
@@ -102,6 +131,64 @@ export function LeadForm({ slug, studioName, privacyPolicyUrl }: Props) {
         <label htmlFor="email" style={labelStyle}>Email <span style={{ color: '#999', fontWeight: 400 }}>(opcional)</span></label>
         <input id="email" name="email" type="email" maxLength={200} placeholder="o.teu@email.pt" style={inputStyle} />
       </div>
+
+      {/* Campos configurados pelo estúdio. `required` aqui é conveniência para
+          quem preenche — a validação a sério é no servidor, que não confia
+          neste HTML (ver LeadFormService.validateAnswers). */}
+      {fields.map(f => {
+        const nome = `custom_${f.id}`
+        return (
+          <div key={f.id} style={{ marginBottom: 16 }}>
+            <label htmlFor={nome} style={labelStyle}>
+              {f.label}
+              {!f.required && <span style={{ color: '#999', fontWeight: 400 }}> (opcional)</span>}
+            </label>
+
+            {f.type === 'TEXT' && (
+              <input id={nome} name={nome} required={f.required} maxLength={200}
+                placeholder={f.placeholder ?? ''} style={inputStyle} />
+            )}
+
+            {f.type === 'TEXTAREA' && (
+              <textarea id={nome} name={nome} required={f.required} maxLength={1000} rows={3}
+                placeholder={f.placeholder ?? ''} style={{ ...inputStyle, resize: 'vertical', paddingTop: 10, paddingBottom: 10 }} />
+            )}
+
+            {f.type === 'SELECT' && (
+              <select id={nome} name={nome} required={f.required} defaultValue="" style={inputStyle}>
+                <option value="" disabled>Escolhe uma opção</option>
+                {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            )}
+
+            {(f.type === 'RADIO' || f.type === 'CHECKBOX') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {f.options.map(o => (
+                  <label key={o} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                    // 44px de alvo de toque — o formulário é maioritariamente mobile.
+                    minHeight: 44, fontSize: 14, color: '#333',
+                  }}>
+                    <input
+                      type={f.type === 'RADIO' ? 'radio' : 'checkbox'}
+                      name={nome} value={o}
+                      // Rádio: só o primeiro leva `required` — o browser trata
+                      // o grupo como um só.
+                      // Checkbox: NENHUM leva. Em HTML, `required` numa
+                      // checkbox exige QUELA checkbox, não "pelo menos uma" —
+                      // marcá-las todas obrigaria a ticar tudo. O "pelo menos
+                      // uma" é validado no onSubmit e, a sério, no servidor.
+                      required={f.required && f.type === 'RADIO' && o === f.options[0]}
+                      style={{ width: 18, height: 18, flex: 'none', accentColor: GREEN }}
+                    />
+                    <span>{o}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', fontSize: 12.5, color: '#555', lineHeight: 1.45, marginBottom: 16, cursor: 'pointer' }}>
         <input type="checkbox" name="consent" required style={{ width: 17, height: 17, marginTop: 1, flex: 'none', accentColor: GREEN }} />

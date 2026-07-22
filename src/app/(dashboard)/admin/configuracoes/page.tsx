@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Copy, Check, Calendar, CreditCard, Loader2, ExternalLink, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
+import { LeadFormBuilder } from '@/components/lead-form-builder'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -143,6 +144,12 @@ export default function ConfiguracoesPage() {
                     </a>
                   </div>
                   <p className={hint}>Cola na landing, bio ou anúncios. Cada lead cai direto no CRM.</p>
+                </div>
+
+                {/* Construtor do formulário público: logo, mensagem e até 6
+                    campos próprios. */}
+                <div className="border-t border-gray-50 pt-5">
+                  <LeadFormBuilder />
                 </div>
               </div>
             )}
