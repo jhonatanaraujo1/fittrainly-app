@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Trash2, GripVertical, Upload, X, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Upload, X, Loader2, ChevronUp, ChevronDown, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { leadFormApi } from '@/lib/api'
@@ -16,6 +16,15 @@ const TIPOS: Array<{ value: LeadFieldType; label: string; hint: string }> = [
   { value: 'RADIO',    label: 'Escolha única',    hint: 'Opções à vista, escolhe uma. Ex.: “Motivo do contacto”.' },
   { value: 'CHECKBOX', label: 'Escolha múltipla', hint: 'Opções à vista, pode escolher várias.' },
   { value: 'SELECT',   label: 'Lista pendente',   hint: 'Como a escolha única, mas ocupa menos espaço. Bom acima de 6 opções.' },
+]
+
+// Campos que o formulário pede sempre e que não são configuráveis: são as
+// colunas com que o CRM deduplica e contacta a lead. Se fossem removíveis, um
+// estúdio podia ficar com leads sem forma nenhuma de contacto.
+const FIXOS = [
+  { label: 'Nome', opcional: false, porque: 'Identifica a lead no CRM.' },
+  { label: 'Telemóvel', opcional: false, porque: 'Principal via de contacto e chave de deduplicação.' },
+  { label: 'Email', opcional: true, porque: 'Alternativa ao telemóvel — pelo menos um dos dois é exigido.' },
 ]
 
 const precisaOpcoes = (t: LeadFieldType) => t === 'RADIO' || t === 'CHECKBOX' || t === 'SELECT'
@@ -148,13 +157,32 @@ export function LeadFormBuilder() {
       {/* ── Campos ─────────────────────────────────────────────────────── */}
       <div className="border-t border-gray-50 pt-5">
         <div className="flex items-baseline justify-between gap-3 mb-1">
-          <label className={cn(rotulo, 'mb-0')}>CAMPOS PRÓPRIOS</label>
+          <label className={cn(rotulo, 'mb-0')}>CAMPOS DO FORMULÁRIO</label>
           <span className="text-[11px] text-gray-400 tabular-nums">{fields.length}/{maxCampos}</span>
         </div>
         <p className={cn(dica, '!mt-0 mb-3')}>
-          Nome, telemóvel e email são sempre pedidos e não podem ser removidos — é como o CRM contacta a lead.
-          Estes são os teus, para lá disso.
+          Esta é a ordem exata em que a lead vê o formulário.
         </p>
+
+        {/* Os três campos fixos aparecem aqui, bloqueados. Antes só existia uma
+            frase a dizer que existiam — e a primeira pergunta de quem abriu o
+            ecrã foi "porque é que o nome/telefone/email não estão aqui?".
+            Mostrá-los responde a isso sem ninguém ter de perguntar, e deixa
+            claro que a lista abaixo continua o mesmo formulário. */}
+        <div className="space-y-2 mb-3">
+          {FIXOS.map(f => (
+            <div key={f.label} className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-3">
+              <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-700">
+                  {f.label}
+                  {f.opcional && <span className="font-normal text-gray-400"> (opcional)</span>}
+                </p>
+                <p className="text-[11px] text-gray-400 leading-snug">{f.porque}</p>
+              </div>
+            </div>
+          ))}
+        </div>
 
         <div className="space-y-3">
           {fields.map((f, i) => (
