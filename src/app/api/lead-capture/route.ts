@@ -87,7 +87,10 @@ export async function POST(req: Request) {
     if (res.status === 204 || res.status === 404 || res.status === 200) {
       return NextResponse.json({ ok: true })
     }
-    if (res.status === 400) {
+    // 400 = corpo malformado; 422 = regra de negócio (obrigatório em falta,
+    // opção inexistente — só acontece em pedido forjado, o form valida antes).
+    // Ambos são erro do CLIENTE — sem isto o 422 caía no ramo "server_error".
+    if (res.status === 400 || res.status === 422) {
       return NextResponse.json({ ok: false, reason: 'invalid_request' }, { status: 400 })
     }
     return NextResponse.json({ ok: false, reason: 'server_error' }, { status: 502 })
