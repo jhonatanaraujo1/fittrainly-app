@@ -15,6 +15,13 @@ function Counter({ target, suffix, prefix = '' }: { target: number; suffix: stri
   const [n, setN] = useState(0)
   const ref = useRef(null)
   const inView = useInView(ref, { once: true })
+  // Sem IntersectionObserver (browsers antigos, alguns leitores in-app) o
+  // useInView nunca dispara e o número ficaria eternamente a 0 — pior do que
+  // não ter animação nenhuma. Nesse caso mostra o valor final logo.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') setN(target)
+  }, [target])
+
   useEffect(() => {
     if (!inView) return
     let curr = 0
@@ -62,7 +69,7 @@ function DashboardMockup() {
           <div className="flex-1 flex justify-center">
             <div className="h-6 rounded-md flex items-center px-4 text-[10px] font-mono"
               style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)', width: 180 }}>
-              fittrainly.app/admin
+              fitstudionow.com/admin
             </div>
           </div>
         </div>
@@ -96,7 +103,7 @@ function DashboardMockup() {
               </div>
               <div className="text-[9px] font-black tracking-widest px-2 py-1 rounded-full"
                 style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.2)' }}>
-                ● PARCEIRO NIKE
+                ● 3 LEADS NOVAS
               </div>
             </div>
 
@@ -104,8 +111,8 @@ function DashboardMockup() {
             <div className="grid grid-cols-4 gap-2">
               {[
                 { l: 'PTs Ativos', v: '3', icon: Users, c: '#3b82f6' },
-                { l: 'Total Alunos', v: '12', icon: TrendingUp, c: '#10b981' },
-                { l: 'Esta Semana', v: '47', icon: Calendar, c: '#f59e0b' },
+                { l: 'Alunos', v: '12', icon: Users, c: '#10b981' },
+                { l: 'Leads Novas', v: '3', icon: TrendingUp, c: '#f59e0b' },
                 { l: 'Receita', v: '€640', icon: Euro, c: '#8b5cf6' },
               ].map((s, i) => (
                 <motion.div key={i}
@@ -153,7 +160,7 @@ function DashboardMockup() {
                 <p className="text-[10px] font-bold leading-snug" style={{ color: '#fff' }}>
                   🔥 Alta procura esta semana — estúdio a <span style={{ color: '#C9A84C' }}>85%</span> de capacidade
                 </p>
-                <p className="text-[9px] mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>📈 +12% vs mês passado</p>
+                <p className="text-[9px] mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>⚠️ 1 PT com pagamento em atraso</p>
               </div>
             </div>
 
@@ -196,9 +203,9 @@ function DashboardMockup() {
 /* ─── ticker ─────────────────────────────────────────────────────────── */
 function Ticker() {
   const items = [
-    '⚡ GESTÃO DE PTs', '✦ AGENDA INTELIGENTE', '⚡ FATURAÇÃO AUTOMÁTICA',
-    '✦ CONTROLO DE ALUNOS', '⚡ RELATÓRIOS EM TEMPO REAL', '✦ PARCEIRO NIKE',
-    '⚡ MADE IN PORTUGAL', '✦ RGPD COMPLIANT', '⚡ MULTI-PERFIL',
+    '⚡ GESTÃO DE PTs', '✦ AGENDA SEM CONFLITOS', '⚡ FATURAÇÃO AUTOMÁTICA',
+    '✦ CRM DE LEADS', '⚡ CONTROLO DE INADIMPLÊNCIA', '✦ AVALIAÇÕES FÍSICAS',
+    '⚡ PACKS DE SESSÕES', '✦ RGPD COMPLIANT', '⚡ FEITO EM PORTUGAL',
   ]
   return (
     <div className="overflow-hidden" style={{ background: '#C9A84C', borderTop: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
@@ -246,12 +253,12 @@ function FeatureCard({ icon: Icon, tag, title, desc, delay }: {
 /* ─── page ───────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   const features = [
-    { icon: Calendar, tag: 'AGENDA', title: 'Horários sem conflito', desc: 'Admin aloca slots por PT. Cada personal vê apenas o seu tempo. Chega de double-booking.' },
-    { icon: Users, tag: 'CONTROLO', title: 'PTs e Alunos', desc: 'Perfis completos, planos de aluguel, inadimplência e performance — num único painel.' },
-    { icon: BarChart3, tag: 'RECEITA', title: 'Faturação automática', desc: 'O sistema calcula o que cada PT deve com base nas horas reais. Zero planilhas.' },
-    { icon: Zap, tag: 'CONEXÃO', title: 'Presenças em tempo real', desc: 'Aluno confirma ou marca falta com 1 clique. PT é notificado na hora. Sem surpresas.' },
-    { icon: Clock, tag: 'HISTÓRICO', title: 'Avaliações e packs', desc: 'Registo físico completo, evolução IMC, packs de sessões com alertas automáticos.' },
-    { icon: Shield, tag: 'SEGURANÇA', title: 'Multi-perfil seguro', desc: 'Admin, PT e Aluno em roles separados. Cada um vê apenas o que precisa.' },
+    { icon: TrendingUp, tag: 'LEADS', title: 'Captação com CRM', desc: 'Página pública com o teu logo e as tuas perguntas. Cada contacto cai no funil: novo → contactado → visita → inscrito.' },
+    { icon: Calendar, tag: 'AGENDA', title: 'Horários sem conflito', desc: 'O estúdio aloca slots por PT e modalidade, com limite de alunos por sessão. Cada personal vê apenas o seu tempo.' },
+    { icon: Euro, tag: 'FINANCEIRO', title: 'Faturação e inadimplência', desc: 'Calcula o que cada PT deve pelas horas reais. E mostra quem está em atraso antes de virar problema.' },
+    { icon: Clock, tag: 'FICHA', title: 'Avaliações e packs', desc: 'Peso, IMC e % de gordura com evolução. Packs de sessões a separar concluídas, agendadas e por marcar.' },
+    { icon: Zap, tag: 'TREINO', title: 'Planos e anamnese', desc: 'O PT prescreve o plano, o aluno consulta no telemóvel. A anamnese é preenchida pelo próprio aluno.' },
+    { icon: Shield, tag: 'CONFORMIDADE', title: 'Documentos e validades', desc: 'Cédula TEEF e seguro de cada PT, com aviso antes de expirar. Contratos do aluno guardados na ficha.' },
   ]
 
   return (
@@ -323,7 +330,7 @@ export default function LandingPage() {
                   className="w-1.5 h-1.5 rounded-full inline-block"
                   style={{ background: '#C9A84C' }} />
                 <span className="text-[11px] font-black tracking-[0.18em] uppercase" style={{ color: '#C9A84C' }}>
-                  Parceiro Nike · Portugal · 2026
+                  Estúdios boutique · Portugal · 2026
                 </span>
               </motion.div>
 
@@ -347,8 +354,8 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: 0.4, ease }}
                 className="text-lg leading-relaxed mb-8 max-w-md"
                 style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Chega de gerir horários em WhatsApp e pagamentos em Excel.
-                Agenda, PTs, alunos e faturação — tudo controlado, tudo automático.
+                Chega de gerir horários no WhatsApp e pagamentos no Excel.
+                Leads, agenda, fichas de aluno, faturação e inadimplência — num só painel.
               </motion.p>
 
               {/* CTAs */}
@@ -377,7 +384,7 @@ export default function LandingPage() {
                 transition={{ delay: 0.8, duration: 0.5 }}
                 className="flex flex-wrap items-center gap-6">
                 {[
-                  { icon: Check, text: 'Setup em 5 minutos' },
+                  { icon: Check, text: 'Feito para o modelo de aluguer' },
                   { icon: Check, text: 'RGPD & LGPD Compliant' },
                   { icon: Check, text: 'Suporte em Português' },
                 ].map(({ icon: Icon, text }) => (
@@ -412,13 +419,13 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-black" style={{ color: '#fff' }}>Bem-vindo, Maicon 👋</p>
                   <div className="text-[9px] px-2 py-1 rounded-full font-black"
-                    style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C' }}>● NIKE</div>
+                    style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C' }}>● 3 LEADS</div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { l: 'PTs Ativos', v: '3', c: '#3b82f6' },
-                    { l: 'Total Alunos', v: '12', c: '#10b981' },
-                    { l: 'Sessões', v: '47', c: '#f59e0b' },
+                    { l: 'Alunos', v: '12', c: '#10b981' },
+                    { l: 'Leads Novas', v: '3', c: '#f59e0b' },
                     { l: 'Receita', v: '€640', c: '#8b5cf6' },
                   ].map(s => (
                     <div key={s.l} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -441,13 +448,14 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <p className="text-center text-[11px] font-semibold tracking-[0.15em] uppercase mb-8"
             style={{ color: 'rgba(255,255,255,0.2)' }}>
-            O que muda quando o estúdio funciona com sistema
+            Um sistema, não sete ferramentas soltas
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: <Counter target={8} suffix="h" />, l: 'Gestão semanal recuperada' },
-              { n: <Counter target={100} suffix="%" />, l: 'Faturação automatizada' },
+              { n: <Counter target={12} suffix=" módulos" />, l: 'Do primeiro contacto ao recibo' },
               { n: <Counter target={3} suffix=" perfis" />, l: 'Admin · PT · Aluno' },
+              // Sem Counter: animar 0→1 lê-se como um contador partido.
+              { n: <span className="tabular-nums">1 painel</span>, l: 'Agenda, ficha e dinheiro juntos' },
             ].map((m, i) => (
               <div key={i} className="py-8 px-6 text-center" style={{ background: '#111111' }}>
                 <p className="font-black mb-1" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#C9A84C' }}>
@@ -494,9 +502,9 @@ export default function LandingPage() {
 
           <div className="space-y-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: '01', title: 'Admin cria os slots', desc: 'O estúdio define os horários disponíveis e aloca tempo para cada Personal Trainer — sem conflitos.' },
-              { n: '02', title: 'PT gere os alunos', desc: 'Cada PT vê os seus horários, alunos confirmados e histórico de sessões. Avaliações físicas integradas.' },
-              { n: '03', title: 'Aluno confirma presença', desc: 'O aluno confirma ou marca falta com 1 clique. PT fica a saber instantaneamente. Faturação automática.' },
+              { n: '01', title: 'A lead chega sozinha', desc: 'Partilhas o link da tua página de captação. Quem preenche cai direto no CRM, com as respostas que deu — e o estúdio é avisado.' },
+              { n: '02', title: 'Vira aluno com ficha', desc: 'Converte a lead num clique: PT atribuído, avaliação física, pack de sessões e plano de treino. Tudo no mesmo sítio.' },
+              { n: '03', title: 'O dinheiro fecha-se sozinho', desc: 'As horas realmente dadas viram faturação. Quem está em atraso aparece na Inadimplência, sem tu teres de procurar.' },
             ].map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, x: -20 }}
@@ -533,34 +541,30 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease }}>
-            <p className="font-black select-none mb-4" style={{ fontSize: 100, color: 'rgba(201,168,76,0.15)', lineHeight: 0.6 }}>"</p>
-            <blockquote className="font-black leading-tight tracking-tighter mb-10"
+            <p className="text-[11px] font-black tracking-[0.22em] uppercase mb-5" style={{ color: '#C9A84C' }}>
+              Como foi construído
+            </p>
+            <h2 className="font-black leading-tight tracking-tighter mb-6"
               style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.4rem)', color: '#fff' }}>
-              Antes perdia 2 horas por semana a controlar horários e pagamentos dos meus PTs.
-              Agora o sistema faz tudo. O estúdio nunca funcionou tão bem.
-            </blockquote>
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center font-black text-sm"
-                style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.25)' }}>
-                MG
-              </div>
-              <div>
-                <p className="font-bold text-sm text-white">Maicon Godoi</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.28)' }}>
-                  MG Estúdio Boutique · Almada, Portugal 🇵🇹
-                </p>
-              </div>
-              <div className="ml-auto flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <motion.svg key={i} className="w-4 h-4" fill="#C9A84C" viewBox="0 0 20 20"
-                    initial={{ opacity: 0, scale: 0 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.3 + i * 0.07 }}>
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </motion.svg>
-                ))}
-              </div>
+              Desenhado dentro de um estúdio a funcionar.<br />
+              <span style={{ color: 'rgba(255,255,255,0.25)' }}>Não numa sala de reuniões.</span>
+            </h2>
+            <p className="text-base leading-relaxed mb-10 max-w-2xl" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              Cada ecrã nasceu de um problema real de quem aluga espaço a personal trainers em Almada:
+              o PT que falta pagar, o aluno que não aparece, a cédula que expirou, a lead que ficou
+              esquecida no WhatsApp. Nada aqui foi inventado à secretária.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              {[
+                { t: 'Português de Portugal', d: 'Cédula TEEF, NIF, IVA e morada fiscal. Não é uma tradução.' },
+                { t: 'Modelo de aluguer', d: 'PTs independentes que pagam pelo espaço — por hora, semana ou mês.' },
+                { t: 'Em uso, não em slides', d: 'A funcionar com um estúdio real, com alunos reais, todos os dias.' },
+              ].map(b => (
+                <div key={b.t} className="p-5" style={{ background: '#0d0d0d' }}>
+                  <p className="font-bold text-sm mb-1.5" style={{ color: '#fff' }}>{b.t}</p>
+                  <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.32)' }}>{b.d}</p>
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>
@@ -632,7 +636,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.8, duration: 0.6 }}
             className="mt-10 flex items-center justify-center gap-8 flex-wrap">
-            {['✓ Nike Strength Partner', '✓ RGPD Compliant', '✓ Made in Portugal 🇵🇹'].map(b => (
+            {['✓ Dados alojados na UE', '✓ RGPD Compliant', '✓ Feito em Portugal 🇵🇹'].map(b => (
               <span key={b} className="text-[11px] font-semibold tracking-wide" style={{ color: 'rgba(255,255,255,0.18)' }}>
                 {b}
               </span>
@@ -652,7 +656,7 @@ export default function LandingPage() {
             <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.2)' }}>Fit Studio Now</span>
           </div>
           <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
-            © 2026 Fit Studio Now · Almada, Portugal · Nike Strength Partner
+            © 2026 Fit Studio Now · Almada, Portugal · RGPD Compliant
           </p>
           <div className="flex gap-6">
             {['Privacidade', 'Termos', 'RGPD'].map(l => (

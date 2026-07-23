@@ -51,9 +51,9 @@ const ROLE_HOME: Record<string, string> = {
 // Trust signals for left panel
 const TRUST = [
   { label: 'RGPD & LGPD Compliant' },
-  { label: 'Pagamentos seguros via Stripe' },
-  { label: 'Parceiro Nike Strength' },
-  { label: 'Suporte dedicado 7 dias' },
+  { label: 'Dados alojados na União Europeia' },
+  { label: 'Perfis separados: Admin, PT e Aluno' },
+  { label: 'Suporte em Português' },
 ]
 
 // Stats to make the product look live
@@ -238,7 +238,7 @@ export default function LoginPage() {
           <p className="text-white/20 text-[11px]">Almada, Portugal 🇵🇹 · {new Date().getFullYear()}</p>
           <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'rgba(201,168,76,0.5)' }}>
             <Star className="w-3 h-3 fill-current" />
-            <span className="font-bold">Nike Strength Partner</span>
+            <span className="font-bold">Feito em Portugal</span>
           </div>
         </div>
       </motion.div>
@@ -568,25 +568,12 @@ export default function LoginPage() {
                 ))}
               </div>
 
-              {/* Payment logos placeholder */}
-              <div className="mt-3 flex items-center justify-center gap-3">
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-100 bg-gray-50">
-                  <div className="w-7 h-4 rounded flex items-center justify-center text-[9px] font-black text-white" style={{ background: '#1a1f71' }}>VISA</div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-100 bg-gray-50">
-                  <div className="w-7 h-4 rounded flex items-center justify-center text-[7px] font-black" style={{ background: 'white' }}>
-                    <span style={{ color: '#eb001b' }}>●</span><span style={{ color: '#f79e1b' }}>●</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-100 bg-gray-50">
-                  <div className="w-9 h-4 rounded flex items-center justify-center text-[8px] font-black text-white" style={{ background: '#6772e5' }}>STRIPE</div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-100 bg-gray-50">
-                  <div className="w-10 h-4 rounded flex items-center justify-center text-[7px] font-black text-white" style={{ background: '#009a44' }}>MB WAY</div>
-                </div>
-              </div>
+              {/* Os logos de pagamento (Visa/Mastercard/Stripe/MB Way) foram
+                  removidos: a plataforma NÃO processa pagamentos — regista
+                  recebimentos que o estúdio cobra por fora. Exibir bandeiras de
+                  cartão prometia um checkout que não existe. */}
               <p className="text-center text-[10px] text-gray-300 mt-2">
-                Pagamentos geridos dentro da plataforma · Dados nunca armazenados no servidor
+                Dados alojados na União Europeia · Acesso separado por perfil
               </p>
             </div>
             </>}
