@@ -617,12 +617,14 @@ export const packApi = {
 export const avaliacaoApi = {
   byAluno: async (alunoId: string) =>
     apiFetch<RealStudent[]>(`/api/v1/assessments?studentId=${alunoId}`).then(l => l.map(assessmentToMock)),
-  create: async (data: { alunoId: string; tipo: string; data: string; frequenciaSemanal?: number; peso?: number; altura?: number; percentualGordura?: number; massaMuscular?: number; objetivo?: string; observacoes?: string; proximaAvaliacao?: string }) =>
+  create: async (data: { alunoId: string; tipo: string; data: string; frequenciaSemanal?: number; peso?: number; altura?: number; percentualGordura?: number; massaMuscular?: number; objetivo?: string; observacoes?: string; proximaAvaliacao?: string; prescricaoPlano?: string }) =>
     apiFetch('/api/v1/assessments', {
       method: 'POST',
       body: JSON.stringify({
         studentId: data.alunoId,
-        type: data.tipo,
+        // O backend só conhece INITIAL|FOLLOW_UP — enviar 'PRIMEIRA' cru dava
+        // 422 em TODA a criação de avaliação (bug reproduzido em prod 23/jul).
+        type: data.tipo === 'REAVALIACAO' ? 'FOLLOW_UP' : 'INITIAL',
         date: data.data,
         weeklyFrequency: data.frequenciaSemanal,
         weight: data.peso,
@@ -632,6 +634,7 @@ export const avaliacaoApi = {
         goal: data.objetivo,
         notes: data.observacoes,
         nextAssessmentDate: data.proximaAvaliacao,
+        planPrescriptionDate: data.prescricaoPlano,
       }),
     }),
   update: async (id: string, data: object) =>
@@ -1340,7 +1343,9 @@ function assessmentToMock(a: RealStudent) {
   return {
     id: String(a.id ?? ''),
     alunoId: (a.studentId as string) ?? undefined,
-    tipo: (a.type as string) ?? undefined,
+    // EN do backend → PT do UI ('INITIAL' cru fazia o badge mostrar sempre
+    // "Reavaliação", porque o UI só compara com 'PRIMEIRA').
+    tipo: a.type === 'FOLLOW_UP' ? 'REAVALIACAO' : a.type === 'INITIAL' ? 'PRIMEIRA' : ((a.type as string) ?? undefined),
     data: (a.date as string) ?? undefined,
     frequenciaSemanal: (a.weeklyFrequency as number) ?? undefined,
     peso: (a.weight as number) ?? undefined,
@@ -1351,6 +1356,7 @@ function assessmentToMock(a: RealStudent) {
     objetivo: (a.goal as string) ?? undefined,
     observacoes: (a.notes as string) ?? undefined,
     proximaAvaliacao: (a.nextAssessmentDate as string) ?? undefined,
+    prescricaoPlano: (a.planPrescriptionDate as string) ?? undefined,
   }
 }
 

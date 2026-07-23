@@ -241,6 +241,7 @@ export interface MockAvaliacao {
   frequenciaSemanal?: number; peso?: number; altura?: number; imc?: number
   percentualGordura?: number; massaMuscular?: number
   objetivo?: string; observacoes?: string; proximaAvaliacao?: string
+  prescricaoPlano?: string
   createdAt: string
 }
 export interface MockPack {

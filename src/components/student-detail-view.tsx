@@ -621,7 +621,9 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
       setEvalSheetOpen(false)
       setEvalForm(evalFormInit)
     },
-    onError: () => toast.error('Erro ao registar avaliação'),
+    // Mostra a mensagem real do backend ("type deve ser...", "Aluno não
+    // encontrado") — o texto genérico escondia a causa e atrasou o diagnóstico.
+    onError: (e: unknown) => toast.error(e instanceof Error && e.message ? e.message : 'Erro ao registar avaliação'),
   })
 
   const createPack = useMutation({
@@ -713,7 +715,12 @@ export function StudentDetailView({ backHref = '/admin/alunos' }: { backHref?: s
       massaMuscular:     evalForm.massaMuscular     ? parseFloat(evalForm.massaMuscular)     : undefined,
       objetivo:          evalForm.objetivo || undefined,
       observacoes:       evalForm.observacoes || undefined,
-      proximaAvaliacao:  evalForm.marcarProximaAF === 'sim' ? evalForm.proximaAFDate || undefined : undefined,
+      // P3 (marcou já) e P4 (lembrete para marcar) são ambos "quando voltar a
+      // avaliar" — persistem no mesmo campo. Antes, o P4 era descartado.
+      proximaAvaliacao:  evalForm.marcarProximaAF === 'sim'
+        ? evalForm.proximaAFDate || undefined
+        : evalForm.lembreteDate || undefined,
+      prescricaoPlano:   evalForm.prescricaoPlanoDate || undefined,
     })
   }
 
