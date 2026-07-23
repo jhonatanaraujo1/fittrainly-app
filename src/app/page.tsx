@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef } from 'react'
 import Link from 'next/link'
 import { motion, useInView } from 'framer-motion'
 import {
@@ -9,35 +9,6 @@ import {
 } from 'lucide-react'
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1]
-
-/* ─── animated counter ─────────────────────────────────────────────── */
-function Counter({ target, suffix, prefix = '' }: { target: number; suffix: string; prefix?: string }) {
-  const [n, setN] = useState(0)
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true })
-  // Sem IntersectionObserver (browsers antigos, alguns leitores in-app) o
-  // useInView nunca dispara e o número ficaria eternamente a 0 — pior do que
-  // não ter animação nenhuma. Nesse caso mostra o valor final logo.
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') setN(target)
-  }, [target])
-
-  useEffect(() => {
-    if (!inView) return
-    let curr = 0
-    const step = target / (1600 / 16)
-    const id = setInterval(() => {
-      curr += step
-      if (curr >= target) { setN(target); clearInterval(id) } else setN(Math.floor(curr))
-    }, 16)
-    return () => clearInterval(id)
-  }, [inView, target])
-  return (
-    <span ref={ref} className="tabular-nums">
-      {prefix}{n.toLocaleString('pt-PT')}{suffix}
-    </span>
-  )
-}
 
 /* ─── dashboard mockup ─────────────────────────────────────────────── */
 function DashboardMockup() {
@@ -253,12 +224,18 @@ function FeatureCard({ icon: Icon, tag, title, desc, delay }: {
 /* ─── page ───────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   const features = [
-    { icon: TrendingUp, tag: 'LEADS', title: 'Captação com CRM', desc: 'Página pública com o teu logo e as tuas perguntas. Cada contacto cai no funil: novo → contactado → visita → inscrito.' },
-    { icon: Calendar, tag: 'AGENDA', title: 'Horários sem conflito', desc: 'O estúdio aloca slots por PT e modalidade, com limite de alunos por sessão. Cada personal vê apenas o seu tempo.' },
-    { icon: Euro, tag: 'FINANCEIRO', title: 'Faturação e inadimplência', desc: 'Calcula o que cada PT deve pelas horas reais. E mostra quem está em atraso antes de virar problema.' },
-    { icon: Clock, tag: 'FICHA', title: 'Avaliações e packs', desc: 'Peso, IMC e % de gordura com evolução. Packs de sessões a separar concluídas, agendadas e por marcar.' },
-    { icon: Zap, tag: 'TREINO', title: 'Planos e anamnese', desc: 'O PT prescreve o plano, o aluno consulta no telemóvel. A anamnese é preenchida pelo próprio aluno.' },
-    { icon: Shield, tag: 'CONFORMIDADE', title: 'Documentos e validades', desc: 'Cédula TEEF e seguro de cada PT, com aviso antes de expirar. Contratos do aluno guardados na ficha.' },
+    { icon: Euro, tag: 'INADIMPLÊNCIA', title: 'Sabes quem não pagou. Sem perguntar.',
+      desc: 'Cada PT tem plano e dia de vencimento. Quem falha aparece numa lista — não numa conversa desconfortável que já adias há três semanas.' },
+    { icon: TrendingUp, tag: 'LEADS', title: 'A lead não morre no WhatsApp.',
+      desc: 'Partilhas um link com o teu logo e as tuas perguntas. Quem preenche cai no funil com as respostas que deu, e tu és avisado. Nenhum contacto fica perdido num chat das 23h.' },
+    { icon: BarChart3, tag: 'RENDA', title: 'A conta faz-se sozinha ao fim do mês.',
+      desc: 'Por hora, por semana ou por mês — o sistema conta as horas realmente dadas e diz quanto é. O Excel deixa de ter opinião sobre o teu dinheiro.' },
+    { icon: Calendar, tag: 'AGENDA', title: 'Ninguém marca por cima de ninguém.',
+      desc: 'Cada PT liberta o seu horário dentro do que o estúdio abriu. O limite de alunos por sessão é regra do sistema, não bom senso de cada um.' },
+    { icon: Clock, tag: 'ALUNOS', title: 'A evolução dele fica escrita.',
+      desc: 'Avaliação física com IMC e percentagem de gordura, packs que separam o que já foi dado do que falta marcar, plano de treino que o aluno abre no telemóvel.' },
+    { icon: Shield, tag: 'RESPONSABILIDADE', title: 'A cédula expira e tu ficas a saber antes.',
+      desc: 'TEEF e seguro de cada PT com data de validade e aviso antecipado. Se algo acontecer dentro do teu espaço, quem responde és tu.' },
   ]
 
   return (
@@ -277,7 +254,7 @@ export default function LandingPage() {
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
-            {[['#features', 'Funcionalidades'], ['#how', 'Como funciona'], ['#demo', 'Demo']].map(([href, label]) => (
+            {[['#features', 'O que resolve'], ['#how', 'Como funciona'], ['#demo', 'Começar']].map(([href, label]) => (
               <a key={href} href={href}
                 className="text-[11px] font-semibold tracking-[0.1em] uppercase transition-colors duration-200"
                 style={{ color: 'rgba(255,255,255,0.35)' }}
@@ -330,7 +307,7 @@ export default function LandingPage() {
                   className="w-1.5 h-1.5 rounded-full inline-block"
                   style={{ background: '#C9A84C' }} />
                 <span className="text-[11px] font-black tracking-[0.18em] uppercase" style={{ color: '#C9A84C' }}>
-                  Estúdios boutique · Portugal · 2026
+                  Para quem aluga espaço a PTs independentes
                 </span>
               </motion.div>
 
@@ -341,10 +318,10 @@ export default function LandingPage() {
                 transition={{ duration: 0.75, delay: 0.2, ease }}
                 className="font-black leading-[0.9] tracking-tighter mb-6"
                 style={{ fontSize: 'clamp(2.8rem, 6vw, 5.5rem)', color: '#fff' }}>
-                O sistema que<br />
-                o teu estúdio<br />
+                Quanto é que<br />
+                os teus PTs<br />
                 <span style={{ color: '#C9A84C', textShadow: '0 0 60px rgba(201,168,76,0.2)' }}>
-                  merecia.
+                  te devem hoje?
                 </span>
               </motion.h1>
 
@@ -354,8 +331,9 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: 0.4, ease }}
                 className="text-lg leading-relaxed mb-8 max-w-md"
                 style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Chega de gerir horários no WhatsApp e pagamentos no Excel.
-                Leads, agenda, fichas de aluno, faturação e inadimplência — num só painel.
+                Se tens de abrir o Excel para responder, já perdeste dinheiro este mês.
+                Os outros softwares tratam o personal trainer como funcionário.
+                Este sabe que ele é um negócio independente — que te paga renda.
               </motion.p>
 
               {/* CTAs */}
@@ -367,7 +345,7 @@ export default function LandingPage() {
                 <Link href="/login"
                   className="group flex items-center gap-2.5 px-7 font-black text-[12px] tracking-[0.15em] uppercase rounded-xl transition-all hover:scale-105 active:scale-95 hover:shadow-[0_0_40px_rgba(201,168,76,0.3)]"
                   style={{ height: 52, background: '#C9A84C', color: '#111111' }}>
-                  Ver Demonstração
+                  Entrar na plataforma
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <a href="#how"
@@ -448,21 +426,20 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <p className="text-center text-[11px] font-semibold tracking-[0.15em] uppercase mb-8"
             style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Um sistema, não sete ferramentas soltas
+            Três perguntas que passas a responder em segundos
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: <Counter target={12} suffix=" módulos" />, l: 'Do primeiro contacto ao recibo' },
-              { n: <Counter target={3} suffix=" perfis" />, l: 'Admin · PT · Aluno' },
-              // Sem Counter: animar 0→1 lê-se como um contador partido.
-              { n: <span className="tabular-nums">1 painel</span>, l: 'Agenda, ficha e dinheiro juntos' },
-            ].map((m, i) => (
-              <div key={i} className="py-8 px-6 text-center" style={{ background: '#111111' }}>
-                <p className="font-black mb-1" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#C9A84C' }}>
-                  {m.n}
+              { q: 'Quem me deve?', a: 'A lista de atrasos atualiza-se sozinha' },
+              { q: 'Quem me procurou?', a: 'Cada lead com data, origem e o que respondeu' },
+              { q: 'O que vai expirar?', a: 'Cédulas e seguros avisam antes do prazo' },
+            ].map(m => (
+              <div key={m.q} className="py-8 px-6 text-center" style={{ background: '#111111' }}>
+                <p className="font-black mb-2 tracking-tighter" style={{ fontSize: 'clamp(1.4rem, 3vw, 2.1rem)', color: '#C9A84C' }}>
+                  {m.q}
                 </p>
-                <p className="text-[11px] font-semibold tracking-wide uppercase" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  {m.l}
+                <p className="text-[12px] leading-snug" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {m.a}
                 </p>
               </div>
             ))}
@@ -478,8 +455,8 @@ export default function LandingPage() {
               Funcionalidades
             </p>
             <h2 className="font-black tracking-tighter" style={{ fontSize: 'clamp(1.8rem, 4vw, 3.2rem)', color: '#fff' }}>
-              Tudo o que o teu estúdio precisa.<br />
-              <span style={{ color: 'rgba(255,255,255,0.2)' }}>Nada que não precise.</span>
+              Seis coisas que te tiram o sono.<br />
+              <span style={{ color: 'rgba(255,255,255,0.2)' }}>Seis ecrãs que as resolvem.</span>
             </h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
@@ -497,14 +474,14 @@ export default function LandingPage() {
             Como funciona
           </p>
           <h2 className="font-black tracking-tighter mb-16" style={{ fontSize: 'clamp(1.8rem, 4vw, 3.2rem)', color: '#fff' }}>
-            3 passos.<br /><span style={{ color: 'rgba(255,255,255,0.2)' }}>Estúdio organizado.</span>
+            Do contacto ao recibo.<br /><span style={{ color: 'rgba(255,255,255,0.2)' }}>Sem sair do mesmo sítio.</span>
           </h2>
 
           <div className="space-y-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: '01', title: 'A lead chega sozinha', desc: 'Partilhas o link da tua página de captação. Quem preenche cai direto no CRM, com as respostas que deu — e o estúdio é avisado.' },
-              { n: '02', title: 'Vira aluno com ficha', desc: 'Converte a lead num clique: PT atribuído, avaliação física, pack de sessões e plano de treino. Tudo no mesmo sítio.' },
-              { n: '03', title: 'O dinheiro fecha-se sozinho', desc: 'As horas realmente dadas viram faturação. Quem está em atraso aparece na Inadimplência, sem tu teres de procurar.' },
+              { n: '01', title: 'Alguém quer treinar contigo', desc: 'Põe o link da tua página de captação na bio e nos anúncios. Quem preenche entra no funil com o nome, o contacto e o motivo pelo qual procurou. Tu recebes o aviso.' },
+              { n: '02', title: 'Passa a aluno com ficha aberta', desc: 'Um clique converte a lead: PT atribuído, avaliação física marcada, pack de sessões e plano de treino. Sem voltar a escrever os mesmos dados.' },
+              { n: '03', title: 'Ao fim do mês já está tudo contado', desc: 'As horas que os PTs deram viram o valor que te devem. Quem não pagou aparece sozinho na lista. Tu só decides o que fazer.' },
             ].map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, x: -20 }}
@@ -546,13 +523,13 @@ export default function LandingPage() {
             </p>
             <h2 className="font-black leading-tight tracking-tighter mb-6"
               style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.4rem)', color: '#fff' }}>
-              Desenhado dentro de um estúdio a funcionar.<br />
-              <span style={{ color: 'rgba(255,255,255,0.25)' }}>Não numa sala de reuniões.</span>
+              Nenhum ecrã aqui foi inventado<br />
+              <span style={{ color: 'rgba(255,255,255,0.25)' }}>numa sala de reuniões.</span>
             </h2>
             <p className="text-base leading-relaxed mb-10 max-w-2xl" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Cada ecrã nasceu de um problema real de quem aluga espaço a personal trainers em Almada:
-              o PT que falta pagar, o aluno que não aparece, a cédula que expirou, a lead que ficou
-              esquecida no WhatsApp. Nada aqui foi inventado à secretária.
+              Cada um nasceu de um problema concreto de quem aluga espaço a personal trainers em
+              Almada. O PT que ainda não pagou este mês. A cédula que expirou sem ninguém dar conta.
+              A pessoa que perguntou os preços no Instagram e nunca mais teve resposta.
             </p>
             <div className="grid sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.06)' }}>
               {[
@@ -588,8 +565,8 @@ export default function LandingPage() {
             transition={{ duration: 0.85, ease }}
             className="font-black leading-[0.88] tracking-tighter mb-6"
             style={{ fontSize: 'clamp(2.5rem, 8vw, 6.5rem)', color: '#fff' }}>
-            O teu estúdio<br />
-            <span style={{ color: '#C9A84C' }}>merecia isto.</span>
+            Deixa de<br />
+            <span style={{ color: '#C9A84C' }}>andar a adivinhar.</span>
           </motion.h2>
 
           <motion.p
@@ -598,7 +575,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-base mb-12" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            Acede à demonstração completa. Sem preencher formulários.
+            O teu estúdio já produz estes dados todos os dias. Só falta alguém a contá-los.
           </motion.p>
 
           <motion.div
@@ -612,10 +589,13 @@ export default function LandingPage() {
               style={{ height: 56, background: '#C9A84C', color: '#111111' }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 50px rgba(201,168,76,0.3)')}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
-              Aceder à Demonstração
+              Entrar na plataforma
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
-            <Link href="/login"
+            {/* Segundo botão aponta para as funcionalidades, não para /login:
+                ambos os CTA irem ao mesmo sítio não dava escolha nenhuma a
+                quem ainda não tem conta. */}
+            <a href="#features"
               className="flex items-center gap-2.5 px-10 font-bold text-sm rounded-xl transition-all"
               style={{ height: 56, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}
               onMouseEnter={e => {
@@ -626,8 +606,8 @@ export default function LandingPage() {
                 e.currentTarget.style.background = 'transparent'
                 e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
               }}>
-              Ver como Personal Trainer
-            </Link>
+              Ver o que resolve
+            </a>
           </motion.div>
 
           <motion.div
