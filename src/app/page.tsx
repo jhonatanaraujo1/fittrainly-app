@@ -129,7 +129,7 @@ function DashboardMockup() {
                 style={{ background: '#111111' }}>
                 <p className="text-[8px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Insight</p>
                 <p className="text-[10px] font-bold leading-snug" style={{ color: '#fff' }}>
-                  🔥 Semana cheia — estúdio com <span style={{ color: '#C9A84C' }}>85%</span> da capacidade ocupada
+                  Ocupação da semana em <span style={{ color: '#C9A84C' }}>85%</span> da capacidade do estúdio
                 </p>
                 <p className="text-[9px] mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>⚠️ 1 personal com pagamento atrasado</p>
               </div>
@@ -224,18 +224,18 @@ function FeatureCard({ icon: Icon, tag, title, desc, delay }: {
 /* ─── page ───────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   const features = [
-    { icon: Euro, tag: 'INADIMPLÊNCIA', title: 'Você sabe quem não pagou. Sem precisar perguntar.',
-      desc: 'Cada personal tem plano e dia de vencimento. Quem atrasa aparece numa lista — não numa conversa constrangedora que você já adia faz três semanas.' },
-    { icon: TrendingUp, tag: 'LEADS', title: 'O contato não morre no WhatsApp.',
-      desc: 'Você compartilha um link com a sua logo e as suas perguntas. Quem preenche cai no funil com as respostas que deu, e você recebe o aviso. Nenhum contato fica perdido num chat das 23h.' },
-    { icon: BarChart3, tag: 'ALUGUEL', title: 'A conta se fecha sozinha no fim do mês.',
-      desc: 'Por hora, por semana ou por mês — o sistema conta as horas que realmente aconteceram e diz quanto é. A planilha perde a opinião sobre o seu dinheiro.' },
-    { icon: Calendar, tag: 'AGENDA', title: 'Ninguém marca em cima de ninguém.',
-      desc: 'Cada personal libera o horário dele dentro do que o estúdio abriu. O limite de alunos por sessão é regra do sistema, não bom senso de cada um.' },
-    { icon: Clock, tag: 'ALUNOS', title: 'A evolução dele fica registrada.',
-      desc: 'Avaliação física com IMC e percentual de gordura, pacotes que separam o que já foi dado do que falta marcar, treino que o aluno abre no celular.' },
-    { icon: Shield, tag: 'RESPONSABILIDADE', title: 'A cédula vence e você fica sabendo antes.',
-      desc: 'Registro profissional e seguro de cada personal com data de validade e aviso antecipado. Se acontecer alguma coisa dentro do seu espaço, quem responde é você.' },
+    { icon: Euro, tag: 'FINANCEIRO', title: 'Controle de inadimplência',
+      desc: 'Cada personal tem plano e dia de vencimento definidos. O painel mostra quem está em dia e quem está atrasado, com o valor exato e há quantos dias.' },
+    { icon: TrendingUp, tag: 'CAPTAÇÃO', title: 'Página de leads com CRM',
+      desc: 'Uma página pública com a marca do estúdio recebe os contatos. Cada lead entra no funil com as respostas que deu e avança por etapas até virar aluno.' },
+    { icon: BarChart3, tag: 'ALUGUEL', title: 'Faturamento por uso real',
+      desc: 'Por hora, por semana ou por mês. O sistema soma as horas efetivamente utilizadas e calcula o valor devido por cada personal no fechamento.' },
+    { icon: Calendar, tag: 'AGENDA', title: 'Grade sem conflitos',
+      desc: 'O estúdio define os horários disponíveis e cada personal libera os seus dentro dessa grade. O limite de alunos por sessão é aplicado pelo próprio sistema.' },
+    { icon: Clock, tag: 'ALUNOS', title: 'Ficha completa e evolução',
+      desc: 'Avaliação física com IMC e percentual de gordura, histórico de progresso, pacotes de sessões e o plano de treino que o aluno acessa pelo celular.' },
+    { icon: Shield, tag: 'CONFORMIDADE', title: 'Documentos e validades',
+      desc: 'Registro profissional e seguro de cada personal com data de vencimento e aviso antecipado, para o estúdio nunca operar com documentação vencida.' },
   ]
 
   return (
@@ -307,7 +307,7 @@ export default function LandingPage() {
                   className="w-1.5 h-1.5 rounded-full inline-block"
                   style={{ background: '#C9A84C' }} />
                 <span className="text-[11px] font-black tracking-[0.18em] uppercase" style={{ color: '#C9A84C' }}>
-                  Para quem aluga espaço a personais autônomos
+                  Plataforma de gestão para estúdios boutique
                 </span>
               </motion.div>
 
@@ -318,10 +318,10 @@ export default function LandingPage() {
                 transition={{ duration: 0.75, delay: 0.2, ease }}
                 className="font-black leading-[0.9] tracking-tighter mb-6"
                 style={{ fontSize: 'clamp(2.8rem, 6vw, 5.5rem)', color: '#fff' }}>
-                Quanto seus<br />
-                personais<br />
+                A gestão<br />
+                completa do<br />
                 <span style={{ color: '#C9A84C', textShadow: '0 0 60px rgba(201,168,76,0.2)' }}>
-                  te devem hoje?
+                  seu estúdio.
                 </span>
               </motion.h1>
 
@@ -331,9 +331,9 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: 0.4, ease }}
                 className="text-lg leading-relaxed mb-8 max-w-md"
                 style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Se você precisa abrir a planilha pra responder, já perdeu dinheiro esse mês.
-                Os outros sistemas tratam o personal como funcionário.
-                Esse aqui sabe que ele é um negócio independente — que paga aluguel pra você.
+                Leads, agenda, fichas de aluno, avaliações físicas e o aluguel de cada personal
+                em um único sistema. Feito para estúdios que alugam espaço a profissionais
+                autônomos — não para academias com funcionários.
               </motion.p>
 
               {/* CTAs */}
@@ -426,13 +426,13 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <p className="text-center text-[11px] font-semibold tracking-[0.15em] uppercase mb-8"
             style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Três perguntas que você passa a responder em segundos
+            O que o painel responde no momento em que você abre
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { q: 'Quem está me devendo?', a: 'A lista de atrasos se atualiza sozinha' },
-              { q: 'Quem me procurou?', a: 'Cada lead com data, origem e o que respondeu' },
-              { q: 'O que vai vencer?', a: 'Cédulas e seguros avisam antes do prazo' },
+              { q: 'Quem está em atraso', a: 'Valor devido e há quantos dias, por personal' },
+              { q: 'Quem procurou o estúdio', a: 'Cada lead com data, origem e o que respondeu' },
+              { q: 'O que vence em breve', a: 'Registros e seguros com aviso antes do prazo' },
             ].map(m => (
               <div key={m.q} className="py-8 px-6 text-center" style={{ background: '#111111' }}>
                 <p className="font-black mb-2 tracking-tighter" style={{ fontSize: 'clamp(1.4rem, 3vw, 2.1rem)', color: '#C9A84C' }}>
@@ -455,8 +455,8 @@ export default function LandingPage() {
               Funcionalidades
             </p>
             <h2 className="font-black tracking-tighter" style={{ fontSize: 'clamp(1.8rem, 4vw, 3.2rem)', color: '#fff' }}>
-              Seis coisas que tiram o seu sono.<br />
-              <span style={{ color: 'rgba(255,255,255,0.2)' }}>Seis telas que resolvem.</span>
+              Seis áreas do estúdio.<br />
+              <span style={{ color: 'rgba(255,255,255,0.2)' }}>Um único sistema.</span>
             </h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
@@ -474,14 +474,14 @@ export default function LandingPage() {
             Como funciona
           </p>
           <h2 className="font-black tracking-tighter mb-16" style={{ fontSize: 'clamp(1.8rem, 4vw, 3.2rem)', color: '#fff' }}>
-            Do contato ao recibo.<br /><span style={{ color: 'rgba(255,255,255,0.2)' }}>Sem sair do mesmo lugar.</span>
+            Do primeiro contato<br /><span style={{ color: 'rgba(255,255,255,0.2)' }}>ao fechamento do mês.</span>
           </h2>
 
           <div className="space-y-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: '01', title: 'Alguém quer treinar com você', desc: 'Coloque o link da sua página de captação na bio e nos anúncios. Quem preenche entra no funil com nome, contato e o motivo pelo qual procurou. Você recebe o aviso.' },
-              { n: '02', title: 'Vira aluno com ficha aberta', desc: 'Um clique converte a lead: personal definido, avaliação física marcada, pacote de sessões e treino. Sem digitar os mesmos dados de novo.' },
-              { n: '03', title: 'No fim do mês já está tudo contado', desc: 'As horas que os personais deram viram o valor que eles te devem. Quem não pagou aparece sozinho na lista. Você só decide o que fazer.' },
+              { n: '01', title: 'O contato chega e entra no funil', desc: 'A página de captação fica no link da bio e nos anúncios. Quem preenche vira uma lead com nome, contato e as respostas que deu — e o estúdio recebe o aviso.' },
+              { n: '02', title: 'A lead vira aluno com ficha aberta', desc: 'A conversão define o personal responsável e já abre a ficha: avaliação física, pacote de sessões e plano de treino, sem redigitar nenhum dado.' },
+              { n: '03', title: 'O fechamento do mês sai calculado', desc: 'As horas efetivamente utilizadas por cada personal viram o valor do aluguel. Quem está em atraso aparece na lista de inadimplência automaticamente.' },
             ].map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, x: -20 }}
@@ -523,19 +523,19 @@ export default function LandingPage() {
             </p>
             <h2 className="font-black leading-tight tracking-tighter mb-6"
               style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.4rem)', color: '#fff' }}>
-              Nenhuma tela aqui foi inventada<br />
-              <span style={{ color: 'rgba(255,255,255,0.25)' }}>numa sala de reunião.</span>
+              Desenvolvido dentro de um estúdio<br />
+              <span style={{ color: 'rgba(255,255,255,0.25)' }}>em operação.</span>
             </h2>
             <p className="text-base leading-relaxed mb-10 max-w-2xl" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Cada uma nasceu de um problema concreto de quem aluga espaço para personal trainer.
-              O personal que ainda não pagou esse mês. A cédula que venceu sem ninguém perceber.
-              A pessoa que perguntou o preço no Instagram e nunca mais teve resposta.
+              Cada tela partiu de uma necessidade concreta de quem administra um estúdio que aluga
+              espaço a personal trainers: o acompanhamento dos pagamentos, o controle da
+              documentação profissional e o registro dos contatos que chegam todos os dias.
             </p>
             <div className="grid sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.06)' }}>
               {[
-                { t: 'Feito para Portugal', d: 'Cédula TEEF, NIF, IVA e endereço fiscal. Não é sistema traduzido às pressas.' },
-                { t: 'Modelo de aluguel', d: 'Personais autônomos que pagam pelo espaço — por hora, semana ou mês.' },
-                { t: 'Rodando, não em slide', d: 'Funcionando com um estúdio real, com alunos reais, todo dia.' },
+                { t: 'Feito para Portugal', d: 'Cédula TEEF, NIF, IVA e endereço fiscal tratados como campos nativos.' },
+                { t: 'Modelo de aluguel', d: 'Personais autônomos que pagam pelo uso do espaço — por hora, semana ou mês.' },
+                { t: 'Em operação real', d: 'Rodando com um estúdio ativo, com alunos e cobranças reais, diariamente.' },
               ].map(b => (
                 <div key={b.t} className="p-5" style={{ background: '#0d0d0d' }}>
                   <p className="font-bold text-sm mb-1.5" style={{ color: '#fff' }}>{b.t}</p>
@@ -565,8 +565,8 @@ export default function LandingPage() {
             transition={{ duration: 0.85, ease }}
             className="font-black leading-[0.88] tracking-tighter mb-6"
             style={{ fontSize: 'clamp(2.5rem, 8vw, 6.5rem)', color: '#fff' }}>
-            Pare de<br />
-            <span style={{ color: '#C9A84C' }}>ficar adivinhando.</span>
+            Um sistema.<br />
+            <span style={{ color: '#C9A84C' }}>O estúdio inteiro.</span>
           </motion.h2>
 
           <motion.p
@@ -575,7 +575,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-base mb-12" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            Seu estúdio já produz esses dados todo dia. Só falta alguém contar.
+            Leads, agenda, alunos, avaliações e aluguel dos personais — organizados no mesmo lugar.
           </motion.p>
 
           <motion.div

@@ -202,12 +202,12 @@ export default function LoginPage() {
           <div className="space-y-5">
             <p className="text-white/35 text-[10px] font-bold tracking-[0.25em] uppercase">Gestão de Estúdio</p>
             <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)' }}>
-              Quem te deve,<br />
-              quem te procurou,<br />
-              <span style={{ color: '#C9A84C' }}>tudo num lugar.</span>
+              A gestão<br />
+              completa do<br />
+              <span style={{ color: '#C9A84C' }}>seu estúdio.</span>
             </h1>
             <p className="text-white/40 text-[15px] leading-relaxed max-w-xs">
-              Inadimplência dos personais, leads, agenda e ficha do aluno — sem planilha no meio.
+              Leads, agenda, fichas de aluno, avaliações e o aluguel de cada personal em um só sistema.
             </p>
           </div>
 
