@@ -54,7 +54,9 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
 
 const INTERESSE_OPTIONS = ['Musculação', 'Funcional', 'Yoga/Pilates', 'Emagrecimento', 'Outro']
 const SOURCE_OPTIONS    = ['Instagram', 'Google', 'Referência', 'Outro']
-const RESPONSAVEL_OPTIONS = ['Úrsula', 'João', 'Ana', 'Pedro']
+// O "responsável" pelo lead é alguém da equipa DESTE estúdio — a lista vem dos
+// PTs do tenant (ptApi.list, já filtrado por tenant no backend). Antes eram
+// nomes fixos de demo ('Úrsula', 'João', …) que apareciam iguais para todos.
 
 const TAGS = [
   { id: 'alta-intencao', label: 'Alta intenção',  cls: 'bg-green-100 text-green-700 ring-1 ring-green-200' },
@@ -804,6 +806,16 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
   })
   const customFields = cfg?.fields ?? []
 
+  // Equipa do estúdio para o campo "Responsável" — mesma query da conversão
+  // (['pts-list']), por isso normalmente já está em cache.
+  const { data: equipa = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['pts-list'],
+    queryFn: () => ptApi.list().then((list: { id: string; name: string }[]) => list),
+    enabled: open,
+    staleTime: 60_000,
+  })
+  const responsaveis = equipa.map(p => p.name)
+
   function setAnswerSingle(fieldId: string, value: string) {
     setAnswers(a => ({ ...a, [fieldId]: value ? [value] : [] }))
   }
@@ -893,7 +905,11 @@ function NewLeadSheet({ onCreated }: { onCreated: (lead: MockLead) => void }) {
               <Label className="text-sm font-semibold">Responsável</Label>
               <Select value={form.responsavel} onValueChange={v => setField('responsavel', v ?? '')}>
                 <SelectTrigger className="text-base min-h-[44px]"><SelectValue placeholder="Quem trata?" /></SelectTrigger>
-                <SelectContent>{RESPONSAVEL_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {responsaveis.length === 0
+                    ? <div className="px-3 py-2 text-sm text-gray-400">Sem PTs cadastrados</div>
+                    : responsaveis.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">

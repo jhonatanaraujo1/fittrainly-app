@@ -53,17 +53,20 @@ export default async function LeadCapturePage({ params }: { params: Promise<{ sl
           <div style={{ background: GREEN, padding: '26px 22px 22px', textAlign: 'center' }}>
             {/* Logo carregado pelo estúdio. Servido pelo backend (bucket
                 privado) — por isso <img> cru, sem o loader do next/image. */}
-            {studio.logoUrl && (
+            {/* Com logo, é a logo que identifica o estúdio (como qualquer marca
+                faz) — o nome em texto é só o fallback de quem não carregou logo. */}
+            {studio.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={`${API_BASE}${studio.logoUrl}`}
                 alt={studio.name}
-                style={{ maxHeight: 56, maxWidth: '70%', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }}
+                style={{ maxHeight: 88, maxWidth: '78%', objectFit: 'contain', margin: '0 auto 16px', display: 'block' }}
               />
+            ) : (
+              <p style={{ color: GOLD, fontSize: 12, letterSpacing: '0.16em', fontWeight: 600, margin: '0 0 12px', textTransform: 'uppercase' }}>
+                {studio.name}
+              </p>
             )}
-            <p style={{ color: GOLD, fontSize: 12, letterSpacing: '0.16em', fontWeight: 600, margin: '0 0 12px', textTransform: 'uppercase' }}>
-              {studio.name}
-            </p>
             <h1 style={{ color: '#fff', fontSize: 25, lineHeight: 1.15, fontWeight: 600, margin: '0 0 10px', letterSpacing: '-0.01em' }}>
               {studio.headline || 'Agenda a tua visita.'}
             </h1>

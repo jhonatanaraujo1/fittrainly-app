@@ -7,6 +7,7 @@ import { Plus, Trash2, GripVertical, Upload, X, Loader2, ChevronUp, ChevronDown,
 import { Button } from '@/components/ui/button'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { leadFormApi } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/api-config'
 import { cn } from '@/lib/utils'
 import type { LeadFormConfig, LeadFormField, LeadFieldType } from '@/lib/mock-api'
 
@@ -108,7 +109,9 @@ export function LeadFormBuilder() {
           <div className="w-20 h-20 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
             {data.logoUrl
               // eslint-disable-next-line @next/next/no-img-element -- origem dinâmica (S3 via proxy), sem loader do next/image
-              ? <img src={data.logoUrl} alt="Logo do estúdio" className="w-full h-full object-contain" />
+              // A API devolve caminho relativo (/api/v1/public/studios/…/logo) que
+              // tem de ser resolvido contra o backend, não contra o domínio da app.
+              ? <img src={data.logoUrl.startsWith('http') || data.logoUrl.startsWith('blob:') ? data.logoUrl : `${API_BASE_URL}${data.logoUrl}`} alt="Logo do estúdio" className="w-full h-full object-contain" />
               : <span className="text-[10px] text-gray-400 text-center px-1">sem logo</span>}
           </div>
           <div className="flex gap-2">
