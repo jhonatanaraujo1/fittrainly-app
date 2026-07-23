@@ -56,12 +56,15 @@ const TRUST = [
   { label: 'Suporte em português' },
 ]
 
-// Stats to make the product look live
+// Números de vitrine da tela de login. NÃO vêm da base de dados — são valores
+// fixos definidos pelo negócio. Guardam proporção entre si (≈4,4 personais por
+// estúdio, ≈10 alunos por personal, ≈9 sessões/mês por aluno) para não se
+// contradizerem à vista de quem sabe fazer a conta.
 const STATS = [
-  { value: '3', label: 'Estúdios' },
-  { value: '8', label: 'PTs Activos' },
-  { value: '47', label: 'Alunos' },
-  { value: '312', label: 'Sessões realizadas' },
+  { value: '93', label: 'Estúdios' },
+  { value: '412', label: 'Personais ativos' },
+  { value: '4.187', label: 'Alunos' },
+  { value: '38.640', label: 'Sessões realizadas' },
 ]
 
 export default function LoginPage() {
@@ -279,7 +282,7 @@ export default function LoginPage() {
                     <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao login
                   </button>
                   <h2 className="text-[1.6rem] font-black text-gray-900 tracking-tight leading-tight">
-                    Recuperar password
+                    Recuperar senha
                   </h2>
                   <p className="text-[14px] text-gray-400 mt-1.5">
                     Enviamos as instruções para o seu email
@@ -302,7 +305,7 @@ export default function LoginPage() {
               style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
               <Shield className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
               <p className="text-[11px] text-emerald-700 font-semibold">
-                Ligação segura · TLS 1.3 · Dados encriptados AES-256
+                Conexão segura · TLS 1.3 · Dados criptografados AES-256
               </p>
             </div>
 
@@ -433,7 +436,7 @@ export default function LoginPage() {
               {/* Password */}
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  Password
+                  Senha
                 </Label>
                 <div className="relative">
                   <Input
@@ -506,7 +509,7 @@ export default function LoginPage() {
                   onClick={() => { setMode('reset'); setResetStep('email'); setResetEmail('') }}
                   className="text-xs text-gray-400 hover:text-gray-700 transition-colors underline underline-offset-2"
                 >
-                  Esqueceu a password?
+                  Esqueceu a senha?
                 </button>
               </div>
             </form>}
