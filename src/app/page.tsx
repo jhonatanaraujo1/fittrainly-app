@@ -139,7 +139,7 @@ function DashboardMockup() {
             <div className="rounded-xl overflow-hidden" style={{ background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
               {[
                 { name: 'João Silva', spec: 'Musculação e Força', plan: 'Mensal', n: 4, s: 18 },
-                { name: 'Ana Costa', spec: 'Funcional e Mobilidade', plan: 'Por Hora', n: 2, s: 9 },
+                { name: 'Úrsula', spec: 'Funcional e Mobilidade', plan: 'Por Hora', n: 2, s: 9 },
                 { name: 'Pedro Santos', spec: 'Emagrecimento', plan: 'Semanal', n: 2, s: 6 },
               ].map((pt, i) => (
                 <motion.div key={i}
