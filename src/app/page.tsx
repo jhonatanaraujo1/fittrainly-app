@@ -81,7 +81,7 @@ function DashboardMockup() {
             {/* stat cards */}
             <div className="grid grid-cols-4 gap-2">
               {[
-                { l: 'PTs Ativos', v: '3', icon: Users, c: '#3b82f6' },
+                { l: 'Personais', v: '3', icon: Users, c: '#3b82f6' },
                 { l: 'Alunos', v: '12', icon: Users, c: '#10b981' },
                 { l: 'Leads Novas', v: '3', icon: TrendingUp, c: '#f59e0b' },
                 { l: 'Receita', v: '€640', icon: Euro, c: '#8b5cf6' },
@@ -129,9 +129,9 @@ function DashboardMockup() {
                 style={{ background: '#111111' }}>
                 <p className="text-[8px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Insight</p>
                 <p className="text-[10px] font-bold leading-snug" style={{ color: '#fff' }}>
-                  🔥 Alta procura esta semana — estúdio a <span style={{ color: '#C9A84C' }}>85%</span> de capacidade
+                  🔥 Semana cheia — estúdio com <span style={{ color: '#C9A84C' }}>85%</span> da capacidade ocupada
                 </p>
-                <p className="text-[9px] mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>⚠️ 1 PT com pagamento em atraso</p>
+                <p className="text-[9px] mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>⚠️ 1 personal com pagamento atrasado</p>
               </div>
             </div>
 
@@ -174,9 +174,9 @@ function DashboardMockup() {
 /* ─── ticker ─────────────────────────────────────────────────────────── */
 function Ticker() {
   const items = [
-    '⚡ GESTÃO DE PTs', '✦ AGENDA SEM CONFLITOS', '⚡ FATURAÇÃO AUTOMÁTICA',
-    '✦ CRM DE LEADS', '⚡ CONTROLO DE INADIMPLÊNCIA', '✦ AVALIAÇÕES FÍSICAS',
-    '⚡ PACKS DE SESSÕES', '✦ RGPD COMPLIANT', '⚡ FEITO EM PORTUGAL',
+    '⚡ GESTÃO DE PERSONAIS', '✦ AGENDA SEM CONFLITO', '⚡ FATURAMENTO AUTOMÁTICO',
+    '✦ CRM DE LEADS', '⚡ CONTROLE DE INADIMPLÊNCIA', '✦ AVALIAÇÕES FÍSICAS',
+    '⚡ PACOTES DE SESSÕES', '✦ LGPD & RGPD', '⚡ FEITO EM PORTUGAL',
   ]
   return (
     <div className="overflow-hidden" style={{ background: '#C9A84C', borderTop: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
@@ -224,18 +224,18 @@ function FeatureCard({ icon: Icon, tag, title, desc, delay }: {
 /* ─── page ───────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   const features = [
-    { icon: Euro, tag: 'INADIMPLÊNCIA', title: 'Sabes quem não pagou. Sem perguntar.',
-      desc: 'Cada PT tem plano e dia de vencimento. Quem falha aparece numa lista — não numa conversa desconfortável que já adias há três semanas.' },
-    { icon: TrendingUp, tag: 'LEADS', title: 'A lead não morre no WhatsApp.',
-      desc: 'Partilhas um link com o teu logo e as tuas perguntas. Quem preenche cai no funil com as respostas que deu, e tu és avisado. Nenhum contacto fica perdido num chat das 23h.' },
-    { icon: BarChart3, tag: 'RENDA', title: 'A conta faz-se sozinha ao fim do mês.',
-      desc: 'Por hora, por semana ou por mês — o sistema conta as horas realmente dadas e diz quanto é. O Excel deixa de ter opinião sobre o teu dinheiro.' },
-    { icon: Calendar, tag: 'AGENDA', title: 'Ninguém marca por cima de ninguém.',
-      desc: 'Cada PT liberta o seu horário dentro do que o estúdio abriu. O limite de alunos por sessão é regra do sistema, não bom senso de cada um.' },
-    { icon: Clock, tag: 'ALUNOS', title: 'A evolução dele fica escrita.',
-      desc: 'Avaliação física com IMC e percentagem de gordura, packs que separam o que já foi dado do que falta marcar, plano de treino que o aluno abre no telemóvel.' },
-    { icon: Shield, tag: 'RESPONSABILIDADE', title: 'A cédula expira e tu ficas a saber antes.',
-      desc: 'TEEF e seguro de cada PT com data de validade e aviso antecipado. Se algo acontecer dentro do teu espaço, quem responde és tu.' },
+    { icon: Euro, tag: 'INADIMPLÊNCIA', title: 'Você sabe quem não pagou. Sem precisar perguntar.',
+      desc: 'Cada personal tem plano e dia de vencimento. Quem atrasa aparece numa lista — não numa conversa constrangedora que você já adia faz três semanas.' },
+    { icon: TrendingUp, tag: 'LEADS', title: 'O contato não morre no WhatsApp.',
+      desc: 'Você compartilha um link com a sua logo e as suas perguntas. Quem preenche cai no funil com as respostas que deu, e você recebe o aviso. Nenhum contato fica perdido num chat das 23h.' },
+    { icon: BarChart3, tag: 'ALUGUEL', title: 'A conta se fecha sozinha no fim do mês.',
+      desc: 'Por hora, por semana ou por mês — o sistema conta as horas que realmente aconteceram e diz quanto é. A planilha perde a opinião sobre o seu dinheiro.' },
+    { icon: Calendar, tag: 'AGENDA', title: 'Ninguém marca em cima de ninguém.',
+      desc: 'Cada personal libera o horário dele dentro do que o estúdio abriu. O limite de alunos por sessão é regra do sistema, não bom senso de cada um.' },
+    { icon: Clock, tag: 'ALUNOS', title: 'A evolução dele fica registrada.',
+      desc: 'Avaliação física com IMC e percentual de gordura, pacotes que separam o que já foi dado do que falta marcar, treino que o aluno abre no celular.' },
+    { icon: Shield, tag: 'RESPONSABILIDADE', title: 'A cédula vence e você fica sabendo antes.',
+      desc: 'Registro profissional e seguro de cada personal com data de validade e aviso antecipado. Se acontecer alguma coisa dentro do seu espaço, quem responde é você.' },
   ]
 
   return (
@@ -307,7 +307,7 @@ export default function LandingPage() {
                   className="w-1.5 h-1.5 rounded-full inline-block"
                   style={{ background: '#C9A84C' }} />
                 <span className="text-[11px] font-black tracking-[0.18em] uppercase" style={{ color: '#C9A84C' }}>
-                  Para quem aluga espaço a PTs independentes
+                  Para quem aluga espaço a personais autônomos
                 </span>
               </motion.div>
 
@@ -318,8 +318,8 @@ export default function LandingPage() {
                 transition={{ duration: 0.75, delay: 0.2, ease }}
                 className="font-black leading-[0.9] tracking-tighter mb-6"
                 style={{ fontSize: 'clamp(2.8rem, 6vw, 5.5rem)', color: '#fff' }}>
-                Quanto é que<br />
-                os teus PTs<br />
+                Quanto seus<br />
+                personais<br />
                 <span style={{ color: '#C9A84C', textShadow: '0 0 60px rgba(201,168,76,0.2)' }}>
                   te devem hoje?
                 </span>
@@ -331,9 +331,9 @@ export default function LandingPage() {
                 transition={{ duration: 0.6, delay: 0.4, ease }}
                 className="text-lg leading-relaxed mb-8 max-w-md"
                 style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Se tens de abrir o Excel para responder, já perdeste dinheiro este mês.
-                Os outros softwares tratam o personal trainer como funcionário.
-                Este sabe que ele é um negócio independente — que te paga renda.
+                Se você precisa abrir a planilha pra responder, já perdeu dinheiro esse mês.
+                Os outros sistemas tratam o personal como funcionário.
+                Esse aqui sabe que ele é um negócio independente — que paga aluguel pra você.
               </motion.p>
 
               {/* CTAs */}
@@ -362,9 +362,9 @@ export default function LandingPage() {
                 transition={{ delay: 0.8, duration: 0.5 }}
                 className="flex flex-wrap items-center gap-6">
                 {[
-                  { icon: Check, text: 'Feito para o modelo de aluguer' },
-                  { icon: Check, text: 'RGPD & LGPD Compliant' },
-                  { icon: Check, text: 'Suporte em Português' },
+                  { icon: Check, text: 'Feito para o modelo de aluguel' },
+                  { icon: Check, text: 'LGPD & RGPD Compliant' },
+                  { icon: Check, text: 'Suporte em português' },
                 ].map(({ icon: Icon, text }) => (
                   <div key={text} className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
@@ -401,7 +401,7 @@ export default function LandingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { l: 'PTs Ativos', v: '3', c: '#3b82f6' },
+                    { l: 'Personais', v: '3', c: '#3b82f6' },
                     { l: 'Alunos', v: '12', c: '#10b981' },
                     { l: 'Leads Novas', v: '3', c: '#f59e0b' },
                     { l: 'Receita', v: '€640', c: '#8b5cf6' },
@@ -426,13 +426,13 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <p className="text-center text-[11px] font-semibold tracking-[0.15em] uppercase mb-8"
             style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Três perguntas que passas a responder em segundos
+            Três perguntas que você passa a responder em segundos
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { q: 'Quem me deve?', a: 'A lista de atrasos atualiza-se sozinha' },
+              { q: 'Quem está me devendo?', a: 'A lista de atrasos se atualiza sozinha' },
               { q: 'Quem me procurou?', a: 'Cada lead com data, origem e o que respondeu' },
-              { q: 'O que vai expirar?', a: 'Cédulas e seguros avisam antes do prazo' },
+              { q: 'O que vai vencer?', a: 'Cédulas e seguros avisam antes do prazo' },
             ].map(m => (
               <div key={m.q} className="py-8 px-6 text-center" style={{ background: '#111111' }}>
                 <p className="font-black mb-2 tracking-tighter" style={{ fontSize: 'clamp(1.4rem, 3vw, 2.1rem)', color: '#C9A84C' }}>
@@ -455,8 +455,8 @@ export default function LandingPage() {
               Funcionalidades
             </p>
             <h2 className="font-black tracking-tighter" style={{ fontSize: 'clamp(1.8rem, 4vw, 3.2rem)', color: '#fff' }}>
-              Seis coisas que te tiram o sono.<br />
-              <span style={{ color: 'rgba(255,255,255,0.2)' }}>Seis ecrãs que as resolvem.</span>
+              Seis coisas que tiram o seu sono.<br />
+              <span style={{ color: 'rgba(255,255,255,0.2)' }}>Seis telas que resolvem.</span>
             </h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
@@ -474,14 +474,14 @@ export default function LandingPage() {
             Como funciona
           </p>
           <h2 className="font-black tracking-tighter mb-16" style={{ fontSize: 'clamp(1.8rem, 4vw, 3.2rem)', color: '#fff' }}>
-            Do contacto ao recibo.<br /><span style={{ color: 'rgba(255,255,255,0.2)' }}>Sem sair do mesmo sítio.</span>
+            Do contato ao recibo.<br /><span style={{ color: 'rgba(255,255,255,0.2)' }}>Sem sair do mesmo lugar.</span>
           </h2>
 
           <div className="space-y-px" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { n: '01', title: 'Alguém quer treinar contigo', desc: 'Põe o link da tua página de captação na bio e nos anúncios. Quem preenche entra no funil com o nome, o contacto e o motivo pelo qual procurou. Tu recebes o aviso.' },
-              { n: '02', title: 'Passa a aluno com ficha aberta', desc: 'Um clique converte a lead: PT atribuído, avaliação física marcada, pack de sessões e plano de treino. Sem voltar a escrever os mesmos dados.' },
-              { n: '03', title: 'Ao fim do mês já está tudo contado', desc: 'As horas que os PTs deram viram o valor que te devem. Quem não pagou aparece sozinho na lista. Tu só decides o que fazer.' },
+              { n: '01', title: 'Alguém quer treinar com você', desc: 'Coloque o link da sua página de captação na bio e nos anúncios. Quem preenche entra no funil com nome, contato e o motivo pelo qual procurou. Você recebe o aviso.' },
+              { n: '02', title: 'Vira aluno com ficha aberta', desc: 'Um clique converte a lead: personal definido, avaliação física marcada, pacote de sessões e treino. Sem digitar os mesmos dados de novo.' },
+              { n: '03', title: 'No fim do mês já está tudo contado', desc: 'As horas que os personais deram viram o valor que eles te devem. Quem não pagou aparece sozinho na lista. Você só decide o que fazer.' },
             ].map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, x: -20 }}
@@ -523,19 +523,19 @@ export default function LandingPage() {
             </p>
             <h2 className="font-black leading-tight tracking-tighter mb-6"
               style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.4rem)', color: '#fff' }}>
-              Nenhum ecrã aqui foi inventado<br />
-              <span style={{ color: 'rgba(255,255,255,0.25)' }}>numa sala de reuniões.</span>
+              Nenhuma tela aqui foi inventada<br />
+              <span style={{ color: 'rgba(255,255,255,0.25)' }}>numa sala de reunião.</span>
             </h2>
             <p className="text-base leading-relaxed mb-10 max-w-2xl" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Cada um nasceu de um problema concreto de quem aluga espaço a personal trainers em
-              Almada. O PT que ainda não pagou este mês. A cédula que expirou sem ninguém dar conta.
-              A pessoa que perguntou os preços no Instagram e nunca mais teve resposta.
+              Cada uma nasceu de um problema concreto de quem aluga espaço para personal trainer.
+              O personal que ainda não pagou esse mês. A cédula que venceu sem ninguém perceber.
+              A pessoa que perguntou o preço no Instagram e nunca mais teve resposta.
             </p>
             <div className="grid sm:grid-cols-3 gap-px" style={{ background: 'rgba(255,255,255,0.06)' }}>
               {[
-                { t: 'Português de Portugal', d: 'Cédula TEEF, NIF, IVA e morada fiscal. Não é uma tradução.' },
-                { t: 'Modelo de aluguer', d: 'PTs independentes que pagam pelo espaço — por hora, semana ou mês.' },
-                { t: 'Em uso, não em slides', d: 'A funcionar com um estúdio real, com alunos reais, todos os dias.' },
+                { t: 'Feito para Portugal', d: 'Cédula TEEF, NIF, IVA e endereço fiscal. Não é sistema traduzido às pressas.' },
+                { t: 'Modelo de aluguel', d: 'Personais autônomos que pagam pelo espaço — por hora, semana ou mês.' },
+                { t: 'Rodando, não em slide', d: 'Funcionando com um estúdio real, com alunos reais, todo dia.' },
               ].map(b => (
                 <div key={b.t} className="p-5" style={{ background: '#0d0d0d' }}>
                   <p className="font-bold text-sm mb-1.5" style={{ color: '#fff' }}>{b.t}</p>
@@ -565,8 +565,8 @@ export default function LandingPage() {
             transition={{ duration: 0.85, ease }}
             className="font-black leading-[0.88] tracking-tighter mb-6"
             style={{ fontSize: 'clamp(2.5rem, 8vw, 6.5rem)', color: '#fff' }}>
-            Deixa de<br />
-            <span style={{ color: '#C9A84C' }}>andar a adivinhar.</span>
+            Pare de<br />
+            <span style={{ color: '#C9A84C' }}>ficar adivinhando.</span>
           </motion.h2>
 
           <motion.p
@@ -575,7 +575,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-base mb-12" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            O teu estúdio já produz estes dados todos os dias. Só falta alguém a contá-los.
+            Seu estúdio já produz esses dados todo dia. Só falta alguém contar.
           </motion.p>
 
           <motion.div
@@ -616,7 +616,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.8, duration: 0.6 }}
             className="mt-10 flex items-center justify-center gap-8 flex-wrap">
-            {['✓ Dados alojados na UE', '✓ RGPD Compliant', '✓ Feito em Portugal 🇵🇹'].map(b => (
+            {['✓ Dados hospedados na UE', '✓ LGPD & RGPD', '✓ Feito em Portugal 🇵🇹'].map(b => (
               <span key={b} className="text-[11px] font-semibold tracking-wide" style={{ color: 'rgba(255,255,255,0.18)' }}>
                 {b}
               </span>
@@ -636,7 +636,7 @@ export default function LandingPage() {
             <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.2)' }}>Fit Studio Now</span>
           </div>
           <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
-            © 2026 Fit Studio Now · Almada, Portugal · RGPD Compliant
+            © 2026 Fit Studio Now · Almada, Portugal · LGPD & RGPD
           </p>
           <div className="flex gap-6">
             {['Privacidade', 'Termos', 'RGPD'].map(l => (

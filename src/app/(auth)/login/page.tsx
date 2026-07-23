@@ -51,9 +51,9 @@ const ROLE_HOME: Record<string, string> = {
 // Trust signals for left panel
 const TRUST = [
   { label: 'RGPD & LGPD Compliant' },
-  { label: 'Dados alojados na União Europeia' },
-  { label: 'Perfis separados: Admin, PT e Aluno' },
-  { label: 'Suporte em Português' },
+  { label: 'Dados hospedados na União Europeia' },
+  { label: 'Perfis separados: Admin, Personal e Aluno' },
+  { label: 'Suporte em português' },
 ]
 
 // Stats to make the product look live
@@ -140,7 +140,7 @@ export default function LoginPage() {
       toast.success(`Bem-vindo, ${data.user.name.split(' ')[0]}! 👋`)
       router.push(ROLE_HOME[data.user.role] ?? '/login')
     } catch {
-      setError('Email ou password incorrectos. Verifique e tente novamente.')
+      setError('Email ou senha incorretos. Verifique e tente novamente.')
       // O backend real nunca revela o role numa falha de login (anti-enumeração
       // de contas), então o hint de contacto é sempre o genérico. Antes isto
       // dependia do mock-db (db.users), o que trazia dados fake para produção.
@@ -161,7 +161,7 @@ export default function LoginPage() {
 
   const emailError = touched.email && !email ? 'Email obrigatório' :
     touched.email && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'Email inválido' : ''
-  const passwordError = touched.password && !password ? 'Password obrigatória' :
+  const passwordError = touched.password && !password ? 'Senha obrigatória' :
     touched.password && password && password.length < 6 ? 'Mínimo 6 caracteres' : ''
 
   return (
@@ -202,12 +202,12 @@ export default function LoginPage() {
           <div className="space-y-5">
             <p className="text-white/35 text-[10px] font-bold tracking-[0.25em] uppercase">Gestão de Estúdio</p>
             <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)' }}>
-              O sistema que<br />
-              o teu estúdio<br />
-              <span style={{ color: '#C9A84C' }}>sempre merecia.</span>
+              Quem te deve,<br />
+              quem te procurou,<br />
+              <span style={{ color: '#C9A84C' }}>tudo num lugar.</span>
             </h1>
             <p className="text-white/40 text-[15px] leading-relaxed max-w-xs">
-              Gestão de PTs, agendamento inteligente e faturação automática — numa plataforma só.
+              Inadimplência dos personais, leads, agenda e ficha do aluno — sem planilha no meio.
             </p>
           </div>
 
@@ -282,7 +282,7 @@ export default function LoginPage() {
                     Recuperar password
                   </h2>
                   <p className="text-[14px] text-gray-400 mt-1.5">
-                    Enviamos instruções para o teu email
+                    Enviamos as instruções para o seu email
                   </p>
                 </>
               ) : (
@@ -291,7 +291,7 @@ export default function LoginPage() {
                     Bem-vindo de volta
                   </h2>
                   <p className="text-[14px] text-gray-400 mt-1.5">
-                    Acede à tua plataforma de gestão
+                    Acesse a sua plataforma de gestão
                   </p>
                 </>
               )}
@@ -573,7 +573,7 @@ export default function LoginPage() {
                   recebimentos que o estúdio cobra por fora. Exibir bandeiras de
                   cartão prometia um checkout que não existe. */}
               <p className="text-center text-[10px] text-gray-300 mt-2">
-                Dados alojados na União Europeia · Acesso separado por perfil
+                Dados hospedados na União Europeia · Acesso separado por perfil
               </p>
             </div>
             </>}
@@ -594,7 +594,7 @@ export default function LoginPage() {
                 {contactHint === 'admin' && (
                   <>Está com problemas?{' '}
                     <button type="button"
-                      onClick={() => toast.info('Contacte o administrador do seu estúdio para obter ajuda com o acesso.', { duration: 5000 })}
+                      onClick={() => toast.info('Fale com o administrador do seu estúdio para conseguir acesso.', { duration: 5000 })}
                       className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
                       Contacte o seu Administrador
                     </button>
@@ -603,9 +603,9 @@ export default function LoginPage() {
                 {contactHint === 'fittrainly' && (
                   <>Está com problemas?{' '}
                     <button type="button"
-                      onClick={() => toast.info('Entre em contacto com o suporte do Fit Studio Now para obter ajuda.', { duration: 5000 })}
+                      onClick={() => toast.info('Entre em contato com o suporte do Fit Studio Now para conseguir ajuda.', { duration: 5000 })}
                       className="font-semibold text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2">
-                      Entre em contacto com o Fit Studio Now
+                      Entre em contato com o Fit Studio Now
                     </button>
                   </>
                 )}
