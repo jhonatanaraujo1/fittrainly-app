@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useQueries } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Download, CheckCircle2, Printer, Layers, ChevronDown } from 'lucide-react'
+import { Download, CheckCircle2, Printer, Layers, ChevronDown, CalendarClock } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +13,7 @@ import {
 import { billingApi, ptPaymentApi } from '@/lib/api'
 import { formatCurrency, formatDate, getInitials, avatarColor, planTypeLabel, cn, withIVA, IVA_RATE } from '@/lib/utils'
 import type { BillingEntry } from '@/types'
+import type { BillingSessions } from '@/lib/real-api'
 
 interface WeekRow {
   weekStart: string; weekEnd: string; hoursThisWeek: number; cumulativeHours: number
@@ -161,6 +162,96 @@ function TierMonthlySummary({ ptList, month }: { ptList: { ptId: string; ptName:
   )
 }
 
+// Uma linha de faturação que expande para mostrar as sessões que a compõem —
+// o drill-down que deixa o dono confirmar de onde vêm as horas (e responder ao
+// PT que pergunta "estas horas são de quê?"). As sessões só são buscadas
+// quando a linha abre pela primeira vez.
+function BillingRow({ entry, month }: { entry: BillingEntry; month: string }) {
+  const [open, setOpen] = useState(false)
+  const { data, isLoading } = useQuery<BillingSessions>({
+    queryKey: ['billing-sessions', entry.ptId, month],
+    queryFn: () => billingApi.sessions(entry.ptId, month) as Promise<BillingSessions>,
+    enabled: open,
+    staleTime: 60_000,
+  })
+  const fmtHour = (iso: string) =>
+    new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <>
+      <tr
+        onClick={() => setOpen(o => !o)}
+        className="hover:bg-gray-50 transition-colors cursor-pointer"
+      >
+        <td className="px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full ${avatarColor(entry.ptName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+              {getInitials(entry.ptName)}
+            </div>
+            <span className="font-medium text-gray-900">{entry.ptName}</span>
+          </div>
+        </td>
+        <td className="px-4 py-3.5 hidden md:table-cell">
+          <span className="text-xs text-gray-500">{entry.planName} — {planTypeLabel(entry.planType)}</span>
+        </td>
+        <td className="px-4 py-3.5 hidden lg:table-cell">
+          <span className="text-gray-600">{entry.sessionsCount ?? 0}</span>
+        </td>
+        <td className="px-4 py-3.5 text-right">
+          <span className={`font-bold text-sm ${entry.value >= 100 ? 'text-emerald-700' : entry.value >= 50 ? 'text-amber-700' : 'text-gray-700'}`}>
+            {formatCurrency(entry.value ?? 0)}
+          </span>
+          <div className="text-[10px] text-gray-400 mt-0.5">
+            +IVA ({(IVA_RATE * 100).toFixed(0)}%): {formatCurrency(withIVA(entry.value ?? 0).total)}
+          </div>
+        </td>
+        <td className="pr-4 text-right w-8">
+          <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform inline', open && 'rotate-180')} />
+        </td>
+      </tr>
+
+      {open && (
+        <tr>
+          <td colSpan={5} className="bg-gray-50/60 px-5 py-4">
+            {isLoading || !data ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-9 rounded-lg" />)}
+              </div>
+            ) : data.sessions.length === 0 ? (
+              <p className="text-center text-xs text-gray-400 py-3">Sem sessões registadas neste mês</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-1">
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  {data.totalSessions} {data.totalSessions === 1 ? 'sessão' : 'sessões'} · {data.totalHours}h no total
+                </div>
+                {data.sessions.map(s => (
+                  <div key={s.bookingId} className="flex items-center justify-between gap-3 rounded-lg bg-white border border-gray-100 px-3 py-2 text-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-semibold text-gray-700 tabular-nums whitespace-nowrap">{formatDate(s.date)}</span>
+                      <span className="text-gray-500 tabular-nums whitespace-nowrap">{fmtHour(s.startTime)}–{fmtHour(s.endTime)}</span>
+                      <span className="text-gray-800 truncate">{s.studentName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-gray-400 tabular-nums">{s.durationHours}h</span>
+                      <span className={cn(
+                        'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                        s.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700',
+                      )}>
+                        {s.status === 'COMPLETED' ? 'Realizada' : 'Confirmada'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
 function exportCSV(entries: BillingEntry[], total: number, month: string) {
   const [year, m] = month.split('-')
   const monthLabel = new Date(Number(year), Number(m) - 1, 1)
@@ -216,7 +307,7 @@ export default function BillingPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-black text-gray-900">Faturação</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Valores calculados por plano de aluguel</p>
+          <p className="text-sm text-gray-400 mt-0.5">Valores por plano de aluguel · clica num PT para ver as sessões</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Select value={selectedMonth} onValueChange={(v) => v && setSelectedMonth(v)}>
@@ -271,35 +362,13 @@ export default function BillingPage() {
                 <th className="text-left px-5 py-3 font-medium">Personal Trainer</th>
                 <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Plano</th>
                 <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Sessões</th>
-                <th className="text-right px-5 py-3 font-medium">Valor (s/ IVA)</th>
+                <th className="text-right px-4 py-3 font-medium">Valor (s/ IVA)</th>
+                <th className="w-8" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {entries.map((e, i) => (
-                <tr key={e.ptId ?? i} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full ${avatarColor(e.ptName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-                        {getInitials(e.ptName)}
-                      </div>
-                      <span className="font-medium text-gray-900">{e.ptName}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 hidden md:table-cell">
-                    <span className="text-xs text-gray-500">{e.planName} — {planTypeLabel(e.planType)}</span>
-                  </td>
-                  <td className="px-4 py-3.5 hidden lg:table-cell">
-                    <span className="text-gray-600">{e.sessionsCount ?? 0}</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <span className={`font-bold text-sm ${e.value >= 100 ? 'text-emerald-700' : e.value >= 50 ? 'text-amber-700' : 'text-gray-700'}`}>
-                      {formatCurrency(e.value ?? 0)}
-                    </span>
-                    <div className="text-[10px] text-gray-400 mt-0.5">
-                      +IVA ({(IVA_RATE * 100).toFixed(0)}%): {formatCurrency(withIVA(e.value ?? 0).total)}
-                    </div>
-                  </td>
-                </tr>
+                <BillingRow key={e.ptId ?? i} entry={e} month={selectedMonth} />
               ))}
             </tbody>
           </table>

@@ -1603,6 +1603,33 @@ export const billingApi = {
     })
     return { entries, total: entries.reduce((s, e) => s + e.value, 0), month: currentMonth }
   },
+  // Drill-down: as sessões que compõem a faturação do PT no mês.
+  sessions: async (ptId: string, month?: string) => {
+    await delay(250)
+    const currentMonth = month ?? new Date().toISOString().slice(0, 7)
+    const pt = db.pts.find(p => p.id === ptId)
+    const rows = db.bookings
+      .filter(b =>
+        b.personalTrainerId === ptId &&
+        (b.status === 'CONFIRMED' || b.status === 'COMPLETED') &&
+        b.startTime.slice(0, 7) === currentMonth,
+      )
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .map(b => {
+        const durationHours = (new Date(b.endTime).getTime() - new Date(b.startTime).getTime()) / 3_600_000
+        return {
+          bookingId: b.id, date: b.startTime.slice(0, 10),
+          startTime: b.startTime, endTime: b.endTime, durationHours,
+          studentName: b.alunoName ?? '—',
+          status: b.status as 'CONFIRMED' | 'COMPLETED',
+        }
+      })
+    return {
+      ptId, ptName: pt?.name ?? '—', month: currentMonth,
+      sessions: rows, totalSessions: rows.length,
+      totalHours: rows.reduce((s, r) => s + r.durationHours, 0),
+    }
+  },
 }
 
 // ── PT weekly payment cycle (TIERED_HOURLY plans only) ────────────────────────

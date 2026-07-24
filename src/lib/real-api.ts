@@ -430,10 +430,24 @@ export const studentDocumentApi = {
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────
+export interface BillingSessionRow {
+  bookingId: string; date: string; startTime: string; endTime: string
+  durationHours: number; studentName: string; status: 'CONFIRMED' | 'COMPLETED'
+}
+export interface BillingSessions {
+  ptId: string; ptName: string; month: string
+  sessions: BillingSessionRow[]; totalSessions: number; totalHours: number
+}
+
 export const billingApi = {
   byMonth: async (month?: string) => {
     const qs = month ? `?month=${encodeURIComponent(month)}` : ''
     return apiFetch<{ entries: unknown[]; total: number; month: string }>(`/api/v1/billing${qs}`)
+  },
+  // Detalhe das sessões que compõem a faturação de um PT no mês (drill-down).
+  sessions: async (ptId: string, month?: string) => {
+    const qs = month ? `?month=${encodeURIComponent(month)}` : ''
+    return apiFetch<BillingSessions>(`/api/v1/billing/${ptId}/sessions${qs}`)
   },
 }
 
