@@ -218,7 +218,16 @@ function BillingRow({ entry, month }: { entry: BillingEntry; month: string }) {
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-9 rounded-lg" />)}
               </div>
             ) : data.sessions.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-3">Sem sessões registadas neste mês</p>
+              <div className="text-center py-3 px-4 space-y-1">
+                <p className="text-xs font-medium text-gray-500">Nenhum aluno foi marcado num horário deste PT neste mês.</p>
+                <p className="text-[11px] text-gray-400">
+                  {entry.planType === 'MONTHLY'
+                    ? 'Plano mensal: o valor é fixo e não depende de sessões.'
+                    : entry.planType === 'WEEKLY'
+                    ? 'Plano semanal: o valor é fixo por semana, não depende de sessões.'
+                    : 'Sessões aparecem aqui quando um aluno é marcado num horário (Agenda do Estúdio).'}
+                </p>
+              </div>
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-1">
