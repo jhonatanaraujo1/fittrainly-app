@@ -608,7 +608,7 @@ export default function AdminSchedulePage() {
           startTime={selectedSession.startTime}
           endTime={selectedSession.endTime}
           ptName={selectedSession.ptName}
-          students={sessionAttendees.map(a => ({ bookingId: a.bookingId, name: a.alunoName, email: a.email, phone: a.phone }))}
+          students={sessionAttendees.map(a => ({ bookingId: a.bookingId, studentId: a.studentId ?? a.alunoId, name: a.alunoName, email: a.email, phone: a.phone }))}
           onCancelBooking={(bookingId) => cancelBooking.mutate(bookingId)}
           cancellingId={cancelBooking.isPending ? cancelBooking.variables ?? null : null}
           bookableStudents={ptStudents}

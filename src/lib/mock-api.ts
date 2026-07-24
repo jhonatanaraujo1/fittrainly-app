@@ -813,7 +813,7 @@ export const adminScheduleApi = {
       .map(b => {
         const aluno = db.alunos.find(a => a.id === b.alunoId)
         return {
-          bookingId: b.id, alunoId: b.alunoId, alunoName: b.alunoName, status: b.status,
+          bookingId: b.id, alunoId: b.alunoId, studentId: b.alunoId, alunoName: b.alunoName, status: b.status,
           email: aluno?.email, phone: aluno?.phone,
         }
       })

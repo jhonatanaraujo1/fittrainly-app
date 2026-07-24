@@ -967,11 +967,11 @@ export const adminScheduleApi = {
   // left un-enriched here to avoid an N+1 fan-out on every modal open. Pages
   // relying on email/phone in this response need a follow-up fetch.
   attendees: async (_ptId: string, slotKey: string) =>
-    apiFetch<Array<{ studentId: string; studentName: string; status: string }>>(
+    apiFetch<Array<{ bookingId: string; studentId: string; studentName: string; email: string | null; phone: string | null; status: string }>>(
       `/api/v1/admin/schedule/${slotKey}/attendees`,
     ).then(rows => rows.map(r => ({
-      bookingId: r.studentId, alunoId: r.studentId, alunoName: r.studentName, status: r.status,
-      email: undefined as string | undefined, phone: undefined as string | undefined,
+      bookingId: r.bookingId, alunoId: r.studentId, studentId: r.studentId, alunoName: r.studentName, status: r.status,
+      email: r.email ?? undefined, phone: r.phone ?? undefined,
     }))),
 }
 

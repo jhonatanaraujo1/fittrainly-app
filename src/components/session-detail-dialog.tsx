@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Loader2, Mail, Phone, UserPlus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { X, Loader2, Mail, Phone, UserPlus, ChevronRight } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
@@ -11,6 +12,7 @@ import { CustomSelect } from '@/components/ui/custom-select'
 
 export interface SessionDetailStudent {
   bookingId?: string
+  studentId?: string
   name: string
   email?: string
   phone?: string
@@ -36,6 +38,10 @@ export function SessionDetailDialog({
   bookableStudents, onBookStudent, booking,
 }: Props) {
   const [pick, setPick] = useState('')
+  const router = useRouter()
+  // Abre a ficha do aluno; fecha o modal antes de navegar para não ficar preso
+  // por cima da página nova.
+  const openProfile = (studentId: string) => { onOpenChange(false); router.push(`/admin/alunos/${studentId}`) }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -57,7 +63,19 @@ export function SessionDetailDialog({
                     {getInitials(s.name)}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
+                    {s.studentId ? (
+                      <button
+                        type="button"
+                        onClick={() => openProfile(s.studentId!)}
+                        className="group/name flex items-center gap-1 text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors text-left max-w-full"
+                        title="Ver ficha do aluno"
+                      >
+                        <span className="truncate">{s.name}</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover/name:text-gray-500 flex-shrink-0" />
+                      </button>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
+                    )}
                     {(s.email || s.phone) && (
                       <div className="flex flex-col gap-0.5 mt-0.5">
                         {s.email && (
