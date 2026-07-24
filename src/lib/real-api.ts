@@ -949,7 +949,10 @@ export const adminScheduleApi = {
         ptId: data.ptId,
         studentId: data.studentId,
         startTime: `${data.date}T${data.slotTime}:00Z`,
-        endTime: `${data.date}T${addMinutesToTime(data.slotTime, config.classDurationMinutes)}:00Z`,
+        // Fim = início + CADÊNCIA (não a duração da aula). O primeiro bloco tem
+        // de ser do tamanho da célula da grelha; o backend encadeia os blocos
+        // seguintes conforme a duração do pacote (60min numa grelha de 40 = 2).
+        endTime: `${data.date}T${addMinutesToTime(data.slotTime, config.slotDurationMinutes)}:00Z`,
       }),
     })
   },
