@@ -218,6 +218,8 @@ interface StudioConfig {
   slug: string
   privacyPolicyUrl: string | null
   leadCaptureEnabled: boolean
+  // Dia de vencimento da renda semanal do PT (1=segunda … 7=domingo).
+  ptPaymentDueWeekday: number
 }
 interface StudioSettingsPatch {
   slotDurationMinutes?: number
@@ -229,6 +231,7 @@ interface StudioSettingsPatch {
   name?: string
   privacyPolicyUrl?: string | null
   leadCaptureEnabled?: boolean
+  ptPaymentDueWeekday?: number
 }
 
 export const studioConfigApi = {

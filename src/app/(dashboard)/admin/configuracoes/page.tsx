@@ -22,7 +22,14 @@ interface StudioConfig {
   slug: string
   privacyPolicyUrl: string | null
   leadCaptureEnabled: boolean
+  ptPaymentDueWeekday: number
 }
+
+const WEEKDAYS = [
+  { v: 1, label: 'Segunda-feira' }, { v: 2, label: 'Terça-feira' },
+  { v: 3, label: 'Quarta-feira' }, { v: 4, label: 'Quinta-feira' },
+  { v: 5, label: 'Sexta-feira' }, { v: 6, label: 'Sábado' }, { v: 7, label: 'Domingo' },
+]
 
 const TABS = [
   { id: 'identidade', label: 'Identidade' },
@@ -187,7 +194,26 @@ export default function ConfiguracoesPage() {
             )}
 
             {tab === 'faturacao' && (
-              <div className="space-y-1.5">
+              <div className="space-y-4">
+                {/* Dia de vencimento da renda semanal do PT — a inadimplência
+                    passa a marcar em atraso a partir deste dia. Grava logo na
+                    mudança; semanas já registadas ficam com o dia congelado. */}
+                <div className="rounded-lg border border-gray-100 p-3.5">
+                  <label className={field}>Dia de vencimento da renda semanal</label>
+                  <select
+                    value={data.ptPaymentDueWeekday}
+                    disabled={save.isPending}
+                    onChange={e => save.mutate({ ptPaymentDueWeekday: Number(e.target.value) })}
+                    className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-sm outline-none focus:border-gray-900 disabled:opacity-60"
+                  >
+                    {WEEKDAYS.map(d => <option key={d.v} value={d.v}>{d.label}</option>)}
+                  </select>
+                  <p className={hint}>
+                    Dia em que a renda de cada PT vence. A Inadimplência marca “em atraso” a partir deste dia.
+                    Só afeta semanas ainda não registadas como recebidas.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
                 {[
                   { href: '/admin/plans', label: 'Planos de Aluguel', sub: 'Tipos de plano e faixas por hora' },
                   { href: '/admin/billing', label: 'Faturação', sub: 'Valores e ciclo semanal por PT' },
@@ -203,6 +229,7 @@ export default function ConfiguracoesPage() {
                     <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
                   </Link>
                 ))}
+                </div>
               </div>
             )}
         </div>

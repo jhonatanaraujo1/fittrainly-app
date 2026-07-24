@@ -33,6 +33,8 @@ export const mockStudioConfig = {
   slug: 'mg-estudio',
   privacyPolicyUrl: null as string | null,
   leadCaptureEnabled: true,
+  // Dia de vencimento da renda semanal do PT (1=segunda … 7=domingo).
+  ptPaymentDueWeekday: 1,
 }
 
 export interface MockStudioScheduleDay {

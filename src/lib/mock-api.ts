@@ -94,7 +94,7 @@ export const studioConfigApi = {
     mockStudioConfig.classDurationMinutes = classDurationMinutes
     return { ...mockStudioConfig }
   },
-  updateSettings: async (patch: { slotDurationMinutes?: number; classDurationMinutes?: number; studioCapacity?: number; maxStudentsPerTrainer?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean }) => {
+  updateSettings: async (patch: { slotDurationMinutes?: number; classDurationMinutes?: number; studioCapacity?: number; maxStudentsPerTrainer?: number; name?: string; privacyPolicyUrl?: string | null; leadCaptureEnabled?: boolean; ptPaymentDueWeekday?: number }) => {
     await delay(200)
     // Lotação: resolvidos juntos, porque a regra que os liga é cruzada — um PT
     // não pode atender mais alunos do que a sala inteira comporta.
@@ -125,6 +125,10 @@ export const studioConfigApi = {
     if (patch.name?.trim()) mockStudioConfig.name = patch.name.trim()
     if (patch.privacyPolicyUrl !== undefined) mockStudioConfig.privacyPolicyUrl = patch.privacyPolicyUrl?.trim() || null
     if (patch.leadCaptureEnabled !== undefined) mockStudioConfig.leadCaptureEnabled = patch.leadCaptureEnabled
+    if (patch.ptPaymentDueWeekday !== undefined) {
+      if (patch.ptPaymentDueWeekday < 1 || patch.ptPaymentDueWeekday > 7) throw new Error('O dia de vencimento deve ser entre 1 (segunda) e 7 (domingo)')
+      mockStudioConfig.ptPaymentDueWeekday = patch.ptPaymentDueWeekday
+    }
     return { ...mockStudioConfig }
   },
 }
