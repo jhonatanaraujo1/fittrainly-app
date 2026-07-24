@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Plus, Clock, Calendar, CalendarDays, Loader2, Pencil } from 'lucide-react'
+import { Plus, Clock, Calendar, CalendarDays, Loader2, Pencil, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -256,6 +256,17 @@ export default function PlansPage() {
                       })
                     }}
                   />
+                  {/* Aviso: o preço é lido ao vivo pela faturação. Recorded
+                      weeks ficam com snapshot (ver PtPaymentService); o resto
+                      recalcula. O dono TEM de saber que não é só p/ a frente. */}
+                  <div className="flex gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-2 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-[11px] leading-snug text-amber-800">
+                      Muda o cálculo do <strong>aluguer de todos os PTs</strong> neste plano — não só dos novos.
+                      Recalcula a faturação <strong>ainda em aberto</strong>, incluindo semanas passadas que ainda não registaste como recebidas.
+                      Semanas <strong>já com recebimento registado ficam congeladas</strong> e não mudam.
+                    </p>
+                  </div>
                 </div>
               )}
               <div className="space-y-1.5">
