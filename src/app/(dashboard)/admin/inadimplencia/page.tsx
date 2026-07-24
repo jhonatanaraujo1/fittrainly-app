@@ -226,6 +226,24 @@ export default function InadimplenciaPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Valor recebido (€)</label>
+                {/* Presets: o caso comum é receber o que falta ou o total.
+                    O campo continua editável para receber um valor diferente. */}
+                <div className="flex flex-wrap gap-2">
+                  {payFor.balance > 0.009 && (
+                    <button type="button" onClick={() => setPayAmount(payFor.balance.toFixed(2))}
+                      className={`px-3 min-h-[40px] rounded-lg border text-sm font-medium transition-colors ${
+                        parseFloat(payAmount.replace(',', '.')) === Number(payFor.balance.toFixed(2))
+                          ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                      Em falta {formatCurrency(payFor.balance)}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setPayAmount(payFor.amountDue.toFixed(2))}
+                    className={`px-3 min-h-[40px] rounded-lg border text-sm font-medium transition-colors ${
+                      parseFloat(payAmount.replace(',', '.')) === Number(payFor.amountDue.toFixed(2))
+                        ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    Total devido {formatCurrency(payFor.amountDue)}
+                  </button>
+                </div>
                 <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 min-h-[44px] focus-within:ring-2 focus-within:ring-gray-300">
                   <Euro className="w-4 h-4 text-gray-400" />
                   <input
@@ -235,6 +253,14 @@ export default function InadimplenciaPage() {
                     className="flex-1 text-base bg-transparent outline-none tabular-nums"
                   />
                 </div>
+                {/* Acima do devido: avisa mas NÃO bloqueia — pode ser um
+                    adiantamento ou correção que o admin quer registar na mesma. */}
+                {parseFloat(payAmount.replace(',', '.')) > payFor.amountDue + 0.009 && (
+                  <p className="text-[11px] text-amber-600 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    Acima do devido ({formatCurrency(payFor.amountDue)}). Podes registar na mesma.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nota (opcional)</label>

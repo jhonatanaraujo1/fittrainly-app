@@ -1623,9 +1623,18 @@ export const billingApi = {
         const tiers = db.planHourTiers.filter(t => t.planId === plan.id)
         value = computeTieredAmount(sessionsCount, tiers).amount
       }
-      return { ptId: pt.id, ptName: pt.name, planName: plan?.name ?? '—', planType: plan?.type ?? '—', sessionsCount, value }
+      // Soma dos recebimentos registados cujas semanas caem neste mês.
+      const amountPaid = Object.entries(mockPtPayments)
+        .filter(([k, v]) => k.startsWith(`${pt.id}-`) && v.periodStart.slice(0, 7) === currentMonth)
+        .reduce((s, [, v]) => s + v.amountPaid, 0)
+      return { ptId: pt.id, ptName: pt.name, planName: plan?.name ?? '—', planType: plan?.type ?? '—', sessionsCount, value, amountPaid, balance: Math.max(0, value - amountPaid) }
     })
-    return { entries, total: entries.reduce((s, e) => s + e.value, 0), month: currentMonth }
+    return {
+      entries,
+      total: entries.reduce((s, e) => s + e.value, 0),
+      totalPaid: entries.reduce((s, e) => s + e.amountPaid, 0),
+      month: currentMonth,
+    }
   },
   // Drill-down: as sessões que compõem a faturação do PT no mês.
   sessions: async (ptId: string, month?: string) => {

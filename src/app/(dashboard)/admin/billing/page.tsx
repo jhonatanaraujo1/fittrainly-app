@@ -204,6 +204,15 @@ function BillingRow({ entry, month }: { entry: BillingEntry; month: string }) {
           <div className="text-[10px] text-gray-400 mt-0.5">
             +IVA ({(IVA_RATE * 100).toFixed(0)}%): {formatCurrency(withIVA(entry.value ?? 0).total)}
           </div>
+          {/* Quanto já foi recebido no mês (registado na Inadimplência). */}
+          {(entry.amountPaid ?? 0) > 0 && (
+            <div className="text-[10px] mt-0.5 tabular-nums">
+              <span className="text-emerald-600 font-medium">pago {formatCurrency(entry.amountPaid ?? 0)}</span>
+              {(entry.balance ?? 0) > 0.009
+                ? <span className="text-red-500"> · falta {formatCurrency(entry.balance ?? 0)}</span>
+                : <span className="text-emerald-600"> · liquidado ✓</span>}
+            </div>
+          )}
         </td>
         <td className="pr-4 text-right w-8">
           <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform inline', open && 'rotate-180')} />

@@ -331,13 +331,23 @@ function stripEmptyPtDates<T extends Record<string, unknown>>(data: T): Record<s
 export const ptApi = {
   list: async () =>
     apiFetch<Array<Record<string, unknown>>>('/api/v1/personal-trainers')
-      .then(list => list.map(pt => ({ sessionsThisMonth: pt.hoursThisMonth ?? 0, alunoCount: pt.studentCount ?? 0, ...pt }))),
+      // O backend diz `delinquent`; a UI (shape do mock) lê `inadimplente`.
+      // Sem este mapa o filtro "Inadimplentes" da lista fica SEMPRE vazio em
+      // produção, e marcar/desmarcar não se reflete — mesmo padrão do bug dos
+      // status de lead (EN↔PT). `inadimplente` fica no fim para nada o
+      // sobrescrever no spread.
+      .then(list => list.map(pt => ({ sessionsThisMonth: pt.hoursThisMonth ?? 0, alunoCount: pt.studentCount ?? 0, ...pt, inadimplente: !!pt.delinquent }))),
   me: async () => apiFetch('/api/v1/personal-trainers/me'),
   // Password é gerada no servidor; o backend devolve temporaryPassword na criação.
   create: async (data: { name: string; email: string; phone?: string; specialty?: string; bio?: string; planId?: string; teefNumber?: string; teefValidUntil?: string; insuranceValidUntil?: string }) =>
     apiFetch<{ temporaryPassword?: string } & Record<string, unknown>>('/api/v1/personal-trainers', { method: 'POST', body: JSON.stringify(stripEmptyPtDates(data)) }),
-  update: async (id: string, data: object) =>
-    apiFetch(`/api/v1/personal-trainers/${id}`, { method: 'PATCH', body: JSON.stringify(stripEmptyPtDates(data as Record<string, unknown>)) }),
+  update: async (id: string, data: object) => {
+    // A UI manda `inadimplente`; o backend só entende `delinquent`. Sem esta
+    // tradução o toggle "Marcar inadimplente" era engolido em silêncio.
+    const d = { ...(data as Record<string, unknown>) }
+    if ('inadimplente' in d) { d.delinquent = d.inadimplente; delete d.inadimplente }
+    return apiFetch(`/api/v1/personal-trainers/${id}`, { method: 'PATCH', body: JSON.stringify(stripEmptyPtDates(d)) })
+  },
   // Confirmado live 07/jul: POST /personal-trainers/{id}/reset-password
   // (ADMIN only) devolve exatamente { tempPassword, emailSent } —
   // mesmo shape do mock (adminResetPassword), sem rename necessário.

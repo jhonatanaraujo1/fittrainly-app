@@ -165,6 +165,8 @@ export interface BillingEntry {
   planType: string
   sessionsCount: number
   value: number
+  amountPaid?: number   // já pago no mês (recebimentos registados)
+  balance?: number      // value - amountPaid
 }
 
 // Dashboard shapes (from Kotlin backend)
