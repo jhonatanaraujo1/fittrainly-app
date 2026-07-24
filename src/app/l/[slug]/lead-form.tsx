@@ -119,17 +119,17 @@ export function LeadForm({ slug, studioName, privacyPolicyUrl, fields = [] }: Pr
 
       <div style={{ marginBottom: 14 }}>
         <label htmlFor="firstName" style={labelStyle}>Nome</label>
-        <input id="firstName" name="firstName" required maxLength={100} placeholder="Como te chamas?" style={inputStyle} />
+        <input id="firstName" name="firstName" required maxLength={100} placeholder="Seu nome" style={inputStyle} />
       </div>
 
       <div style={{ marginBottom: 14 }}>
         <label htmlFor="phone" style={labelStyle}>Telemóvel</label>
-        <input id="phone" name="phone" type="tel" inputMode="tel" maxLength={30} placeholder="9XX XXX XXX" style={inputStyle} />
+        <input id="phone" name="phone" type="tel" inputMode="tel" maxLength={30} placeholder="+351 9XXXXXXX" style={inputStyle} />
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <label htmlFor="email" style={labelStyle}>Email <span style={{ color: '#999', fontWeight: 400 }}>(opcional)</span></label>
-        <input id="email" name="email" type="email" maxLength={200} placeholder="o.teu@email.pt" style={inputStyle} />
+        <input id="email" name="email" type="email" maxLength={200} placeholder="email@...." style={inputStyle} />
       </div>
 
       {/* Campos configurados pelo estúdio. `required` aqui é conveniência para
