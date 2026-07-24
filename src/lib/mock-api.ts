@@ -1465,19 +1465,39 @@ const ptPaymentDelinquencyExtra = {
     const periodStart = mockWeekStart(base)
     const end = new Date(periodStart); end.setDate(end.getDate() + 6)
     const due = new Date(periodStart); due.setDate(due.getDate() + 7)
+    const dueISO = due.toISOString().slice(0, 10)
+    const todayISO = new Date().toISOString().slice(0, 10)
     const entries = db.pts.filter(p => p.active).map(pt => {
-      const amountDue = 0
+      const plan = getPlanById(pt.planId)
+      // Horas da semana ≈ horas do mês / 4,33 (aproximação de demo).
+      const hours = Math.round((pt.hoursThisMonth / 4.33) * 10) / 10
+      const amountDue = !plan ? 0
+        : plan.type === 'WEEKLY'  ? (plan.priceWeekly ?? 0)
+        : plan.type === 'MONTHLY' ? Math.round(((plan.priceMonthly ?? 0) / 4.33) * 100) / 100
+        : plan.type === 'HOURLY'  ? Math.round((plan.priceHourly ?? 0) * hours * 100) / 100
+        : 0
       const paid = mockPtPayments[`${pt.id}-${periodStart}`]?.amountPaid ?? 0
+      const balance = Math.max(0, amountDue - paid)
+      // Data de início plausível: usa o dia-âncora do ciclo, 4 meses atrás.
+      const sd = new Date(); sd.setMonth(sd.getMonth() - 4); sd.setDate(pt.billingCycleAnchorDay || 1)
+      const status: 'PAGO' | 'PARCIAL' | 'EM_ABERTO' | 'VENCIDO' =
+        amountDue <= 0 || paid >= amountDue ? 'PAGO'
+        : todayISO > dueISO ? 'VENCIDO'
+        : paid > 0 ? 'PARCIAL' : 'EM_ABERTO'
       return {
-        ptId: pt.id, ptName: pt.name, planName: null,
-        periodStart, periodEnd: end.toISOString().slice(0, 10), dueDate: due.toISOString().slice(0, 10),
-        hours: 0, amountDue, amountPaid: paid, balance: Math.max(0, amountDue - paid),
-        status: 'PAGO' as const, recorded: paid > 0,
+        ptId: pt.id, ptName: pt.name, planName: plan?.name ?? null,
+        startDate: sd.toISOString().slice(0, 10),
+        periodStart, periodEnd: end.toISOString().slice(0, 10), dueDate: dueISO,
+        hours, amountDue, amountPaid: paid, balance,
+        status, recorded: paid > 0,
       }
     })
     return {
       periodStart, periodEnd: end.toISOString().slice(0, 10), dueDate: due.toISOString().slice(0, 10),
-      entries, totalDue: 0, totalPaid: entries.reduce((s, e) => s + e.amountPaid, 0), totalBalance: 0,
+      entries,
+      totalDue: entries.reduce((s, e) => s + e.amountDue, 0),
+      totalPaid: entries.reduce((s, e) => s + e.amountPaid, 0),
+      totalBalance: entries.reduce((s, e) => s + e.balance, 0),
     }
   },
   delinquency: async () => { await delay(200); return { asOf: new Date().toISOString().slice(0, 10), trainers: [] as import('./real-api').DelinquentPt[], totalOwed: 0 } },

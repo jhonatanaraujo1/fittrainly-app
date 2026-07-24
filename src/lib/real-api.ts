@@ -457,6 +457,7 @@ export const billingApi = {
 // ── Cobrança semanal do PT + inadimplência ────────────────────────────────────
 export interface PtWeeklyCharge {
   ptId: string; ptName: string; planName: string | null
+  startDate: string   // dia em que o PT entrou no estúdio (createdAt)
   periodStart: string; periodEnd: string; dueDate: string
   hours: number; amountDue: number; amountPaid: number; balance: number
   status: 'PAGO' | 'PARCIAL' | 'EM_ABERTO' | 'VENCIDO'; recorded: boolean

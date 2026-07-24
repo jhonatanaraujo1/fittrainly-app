@@ -147,40 +147,58 @@ export default function InadimplenciaPage() {
           <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
         ) : !week || week.entries.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-100 text-sm text-gray-400">
-            Sem PTs com plano nesta semana.
+            Ainda não há personal trainers ativos.
           </div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <ul className="divide-y divide-gray-50">
               {week.entries.map(e => {
                 const s = STATUS_META[e.status]
+                const semPlano = !e.planName
                 return (
-                  <li key={e.ptId} className="flex items-center gap-3 px-4 py-3">
+                  <li key={e.ptId} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
                     <span className={`w-9 h-9 rounded-full ${avatarColor(e.ptName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
                       {getInitials(e.ptName)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{e.ptName}</p>
-                      <p className="text-[11px] text-gray-400">
-                        {e.planName ?? 'Sem plano'} · {e.hours > 0 ? `${e.hours.toFixed(1)}h · ` : ''}
-                        devido {formatCurrency(e.amountDue)}
-                        {e.amountPaid > 0 && <> · pago {formatCurrency(e.amountPaid)}</>}
+                      {semPlano ? (
+                        <p className="text-[11px] text-amber-600 font-medium">Sem plano atribuído — não gera renda</p>
+                      ) : (
+                        <p className="text-[11px] text-gray-400">
+                          {e.planName}{e.hours > 0 && <> · {e.hours.toFixed(1)}h</>} · devido {formatCurrency(e.amountDue)}
+                          {e.amountPaid > 0 && <> · pago {formatCurrency(e.amountPaid)}</>}
+                        </p>
+                      )}
+                      {/* Início no estúdio + vencimento desta semana — o contexto
+                          que faltava para o admin decidir a cobrança. */}
+                      <p className="text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />desde {fmtDay(e.startDate)}</span>
+                        {!semPlano && (
+                          <span className="inline-flex items-center gap-1 text-gray-500">· vence {fmtDay(e.dueDate)}</span>
+                        )}
                       </p>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${s.cls}`}>{s.label}</span>
-                    {e.balance > 0 ? (
-                      <span className="text-sm font-bold text-gray-900 w-20 text-right tabular-nums">{formatCurrency(e.balance)}</span>
+                    {semPlano ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0">Sem plano</span>
                     ) : (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${s.cls} flex-shrink-0`}>{s.label}</span>
+                        {e.balance > 0 ? (
+                          <span className="text-sm font-bold text-gray-900 w-20 text-right tabular-nums">{formatCurrency(e.balance)}</span>
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openPay(e)}
+                          className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:opacity-90 transition-opacity flex-shrink-0"
+                          style={{ background: '#111111' }}
+                        >
+                          <Wallet className="w-3.5 h-3.5" /> Receber
+                        </button>
+                      </>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => openPay(e)}
-                      className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:opacity-90 transition-opacity flex-shrink-0"
-                      style={{ background: '#111111' }}
-                    >
-                      <Wallet className="w-3.5 h-3.5" /> Receber
-                    </button>
                   </li>
                 )
               })}
