@@ -232,6 +232,32 @@ export default function PlansPage() {
                 <Label className="text-xs">Nome</Label>
                 <Input value={editPlan.name} onChange={e => setEditPlan(p => p ? ({ ...p, name: e.target.value }) : null)} />
               </div>
+              {/* Preço — o campo que faltava. Ligado ao valor certo conforme o
+                  tipo do plano; o backend (PATCH) aplica priceHourly/Weekly/Monthly. */}
+              {editPlan.type !== 'TIERED_HOURLY' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">
+                    {editPlan.type === 'MONTHLY' ? 'Preço mensal (€)'
+                      : editPlan.type === 'WEEKLY' ? 'Preço semanal (€)'
+                      : 'Preço por hora (€)'}
+                  </Label>
+                  <Input
+                    type="number" min="0" step="0.01"
+                    value={editPlan.type === 'MONTHLY' ? (editPlan.priceMonthly ?? '')
+                      : editPlan.type === 'WEEKLY' ? (editPlan.priceWeekly ?? '')
+                      : (editPlan.priceHourly ?? '')}
+                    onChange={e => {
+                      const v = e.target.value === '' ? undefined : parseFloat(e.target.value)
+                      setEditPlan(p => {
+                        if (!p) return null
+                        if (p.type === 'MONTHLY') return { ...p, priceMonthly: v }
+                        if (p.type === 'WEEKLY') return { ...p, priceWeekly: v }
+                        return { ...p, priceHourly: v }
+                      })
+                    }}
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-xs">Descrição</Label>
                 <Input value={editPlan.description ?? ''} onChange={e => setEditPlan(p => p ? ({ ...p, description: e.target.value }) : null)} />
