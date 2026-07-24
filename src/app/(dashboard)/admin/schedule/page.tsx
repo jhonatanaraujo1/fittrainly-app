@@ -428,7 +428,11 @@ export default function AdminSchedulePage() {
                               onClick={blockMode ? handleCellClick : undefined}
                               className={cn(
                                 'min-h-[48px] rounded-md border p-1 flex flex-col gap-1 transition-colors',
-                                marcados.length === 0 ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
+                                marcados.length === 0 && ptsDisponiveis.size > 0
+                                  ? 'bg-emerald-50/40 border-emerald-100'
+                                  : marcados.length === 0
+                                  ? 'bg-gray-50 border-gray-100'
+                                  : 'bg-white border-gray-200',
                                 studioFull && 'bg-gray-900/5 border-gray-900/20',
                                 blockMode && 'cursor-pointer hover:bg-red-50 hover:border-red-200',
                               )}>
@@ -475,6 +479,20 @@ export default function AdminSchedulePage() {
                                   </div>
                                 )
                               })}
+
+                              {/* Disponibilidade sem aluno: só uma bolinha discreta
+                                  a dizer "N PT(s) marcaram esta hora como livre".
+                                  NÃO é agendamento — por isso não ganha chip nem
+                                  nome. O agendamento real só existe com aluno. */}
+                              {ptsDisponiveis.size > 0 && (
+                                <div
+                                  title={`${ptsDisponiveis.size} PT(s) com este horário disponível`}
+                                  className="flex items-center gap-1 px-0.5 text-[8px] font-medium text-emerald-600 leading-none"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                                  {ptsDisponiveis.size} disp.
+                                </div>
+                              )}
 
                               {/* Add button */}
                               {!releaseFull && !blockMode && (
